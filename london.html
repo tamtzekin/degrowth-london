@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Degrowth London - Interactive Vision</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Georgia, serif; background: #1a1a1a; overflow: hidden; user-select: none; }
+        
+        .visual-novel-container { position: relative; width: 100vw; height: 100vh; cursor: grab; }
+        .visual-novel-container.dragging { cursor: grabbing; }
+        
+        .background-container { position: absolute; width: 120%; height: 120%; top: -10%; left: -10%; transition: transform 0.3s ease-out; }
+        .background-image { width: 100%; height: 100%; object-fit: cover; background: url('market-street.jpg') center/cover; }
+        
+        .interactive-points { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        .point { position: absolute; width: 25px; height: 25px; background: radial-gradient(circle, #00ff88, #00cc66); border-radius: 50%; box-shadow: 0 0 25px #00ff88; cursor: pointer; pointer-events: all; animation: pulse 2s infinite; transform: translate(-50%, -50%); border: 2px solid rgba(255, 255, 255, 0.8); }
+        
+        @keyframes pulse { 0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.9; } 50% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; } }
+        
+        /* Improved dialogue panel */
+        .dialogue-panel { position: fixed; top: 0; right: 0; width: 450px; height: 100vh; background: rgba(8, 12, 8, 0.96); backdrop-filter: blur(15px); border-left: 3px solid rgba(0, 255, 136, 0.3); opacity: 0; transform: translateX(100%); transition: all 0.5s ease-out; z-index: 1000; }
+        .dialogue-panel.visible { opacity: 1; transform: translateX(0); }
+        
+        .dialogue-content { height: 100%; display: flex; flex-direction: column; }
+        
+        .dialogue-header { padding: 25px; border-bottom: 2px solid rgba(0, 255, 136, 0.2); background: rgba(5, 8, 5, 0.9); }
+        .location-title { color: #00ff88; font-size: 1.3em; font-weight: bold; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+        .location-subtitle { color: #aaa; font-size: 0.95em; font-style: italic; }
+        
+        .dialogue-scroll-area { flex: 1; position: relative; overflow: hidden; }
+        .dialogue-text-container { height: 100%; overflow-y: auto; padding: 25px; padding-bottom: 80px; }
+        
+        /* Enhanced scrollbar */
+        .dialogue-text-container::-webkit-scrollbar { width: 8px; }
+        .dialogue-text-container::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.1); border-radius: 4px; }
+        .dialogue-text-container::-webkit-scrollbar-thumb { background: rgba(0, 255, 136, 0.7); border-radius: 4px; }
+        .dialogue-text-container::-webkit-scrollbar-thumb:hover { background: rgba(0, 255, 136, 0.9); }
+        
+        .dialogue-entry { margin-bottom: 25px; line-height: 1.7; }
+        .dialogue-speaker { color: #00ff88; font-weight: bold; margin-bottom: 8px; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px; }
+        .dialogue-text { color: #e8e8e8; font-size: 1.05em; }
+        
+        .section-text { color: #d8d8d8; font-size: 1.02em; line-height: 1.65; margin-bottom: 18px; }
+        .highlight-text { color: #00ff88; font-weight: bold; }
+        
+        /* Enhanced gradient fade */
+        .dialogue-scroll-area::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 60px; background: linear-gradient(transparent, rgba(8, 12, 8, 0.96)); pointer-events: none; z-index: 10; }
+        
+        /* Improved dialogue options */
+        .dialogue-options { padding: 25px; border-top: 2px solid rgba(0, 255, 136, 0.2); background: rgba(5, 8, 5, 0.95); }
+        .dialogue-option { display: block; width: 100%; background: rgba(0, 255, 136, 0.05); border: 2px solid rgba(0, 255, 136, 0.3); color: #e8e8e8; padding: 15px 18px; margin-bottom: 12px; text-align: left; cursor: pointer; transition: all 0.3s ease; border-radius: 6px; font-family: inherit; font-size: 1em; line-height: 1.5; }
+        .dialogue-option:hover { background: rgba(0, 255, 136, 0.15); border-color: rgba(0, 255, 136, 0.7); color: #00ff88; transform: translateX(5px); }
+        .dialogue-option:active { transform: translateX(3px) translateY(1px); }
+        
+        .option-number { color: #00ff88; font-weight: bold; margin-right: 10px; font-size: 1.1em; }
+        
+        .close-panel { position: absolute; top: 20px; right: 20px; background: transparent; border: 2px solid rgba(0, 255, 136, 0.5); color: #00ff88; font-size: 1.2em; cursor: pointer; transition: all 0.3s ease; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        .close-panel:hover { background: rgba(0, 255, 136, 0.2); transform: rotate(90deg); }
+        
+        /* UI overlay */
+        .ui-overlay { position: fixed; top: 25px; left: 25px; color: rgba(255, 255, 255, 0.8); font-size: 0.95em; z-index: 500; background: rgba(0, 0, 0, 0.3); padding: 15px; border-radius: 8px; backdrop-filter: blur(5px); }
+        .instructions p { margin-bottom: 6px; }
+        
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+            .dialogue-panel { width: 100%; }
+            .ui-overlay { top: 15px; left: 15px; font-size: 0.85em; padding: 12px; }
+            .point { width: 35px; height: 35px; }
+            .dialogue-text-container { padding: 20px; }
+            .dialogue-options { padding: 20px; }
+            .dialogue-header { padding: 20px; }
+        }
+        
+        @media (max-width: 1024px) and (min-width: 769px) {
+            .dialogue-panel { width: 400px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="visual-novel-container" id="container">
+        <div class="background-container" id="backgroundContainer">
+            <div class="background-image" id="backgroundImage"></div>
+        </div>
+        <div class="interactive-points" id="interactivePoints"></div>
+        
+        <!-- Enhanced dialogue panel -->
+        <div class="dialogue-panel" id="dialoguePanel">
+            <button class="close-panel" id="closePanel">×</button>
+            <div class="dialogue-content">
+                <div class="dialogue-header">
+                    <div class="location-title" id="locationTitle">Degrowth London</div>
+                    <div class="location-subtitle" id="locationSubtitle">A Vision for Sustainable Community</div>
+                </div>
+                <div class="dialogue-scroll-area">
+                    <div class="dialogue-text-container" id="dialogueTextContainer">
+                        <div class="dialogue-entry">
+                            <div class="dialogue-speaker">Welcome Explorer</div>
+                            <div class="section-text">You've entered a reimagined London - a city transformed by <span class="highlight-text">degrowth principles</span> where community, sustainability, and wellbeing take priority over endless growth.</div>
+                            <div class="section-text">This vibrant market street represents just one corner of a city where <span class="highlight-text">democracy flows from the grassroots</span>, energy is community-owned, education happens in living ecosystems, food is locally grown, housing serves everyone, and transport connects rather than divides.</div>
+                            <div class="section-text">Click the <span class="highlight-text">glowing green points</span> around the scene to explore different aspects of this transformed society.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="dialogue-options" id="dialogueOptions">
+                    <button class="dialogue-option" onclick="hideDialogue()">
+                        <span class="option-number">1.</span>Begin exploring this new London...
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="ui-overlay">
+            <div class="instructions">
+                <p>🖱️ Drag to explore the market</p>
+                <p>🌱 Click green points to learn</p>
+                <p>📱 Mobile friendly</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const storyPoints = [
+            {
+                x: 25, y: 35, // Near the community gathering/market area
+                title: "Democracy",
+                subtitle: "Power to the People",
+                sections: [
+                    {
+                        speaker: "Community Voice",
+                        text: "Built upon the foundations of true community power, democracy is formed from the people's decisions, for the people. Governance is no longer dictated by distant politicians or corporate elites but shaped collectively by those who live and breathe their neighbourhoods every day."
+                    },
+                    {
+                        speaker: "Grassroots Action",
+                        text: "Degrowth has reformed the bureaucratic political processes of the past. Policy is now proactive, initiated by residents to serve fellow residents. Citizens' assemblies have been created in every community, giving people the direct power to allocate resources, shape development and reclaim control over their own futures."
+                    },
+                    {
+                        speaker: "New Structures",
+                        text: "London is no longer a playground for the super-rich. Its streets, homes and open spaces belong to the people once more. We reject the concentration of hierarchical power in the hands of the few. Instead, we embrace sociocracy and decision-making methods where every voice matters."
+                    },
+                    {
+                        speaker: "Inclusive Participation",
+                        text: "The age restrictions that limited political input from those under 16 have been overturned. All people of all ages and backgrounds are encouraged to participate in policy-making. Everyone is listened to - even the youngest dreams are involved in future decisions."
+                    },
+                    {
+                        speaker: "Living Democracy",
+                        text: "Political debate has turned into community conversation which is less binary, more open, personal and flowing between neighbours and friends. In this world, power is not hoarded but shared, and disagreements are opportunities for dialogue, empathy and understanding."
+                    }
+                ],
+                options: [
+                    { text: "Learn about community assemblies", section: 1 },
+                    { text: "Explore inclusive participation", section: 3 },
+                    { text: "Understand new power structures", section: 2 },
+                    { text: "Continue exploring", action: "close" }
+                ]
+            },
+            {
+                x: 60, y: 20, // Near the rooftops with solar potential
+                title: "Energy",
+                subtitle: "Community-Owned Power",
+                sections: [
+                    {
+                        speaker: "Energy Independence",
+                        text: "In this neighbourhood, everyone has access to affordable, renewable energy. Solar panels are dotted across rooftops and above car parks too. Our homes and workplaces have been built or retrofitted to a high standard, so people no longer worry about damp, mould and cold."
+                    },
+                    {
+                        speaker: "Community Response",
+                        text: "As energy prices rose, people became more conscious of their energy use. It became clear there was an issue of fairness, with those most affected being least able to pay, threatening health and wellbeing. In response, there was a groundswell of community action."
+                    },
+                    {
+                        speaker: "Fair Distribution",
+                        text: "A citizen's assembly decided that an equitable energy allowance should be set. The wealthiest in London, who used the most energy, would reduce their consumption or be charged a premium. The funds from this premium retrofit London's leakiest homes."
+                    },
+                    {
+                        speaker: "Local Control",
+                        text: "Inspired by energy communities elsewhere in the UK, borough councils backed energy groups to change planning rules and energy policy. These networks give people control of their local energy, with every member given a voice and decisions taken democratically."
+                    },
+                    {
+                        speaker: "Ongoing Challenges",
+                        text: "There are still challenges, with old infrastructure and limited grid capacity making it difficult to build community energy as fast as we'd like. People are working on sustainable supply chains so solar panels can be made ethically, without forced labour."
+                    }
+                ],
+                options: [
+                    { text: "Explore energy cooperatives", section: 3 },
+                    { text: "Learn about fair distribution", section: 2 },
+                    { text: "Understand community response", section: 1 },
+                    { text: "Continue exploring", action: "close" }
+                ]
+            },
+            {
+                x: 75, y: 65, // Near the educational/workshop areas
+                title: "Education",
+                subtitle: "Learning Ecosystems",
+                sections: [
+                    {
+                        speaker: "Living Classrooms",
+                        text: "Places of education are ecosystems of learning not confined by four walls. They are dynamic learning communities woven into the natural and social worlds around them. Students learn by doing, out there in the world."
+                    },
+                    {
+                        speaker: "Hands-On Learning",
+                        text: "Students immerse in hands-on activities, participating in local conservation projects, urban planning initiatives with local councils, and gain varied work experience with local B-corp businesses. Learning extends into spaces where students experience cooperation and take on responsibility as eco-literate, compassionate change makers."
+                    },
+                    {
+                        speaker: "Student Democracy",
+                        text: "Children practice autonomy by engaging in decision-making processes. Sociocracy is practiced in and beyond classroom spaces - students vote for a larger library or allotment for growing vegetables for school lunches. This cooperation is fostered from the first day of school."
+                    },
+                    {
+                        speaker: "Interdisciplinary Approach",
+                        text: "Learning is multidisciplinary. Students make cross-curricular links to cultivate synoptic thinking. In geography, they might collect water from a river and discover contaminants. They collaborate with economics students who apply understanding of commons as provisioning systems."
+                    },
+                    {
+                        speaker: "Transformative Higher Ed",
+                        text: "Higher education becomes a platform for transformative learning and societal innovation. Universities are interdisciplinary research hubs addressing global challenges. Degree programs are designed around solving complex, real-world challenges in partnership with local governments and businesses."
+                    }
+                ],
+                options: [
+                    { text: "Discover hands-on learning", section: 1 },
+                    { text: "Explore student democracy", section: 2 },
+                    { text: "Learn about interdisciplinary studies", section: 3 },
+                    { text: "Continue exploring", action: "close" }
+                ]
+            },
+            {
+                x: 45, y: 50, // Central market area with food vendors
+                title: "Food",
+                subtitle: "Local & Sustainable",
+                sections: [
+                    {
+                        speaker: "Green City",
+                        text: "The city of London is much greener than today. Every block has a roof garden, and every windowsill has room for a mini herb or veg box. Green spaces are more common, bigger, surrounded by quieter roads to protect wildlife, with community gardens acting as knowledge exchange hubs."
+                    },
+                    {
+                        speaker: "Farmers Markets",
+                        text: "Around each city quarter is a farmers' market. Although the UK cannot be totally self-sufficient, this is the first step to reform the current food system. Rather than supermarkets, these are the primary places to buy food, reorganised around the values of being local, seasonal, and sustainable."
+                    },
+                    {
+                        speaker: "Direct Relationships",
+                        text: "These farmers and you, consumers, have a more direct relationship. You know where your food comes from, how it is produced, and how to prepare it with as little waste as possible. Buying locally supports the local economy and promotes better quality, fairer produce."
+                    },
+                    {
+                        speaker: "Sustainable Packaging",
+                        text: "At the farmers' market, none of the packaging is plastic, and it can all be returned to the farmer for reuse or recycling. Consumers wash, cut, cook, juice, and freeze what they buy - making their own jam from berries gathered even in the city."
+                    },
+                    {
+                        speaker: "Zero Waste",
+                        text: "Compost is required to avoid any food waste going to landfill. It is collected, composted, and redistributed to local farmers by the council as fertiliser. No food is thrown out when perfectly edible - it's redistributed to anyone who needs it."
+                    }
+                ],
+                options: [
+                    { text: "Explore farmers' markets", section: 1 },
+                    { text: "Learn about direct relationships", section: 2 },
+                    { text: "Discover zero waste systems", section: 4 },
+                    { text: "Continue exploring", action: "close" }
+                ]
+            },
+            {
+                x: 80, y: 30, // Near the housing/residential areas
+                title: "Housing",
+                subtitle: "Community Ownership",
+                sections: [
+                    {
+                        speaker: "Thriving Neighbourhoods",
+                        text: "London is now a thriving hub of interweaving neighbourhoods where housing is plentiful and owned and managed by local residents in cooperation with the local authority. Our homes are beautiful, spacious, full of natural light, celebrating our diversity and heritage."
+                    },
+                    {
+                        speaker: "Integrated Systems",
+                        text: "Our housing operates synergistically with transport and food systems. Public green spaces encourage community and nature connection - community food growing schemes, hedgerows and fruit trees lining pathways, canal systems and wetlands integrated into neighbourhoods."
+                    },
+                    {
+                        speaker: "Community Stewardship",
+                        text: "Housing is part of our stewardship of the earth we inhabit and a tangible part of creating community. We have collective responsibility for the places in which we live and London as a whole. We meet regularly to consult about managing our housing together."
+                    },
+                    {
+                        speaker: "Policy Changes",
+                        text: "Community groups made change happen. Instead of investing in development teams and public-private partnerships, councils invested in community engagement teams. Compulsory purchase orders were issued against oligarch landlords and policy now bans absentee business owners."
+                    },
+                    {
+                        speaker: "Diverse Communities",
+                        text: "London's neighbourhoods now house whole diverse intermixed communities from all different classes, ethnic and religious backgrounds, ages and cultures. We have integrated specialised housing for those who are more vulnerable, with plentiful short-term housing for sustainable tourism and cultural exchange."
+                    }
+                ],
+                options: [
+                    { text: "Learn about community stewardship", section: 2 },
+                    { text: "Explore policy changes", section: 3 },
+                    { text: "Discover diverse communities", section: 4 },
+                    { text: "Continue exploring", action: "close" }
+                ]
+            },
+            {
+                x: 35, y: 75, // Near the pedestrian walkways
+                title: "Transport",
+                subtitle: "People-Centred Mobility",
+                sections: [
+                    {
+                        speaker: "Reclaimed Streets",
+                        text: "Pedestrians, bikes, and well-funded green public transport networks weave seamlessly around the city. The space once sacrificed for private cars is given back to the people, opening walkways that are safe and accessible for wheelchair users, children, and other accessibility needs."
+                    },
+                    {
+                        speaker: "Natural Harmony",
+                        text: "Birdsong is more varied, no longer needing to compete over traffic noise. The air is cleaner, and wildflowers, trees, and gardens bloom down the streets. Roads for essential vehicles are carefully planned whilst avoiding main pedestrian hubs."
+                    },
+                    {
+                        speaker: "Cycling Infrastructure",
+                        text: "Cycle routes are no longer crammed to the side of the road but given space to wheel safely through London on smooth, well-drained surfaces. These paths are separate from pedestrian walkways but similarly lined with plants and trees."
+                    },
+                    {
+                        speaker: "Transformation Process",
+                        text: "Phasing cars out was challenging but rewarding, taking place simultaneously with bringing in more buses, training drivers, creating bike spaces, and incorporating cycling lessons into school curriculum. A participatory process co-designed the new routes."
+                    },
+                    {
+                        speaker: "Time Freedom",
+                        text: "A key consequence of slowing down transport and removing traffic is that time is given back to us. We're not rushing to complete more work, feeling compelled to make special trips, or cramming holidays. By removing the price tag from time, we create a more equitable society."
+                    }
+                ],
+                options: [
+                    { text: "Explore reclaimed streets", section: 0 },
+                    { text: "Learn about cycling infrastructure", section: 2 },
+                    { text: "Understand time freedom", section: 4 },
+                    { text: "Continue exploring", action: "close" }
+                ]
+            }
+        ];
+        
+        const container = document.getElementById('container');
+        const backgroundContainer = document.getElementById('backgroundContainer');
+        const interactivePoints = document.getElementById('interactivePoints');
+        const dialoguePanel = document.getElementById('dialoguePanel');
+        const locationTitle = document.getElementById('locationTitle');
+        const locationSubtitle = document.getElementById('locationSubtitle');
+        const dialogueTextContainer = document.getElementById('dialogueTextContainer');
+        const dialogueOptions = document.getElementById('dialogueOptions');
+        const closePanel = document.getElementById('closePanel');
+        
+        let isDragging = false, startX = 0, startY = 0, currentX = 0, currentY = 0;
+        let currentStoryPoint = null;
+        
+        function initialize() { 
+            createInteractivePoints(); 
+            setupEventListeners(); 
+            showWelcomeMessage(); 
+        }
+        
+        function createInteractivePoints() { 
+            storyPoints.forEach(point => { 
+                const pointElement = document.createElement('div'); 
+                pointElement.className = 'point'; 
+                pointElement.style.left = point.x + '%'; 
+                pointElement.style.top = point.y + '%'; 
+                pointElement.addEventListener('click', () => showDialogue(point)); 
+                interactivePoints.appendChild(pointElement); 
+            }); 
+        }
+        
+        function setupEventListeners() { 
+            container.addEventListener('mousedown', startDrag); 
+            container.addEventListener('mousemove', drag); 
+            container.addEventListener('mouseup', endDrag); 
+            container.addEventListener('mouseleave', endDrag); 
+            container.addEventListener('touchstart', startDragTouch); 
+            container.addEventListener('touchmove', dragTouch); 
+            container.addEventListener('touchend', endDrag); 
+            closePanel.addEventListener('click', hideDialogue); 
+            container.addEventListener('contextmenu', e => e.preventDefault()); 
+        }
+        
+        function startDrag(e) { 
+            if (e.target.classList.contains('point') || e.target.closest('.dialogue-panel')) return; 
+            isDragging = true; 
+            container.classList.add('dragging'); 
+            startX = e.clientX - currentX; 
+            startY = e.clientY - currentY; 
+        }
+        
+        function startDragTouch(e) { 
+            if (e.target.classList.contains('point') || e.target.closest('.dialogue-panel')) return; 
+            isDragging = true; 
+            container.classList.add('dragging'); 
+            const touch = e.touches[0]; 
+            startX = touch.clientX - currentX; 
+            startY = touch.clientY - currentY; 
+        }
+        
+        function drag(e) { 
+            if (!isDragging) return; 
+            e.preventDefault(); 
+            currentX = e.clientX - startX; 
+            currentY = e.clientY - startY; 
+            updateBackgroundPosition(); 
+        }
+        
+        function dragTouch(e) { 
+            if (!isDragging) return; 
+            e.preventDefault(); 
+            const touch = e.touches[0]; 
+            currentX = touch.clientX - startX; 
+            currentY = touch.clientY - startY; 
+            updateBackgroundPosition(); 
+        }
+        
+        function endDrag() { 
+            isDragging = false; 
+            container.classList.remove('dragging'); 
+        }
+        
+        function updateBackgroundPosition() { 
+            const maxX = window.innerWidth * 0.1; 
+            const maxY = window.innerHeight * 0.1; 
+            currentX = Math.max(-maxX, Math.min(maxX, currentX)); 
+            currentY = Math.max(-maxY, Math.min(maxY, currentY)); 
+            backgroundContainer.style.transform = `translate(${currentX}px, ${currentY}px)`; 
+        }
+        
+        function showDialogue(point) {
+            currentStoryPoint = point;
+            locationTitle.textContent = point.title;
+            locationSubtitle.textContent = point.subtitle;
+            
+            // Show first section
+            showSection(point, 0);
+        }
+        
+        function showSection(point, sectionIndex) {
+            const section = point.sections[sectionIndex];
+            
+            // Clear and show current section
+            dialogueTextContainer.innerHTML = `
+                <div class="dialogue-entry">
+                    <div class="dialogue-speaker">${section.speaker}</div>
+                    <div class="section-text">${section.text}</div>
+                </div>
+            `;
+            
+            // Update options based on available sections
+            dialogueOptions.innerHTML = '';
+            point.options.forEach((option, index) => {
+                const optionButton = document.createElement('button');
+                optionButton.className = 'dialogue-option';
+                optionButton.innerHTML = `<span class="option-number">${index + 1}.</span>${option.text}`;
+                
+                if (option.action === 'close') {
+                    optionButton.addEventListener('click', () => hideDialogue());
+                } else if (option.section !== undefined) {
+                    optionButton.addEventListener('click', () => showSection(point, option.section));
+                }
+                
+                dialogueOptions.appendChild(optionButton);
+            });
+            
+            dialoguePanel.classList.add('visible');
+            dialogueTextContainer.scrollTop = 0;
+        }
+        
+        function hideDialogue() {
+            dialoguePanel.classList.remove('visible');
+        }
+        
+        function showWelcomeMessage() {
+            setTimeout(() => dialoguePanel.classList.add('visible'), 800);
+        }
+        
+        window.addEventListener('load', initialize);
+    </script>
+</body>
+</html>
