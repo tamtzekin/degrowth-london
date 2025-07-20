@@ -10,6 +10,10 @@
             href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap"
             rel="stylesheet"
         />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Questrial:wght@400&display=swap"
+            rel="stylesheet"
+        />
         <style>
             @font-face {
                 font-family: "QuestaSansLight";
@@ -29,7 +33,7 @@
             }
 
             body {
-                font-family: "QuestaSansLight", monospace;
+                font-family: "Questrial", "Raleway", sans-serif;
                 background: #1a1a1a;
                 overflow: hidden;
                 user-select: none;
@@ -77,14 +81,14 @@
                 border-radius: 50%;
                 cursor: pointer;
                 pointer-events: all;
-                transition: all 0.3s ease;
+                transition: all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
                 z-index: 10;
             }
 
             .point:hover {
                 border-color: #f9c1ce;
                 box-shadow: 0 0 15px rgba(249, 193, 206, 0.4);
-                transform: scale(1.6);
+                transform: scale(1.1);
             }
 
             .point.selected {
@@ -100,100 +104,15 @@
                 width: 100%;
                 height: 100%;
                 pointer-events: none;
-                z-index: 1;
+                z-index: 2;
             }
 
-            .connection-line {
+            .simple-line {
                 position: absolute;
-                pointer-events: none;
-                opacity: 0.7;
-                transition: opacity 0.3s ease;
-            }
-
-            /* Street-style connections */
-            .street-line {
-                background: linear-gradient(
-                    45deg,
-                    #895353 0%,
-                    #9d6e6d 20%,
-                    #b18988 40%,
-                    #c5a6a5 60%,
-                    #d9c3c2 80%,
-                    #ece1e0 100%
-                );
-                height: 3px;
-                border-radius: 2px;
-                box-shadow: 0 1px 3px rgba(137, 83, 83, 0.3);
-            }
-
-            /* River-style connections */
-            .river-line {
-                background: linear-gradient(
-                    90deg,
-                    rgba(137, 83, 83, 0.6) 0%,
-                    rgba(157, 110, 109, 0.7) 25%,
-                    rgba(177, 137, 136, 0.8) 50%,
-                    rgba(197, 166, 165, 0.7) 75%,
-                    rgba(217, 195, 194, 0.6) 100%
-                );
-                height: 4px;
-                border-radius: 3px;
-                box-shadow: 0 2px 4px rgba(137, 83, 83, 0.2);
-                animation: flow 8s infinite linear;
-            }
-
-            @keyframes flow {
-                0% {
-                    background-position: 0% 0%;
-                }
-                100% {
-                    background-position: 100% 0%;
-                }
-            }
-
-            /* Curved path styles */
-            .curved-path {
-                border: none;
-                background: none;
-                position: absolute;
-                pointer-events: none;
-            }
-
-            .curved-path svg {
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                overflow: visible;
-            }
-
-            .street-path {
-                stroke: #9d6e6d;
-                stroke-width: 3;
-                fill: none;
-                stroke-dasharray: 0;
+                background: #9d6e6d;
                 opacity: 0.8;
-                filter: drop-shadow(0 1px 2px rgba(137, 83, 83, 0.3));
-            }
-
-            .river-path {
-                stroke: url(#riverGradient);
-                stroke-width: 4;
-                fill: none;
-                stroke-dasharray: 0;
-                opacity: 0.7;
-                filter: drop-shadow(0 2px 3px rgba(137, 83, 83, 0.2));
-                animation: riverFlow 12s infinite linear;
-            }
-
-            @keyframes riverFlow {
-                0% {
-                    stroke-dashoffset: 0;
-                }
-                100% {
-                    stroke-dashoffset: 100;
-                }
+                pointer-events: none;
+                border-radius: 2px;
             }
 
             @keyframes pulse {
@@ -334,8 +253,8 @@
                 display: block;
                 width: 100%;
                 background: transparent;
-                /* border: 2px solid rgba(125, 19, 58, 0.3); */
-                color: #f9c1ce;
+                border: none;
+                color: #e8e8e8;
                 padding: 15px 18px;
                 margin-bottom: 12px;
                 text-align: left;
@@ -347,7 +266,7 @@
                 line-height: 1.5;
             }
             .dialogue-option:hover {
-                background: rgba(125, 19, 58, 0.7);
+                background: rgba(249, 193, 206, 0.7);
                 /* border-color: rgba(249, 193, 206, 0.7); */
                 color: #fff;
             }
@@ -362,70 +281,51 @@
                 font-size: 1.1em;
             }
 
-            .close-panel {
-                position: absolute;
-                top: 20px;
-                right: 20px;
-                background: transparent;
-                border: 2px solid rgba(182, 191, 193, 0.5);
-                color: rgba(182, 191, 193, 0.5);
-                font-size: 1.2em;
-                cursor: pointer;
-                transition: all 0.3s ease;
-                width: 35px;
-                height: 35px;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-            .close-panel:hover {
-                background: rgba(0, 255, 136, 0.2);
-                transform: rotate(90deg);
-            }
-
             /* Help overlay */
             .help-overlay {
                 position: fixed;
-                top: 25px;
-                left: 25px;
-                background: rgba(157, 110, 109, 0.9);
-                backdrop-filter: blur(10px);
-                border-radius: 12px;
-                padding: 20px;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(157, 110, 109, 0.95);
+                backdrop-filter: blur(15px);
+                border-radius: 16px;
+                padding: 30px;
                 z-index: 1001;
                 transition: all 0.4s ease;
                 border: 2px solid rgba(217, 195, 194, 0.5);
+                min-width: 600px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
             }
 
             .help-overlay.hidden {
                 opacity: 0;
-                transform: translateY(-20px);
+                transform: translate(-50%, -50%) scale(0.8);
                 pointer-events: none;
             }
 
             .help-close {
                 position: absolute;
-                top: 8px;
-                right: 12px;
+                top: 5px;
+                right: 15px;
                 background: none;
                 border: none;
                 color: #ece1e0;
-                font-size: 18px;
+                font-size: 35px;
                 cursor: pointer;
                 transition: color 0.2s ease;
             }
 
             .help-close:hover {
-                color: #ffffff;
+                color: pink;
             }
 
             .help-item {
                 display: flex;
                 align-items: center;
-                margin-bottom: 12px;
+                margin-bottom: 16px;
                 color: #ece1e0;
-                font-size: 0.9em;
+                font-size: 1.1em;
             }
 
             .help-item:last-child {
@@ -433,9 +333,9 @@
             }
 
             .help-icon {
-                width: 24px;
-                height: 24px;
-                margin-right: 12px;
+                width: 28px;
+                height: 28px;
+                margin-right: 16px;
                 flex-shrink: 0;
             }
 
@@ -470,6 +370,93 @@
                     width: 400px;
                 }
             }
+
+            /* Dialogue Header Controls */
+            .dialogue-header {
+                position: relative;
+                padding-right: 120px;
+            }
+
+            .dialogue-header-controls {
+                position: absolute;
+                top: 10px;
+                right: 15px;
+                display: flex;
+                gap: 12px;
+                z-index: 10;
+            }
+
+            .header-control {
+                background: none;
+                border: none;
+                cursor: pointer;
+                padding: 6px;
+                border-radius: 4px;
+                transition: background 0.2s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .header-control:hover {
+                background: rgba(217, 195, 194, 0.2);
+            }
+
+            .header-control svg {
+                width: 20px;
+                height: 20px;
+                fill: #ece1e0;
+                stroke: #ece1e0;
+            }
+
+            .text-speed-control {
+                color: #ece1e0;
+                font-size: 12px;
+                font-weight: 500;
+                min-width: 50px;
+                text-align: center;
+            }
+
+            /* High contrast mode styles */
+            body.high-contrast {
+                /* filter: contrast(150%) brightness(120%); */
+            }
+
+            body.high-contrast .dialogue-panel {
+                background: rgba(26, 26, 26, 1);
+                border-color: #ffffff;
+            }
+
+            body.high-contrast .dialogue-option {
+                background: rgba(51, 51, 51, 0.2);
+                border-color: #ffffff;
+            }
+
+            body.high-contrast .dialogue-option:hover {
+                background: rgba(51, 51, 51, 0.4);
+            }
+
+            body.high-contrast .section-text {
+                color: #ffffff;
+            }
+
+            body.high-contrast .help-overlay {
+                background: rgba(0, 0, 0, 0.95);
+                border-color: #f2f2f2;
+            }
+
+            body.high-contrast .help-item {
+                color: #ffffff;
+            }
+
+            body.high-contrast .header-control svg {
+                fill: #ffffff;
+                stroke: #ffffff;
+            }
+
+            body.high-contrast .text-speed-control {
+                color: #ffffff;
+            }
         </style>
     </head>
     <body>
@@ -478,140 +465,101 @@
                 <div class="background-image" id="backgroundImage"></div>
             </div>
             <div class="connection-lines" id="connectionLines">
-                <!-- SVG for curved paths -->
-                <svg
-                    width="100%"
-                    height="100%"
-                    style="position: absolute; top: 0; left: 0"
-                >
-                    <defs>
-                        <!-- River gradient definition -->
-                        <linearGradient
-                            id="riverGradient"
-                            x1="0%"
-                            y1="0%"
-                            x2="100%"
-                            y2="0%"
-                        >
-                            <stop
-                                offset="0%"
-                                style="stop-color: #895353; stop-opacity: 0.6"
-                            />
-                            <stop
-                                offset="25%"
-                                style="stop-color: #9d6e6d; stop-opacity: 0.7"
-                            />
-                            <stop
-                                offset="50%"
-                                style="stop-color: #b18988; stop-opacity: 0.8"
-                            />
-                            <stop
-                                offset="75%"
-                                style="stop-color: #c5a6a5; stop-opacity: 0.7"
-                            />
-                            <stop
-                                offset="100%"
-                                style="stop-color: #d9c3c2; stop-opacity: 0.6"
-                            />
-                        </linearGradient>
-
-                        <!-- Street gradient definition -->
-                        <linearGradient
-                            id="streetGradient"
-                            x1="0%"
-                            y1="0%"
-                            x2="100%"
-                            y2="0%"
-                        >
-                            <stop
-                                offset="0%"
-                                style="stop-color: #895353; stop-opacity: 0.8"
-                            />
-                            <stop
-                                offset="20%"
-                                style="stop-color: #9d6e6d; stop-opacity: 0.9"
-                            />
-                            <stop
-                                offset="40%"
-                                style="stop-color: #b18988; stop-opacity: 1"
-                            />
-                            <stop
-                                offset="60%"
-                                style="stop-color: #c5a6a5; stop-opacity: 0.9"
-                            />
-                            <stop
-                                offset="80%"
-                                style="stop-color: #d9c3c2; stop-opacity: 0.8"
-                            />
-                            <stop
-                                offset="100%"
-                                style="stop-color: #ece1e0; stop-opacity: 0.7"
-                            />
-                        </linearGradient>
-                    </defs>
-
-                    <!-- Democracy to Energy (curved street) -->
-                    <path
-                        class="street-path"
-                        d="M 25 35 Q 40 25 60 20"
-                        stroke="url(#streetGradient)"
-                    />
-
-                    <!-- Democracy to Food (winding street) -->
-                    <path
-                        class="street-path"
-                        d="M 25 35 Q 30 40 35 45 Q 40 48 45 50"
-                        stroke="url(#streetGradient)"
-                    />
-
-                    <!-- Energy to Education (flowing river) -->
-                    <path
-                        class="river-path"
-                        d="M 60 20 Q 65 35 70 50 Q 72 58 75 65"
-                    />
-
-                    <!-- Food to Housing (main street) -->
-                    <path
-                        class="street-path"
-                        d="M 45 50 Q 55 45 65 40 Q 72 35 80 30"
-                        stroke="url(#streetGradient)"
-                    />
-
-                    <!-- Food to Transport (curved path) -->
-                    <path
-                        class="street-path"
-                        d="M 45 50 Q 42 60 38 68 Q 36 72 35 75"
-                        stroke="url(#streetGradient)"
-                    />
-
-                    <!-- Education to Housing (connecting path) -->
-                    <path
-                        class="street-path"
-                        d="M 75 65 Q 77 50 78 40 Q 79 35 80 30"
-                        stroke="url(#streetGradient)"
-                    />
-
-                    <!-- Thames-inspired river connection -->
-                    <path
-                        class="river-path"
-                        d="M 25 35 Q 15 45 20 55 Q 25 65 30 70 Q 32 73 35 75"
-                    />
-
-                    <!-- Secondary street network -->
-                    <path
-                        class="street-path"
-                        d="M 60 20 Q 70 25 80 30"
-                        stroke="url(#streetGradient)"
-                    />
-                </svg>
+                <!-- Simple visible lines between points -->
+                <div
+                    class="simple-line"
+                    style="
+                        left: 25%;
+                        top: 35%;
+                        width: 35%;
+                        height: 3px;
+                        transform: rotate(-15deg);
+                        transform-origin: 0 0;
+                    "
+                ></div>
+                <div
+                    class="simple-line"
+                    style="
+                        left: 25%;
+                        top: 35%;
+                        width: 25%;
+                        height: 3px;
+                        transform: rotate(30deg);
+                        transform-origin: 0 0;
+                    "
+                ></div>
+                <div
+                    class="simple-line"
+                    style="
+                        left: 60%;
+                        top: 20%;
+                        width: 20%;
+                        height: 3px;
+                        transform: rotate(70deg);
+                        transform-origin: 0 0;
+                    "
+                ></div>
+                <div
+                    class="simple-line"
+                    style="
+                        left: 45%;
+                        top: 50%;
+                        width: 35%;
+                        height: 3px;
+                        transform: rotate(-20deg);
+                        transform-origin: 0 0;
+                    "
+                ></div>
+                <div
+                    class="simple-line"
+                    style="
+                        left: 45%;
+                        top: 50%;
+                        width: 15%;
+                        height: 3px;
+                        transform: rotate(60deg);
+                        transform-origin: 0 0;
+                    "
+                ></div>
+                <div
+                    class="simple-line"
+                    style="
+                        left: 75%;
+                        top: 65%;
+                        width: 8%;
+                        height: 3px;
+                        transform: rotate(-70deg);
+                        transform-origin: 0 0;
+                    "
+                ></div>
             </div>
             <div class="interactive-points" id="interactivePoints"></div>
 
             <!-- Enhanced dialogue panel -->
             <div class="dialogue-panel" id="dialoguePanel">
-                <button class="close-panel" id="closePanel">×</button>
                 <div class="dialogue-content">
                     <div class="dialogue-header">
+                        <div class="dialogue-header-controls">
+                            <button
+                                class="header-control text-speed-control"
+                                id="textSpeedToggle"
+                            >
+                                Relaxed
+                            </button>
+                            <button class="header-control" id="contrastToggle">
+                                <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                >
+                                    <circle cx="12" cy="12" r="5" />
+                                    <path
+                                        d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
+                                    />
+                                </svg>
+                            </button>
+                        </div>
                         <div class="location-title" id="locationTitle">
                             Degrowth London
                         </div>
@@ -742,6 +690,24 @@
                     </svg>
                     <span>Mobile friendly</span>
                 </div>
+
+                <!-- Spiral Logo -->
+                <div style="text-align: center; margin-top: 20px; opacity: 1">
+                    <svg
+                        width="90"
+                        height="100"
+                        viewBox="0 0 100 100"
+                        fill="#d9c3c2"
+                    >
+                        <g
+                            clip-path="url(#d55aff93-61e1-465a-a206-98ba59959893_comp-lcymn9or)"
+                        >
+                            <path
+                                d="M46.773 72.23c-.476.446-1.14 1.438-1.597 2.454-.461 1.015-.684 2.062-.64 3.113a5.455 5.455 0 0 0 .987 2.933c.606.875 1.446 1.57 2.875 2.012 1.434.442 2.672.406 3.77.211 1.094-.191 2.05-.558 2.836-1.121a5.38 5.38 0 0 0 1.8-2.18c.41-.886.633-1.906.688-2.937.051-1.031-.07-1.965-.375-2.867a8.128 8.128 0 0 0-1.449-2.567c-.66-.808-1.5-1.558-2.52-2.25a18.535 18.535 0 0 0-3.25-1.761c-1.03-.43-1.789-.59-2.558-.598a6.667 6.667 0 0 0-2.313.394 9.546 9.546 0 0 0-2.285 1.204 13.596 13.596 0 0 0-2.14 1.882 8.883 8.883 0 0 0-1.536 2.235 8.603 8.603 0 0 0-.754 2.539 10.78 10.78 0 0 0-.003 2.816c.125.977.367 1.996.71 2.977.34.98.754 1.851 1.254 2.648a10.892 10.892 0 0 0 1.735 2.14 10.752 10.752 0 0 0 2.207 1.63 11.89 11.89 0 0 0 2.633 1.074c.937.266 1.902.414 2.879.453.98.035 1.972-.043 2.976-.234a15.648 15.648 0 0 0 3.027-.914 19.356 19.356 0 0 0 3-1.575 19.462 19.462 0 0 0 2.61-1.968 13.908 13.908 0 0 0 1.957-2.164 9.804 9.804 0 0 0 1.262-2.336c.296-.801.464-1.625.496-2.797.027-1.172-.157-2.672-.582-4.149a15.394 15.394 0 0 0-2.032-4.297c-.93-1.375-2.109-2.68-3.543-3.886a24.732 24.732 0 0 0-4.863-3.18c-1.742-.867-3.363-1.367-4.969-1.562a13.666 13.666 0 0 0-4.722.234 16.59 16.59 0 0 0-4.485 1.758 22.77 22.77 0 0 0-4.097 2.984c-1.262 1.152-2.29 2.367-3.09 3.652a13.527 13.527 0 0 0-1.695 4.09c-.329 1.438-.422 2.946-.286 4.528.141 1.578.512 3.23 1.051 4.765.535 1.535 1.211 2.844 2.07 4.051a17.264 17.264 0 0 0 3.149 3.324c1.234 1.008 2.652 1.914 4.258 2.723a33.51 33.51 0 0 0 5.027 2.016c1.637.507 2.98.78 4.313.918 1.328.136 2.644.132 3.945-.012a18.922 18.922 0 0 0 3.848-.836c1.27-.414 2.52-.961 3.894-1.711a33.608 33.608 0 0 0 4.031-2.602 23.979 23.979 0 0 0 3.305-2.996 18.83 18.83 0 0 0 2.422-3.289c.66-1.144 1.176-2.336 1.605-3.883.43-1.543.61-3.425.41-5.332-.199-1.902-.785-3.824-1.765-5.757-.977-1.93-2.348-3.868-4.121-5.813-1.77-1.941-3.95-3.89-6.211-5.582-2.266-1.691-4.363-2.902-6.48-3.762-2.118-.86-4.25-1.363-6.383-1.508a18.57 18.57 0 0 0-6.364.688c-2.105.598-4.175 1.574-6.144 2.86a33.777 33.777 0 0 0-5.36 4.304C29.59 61 28.2 62.738 27.06 64.641a22.413 22.413 0 0 0-2.57 6.199c-.56 2.234-.778 4.64-.645 7.039.136 2.398.593 4.598 1.363 6.687a24.74 24.74 0 0 0 3.137 5.907c1.32 1.843 2.89 3.554 4.683 5.129 1.793 1.57 3.797 2.996 5.47 3.972 1.667.973 2.991 1.508 4.468 1.895 1.48.386 3.097.617 4.828.664a25.864 25.864 0 0 0 5.477-.461c1.914-.36 3.882-.95 6-1.805a59.236 59.236 0 0 0 6.117-2.902 43.931 43.931 0 0 0 5.16-3.29 31.525 31.525 0 0 0 4.086-3.616 25.99 25.99 0 0 0 3.039-3.887 25.12 25.12 0 0 0 2.008-3.852 19.89 19.89 0 0 0 1.172-3.93c.253-1.335.359-2.71.312-4.124a22.197 22.197 0 0 0-.613-4.375 32.51 32.51 0 0 0-1.364-4.36 30.435 30.435 0 0 0-1.898-3.988 28.553 28.553 0 0 0-2.43-3.594 30.016 30.016 0 0 0-3.046-3.289 43.968 43.968 0 0 0-3.833-3.187 39.85 39.85 0 0 0-4.328-2.785 37.476 37.476 0 0 0-4.77-2.231 39.53 39.53 0 0 0-4.866-1.523c-1.453-.352-2.594-.57-3.805-.727a22.17 22.17 0 0 0-3.945-.148c-1.43.07-3.004.3-4.754.726-1.75.426-3.696 1.078-5.68 1.89a48.423 48.423 0 0 0-6.176 3.032 30.837 30.837 0 0 0-6.414 4.984c-2.07 2.094-3.922 4.727-5.414 7.98-1.496 3.259-2.527 7.208-2.957 11.177-.426 3.972-.355 7.23.106 10.172.46 2.94 1.277 5.597 2.414 7.996a30.347 30.347 0 0 0 4.25 6.578 42.412 42.412 0 0 0 5.48 5.39 33.125 33.125 0 0 0 5.856 3.856 34.619 34.619 0 0 0 6.664 2.586 38.214 38.214 0 0 0 7.543 1.258c2.644.18 5.414.093 8.199-.223 2.785-.32 5.277-.719 7.484-1.2 2.207-.48 4.211-1.073 6.102-1.831 1.89-.754 3.746-1.703 5.66-2.883a65.093 65.093 0 0 0 5.664-3.98c1.71-1.348 2.863-2.47 3.902-3.72a24.392 24.392 0 0 0 2.774-4.167 30.578 30.578 0 0 0 2.086-5c.582-1.809 1.054-3.766 1.43-5.953a53.95 53.95 0 0 0 .722-6.543c.098-2.114.05-4.106-.137-5.965a29.395 29.395 0 0 0-.988-5.196c-.465-1.597-1.062-3.058-2.55-5.718-1.489-2.66-3.923-6.348-6.594-9.598-2.672-3.25-5.598-6.031-8.817-8.293a35.155 35.155 0 0 0-10.605-5.07c-3.864-1.106-8.078-1.57-11.211-1.516-3.133.05-4.985.258-6.914.598-1.926.34-3.93.82-6.008 1.453a60.818 60.818 0 0 0-6.461 2.387 76.596 76.596 0 0 0-6.543 3.222c-2.012 1.117-3.625 2.145-5.152 3.25a40.88 40.88 0 0 0-4.282 3.578 36.481 36.481 0 0 0-3.668 4.106c-1.117 1.457-2.117 3.012-3.554 5.828-1.438 2.813-2.914 6.617-3.758 10.18-.848 3.562-1.09 6.984-.79 10.367.298 3.383 1.055 6.824 2.188 10.441 1.133 3.617 3.254 7.14 5.074 9.848 1.817 2.707 3.325 1.883 2.286-.004 0 0-1.575-4.035-3.254-7.496-1.68-3.461-3.223-6.625-4.145-9.797a26.336 26.336 0 0 1-.957-9.742c.29-3.356 1.238-6.914 2.922-10.766 1.684-3.851 2.578-5.426 3.59-6.91a33.699 33.699 0 0 1 3.363-4.191 38.533 38.533 0 0 1 4-3.676 44.909 44.909 0 0 1 4.574-3.188c1.614-.988 3.946-2.242 6.196-3.308a65.316 65.316 0 0 1 6.527-2.696 52.961 52.961 0 0 1 6.07-1.738 45.075 45.075 0 0 1 5.602-.886c1.785-.16 6.184-.149 10.195.515 4.012.664 7.68 1.942 11.028 3.797 3.351 1.852 6.414 4.242 9.21 7.133 2.801 2.89 5.36 6.25 7.708 10.031 2.347 3.781 3.003 5.098 3.539 6.559.535 1.46.945 3.058 1.226 4.793.278 1.73.422 3.597.422 5.597a48.9 48.9 0 0 1-.441 6.375c-.297 2.25-.692 4.278-1.192 6.149a33.135 33.135 0 0 1-1.816 5.18 25.018 25.018 0 0 1-2.465 4.324 21.975 21.975 0 0 1-3.133 3.52c-1.16 1.042-3.324 2.687-5.297 4.034-1.968 1.348-3.812 2.43-5.636 3.293a33.585 33.585 0 0 1-5.727 2.09c-2.031.543-4.293.984-6.883 1.371-2.594.383-5.394.653-8.078.649a38.833 38.833 0 0 1-7.672-.754 35.094 35.094 0 0 1-6.84-2.125 31.872 31.872 0 0 1-5.882-3.285c-1.793-1.27-3.801-3-5.602-4.856-1.805-1.855-3.375-3.863-4.68-6.062a27.605 27.605 0 0 1-3-7.309c-.687-2.687-1.015-5.672-.953-8.988.063-3.32.707-7.711 1.88-11.352 1.171-3.64 2.765-6.605 4.648-8.996a27.805 27.805 0 0 1 6.097-5.746 39.7 39.7 0 0 1 6.172-3.473c1.93-.87 4-1.683 5.844-2.246 1.844-.562 3.492-.91 4.976-1.082a21.464 21.464 0 0 1 4.059-.094c1.238.09 2.39.27 3.496.497 1.106.23 2.879.68 4.57 1.238a37.12 37.12 0 0 1 9.235 4.558 41.763 41.763 0 0 1 3.992 3.067c1.266 1.097 2.293 2.105 3.23 3.172a27.8 27.8 0 0 1 2.547 3.386 28.605 28.605 0 0 1 2.032 3.774 31.94 31.94 0 0 1 1.52 4.172c.425 1.457.73 2.91.878 4.308a18.367 18.367 0 0 1-.871 7.922 22.681 22.681 0 0 1-1.66 3.723 25.413 25.413 0 0 1-2.621 3.82 28.072 28.072 0 0 1-3.66 3.645 38.016 38.016 0 0 1-4.715 3.34 55.258 55.258 0 0 1-5.844 3.05c-2.14.973-4.102 1.707-6.012 2.207-1.906.5-3.75.782-5.504.86-1.754.078-3.406-.028-4.926-.301-1.523-.273-2.898-.7-4.109-1.254-1.207-.555-3.305-1.863-5.203-3.312a31.938 31.938 0 0 1-5.04-4.754 25.517 25.517 0 0 1-3.589-5.512 22.493 22.493 0 0 1-1.926-6.195 24.096 24.096 0 0 1-.039-6.914 21.53 21.53 0 0 1 1.906-6.348 23.962 23.962 0 0 1 3.563-5.395c1.43-1.648 3.066-3.148 4.871-4.507 1.805-1.364 3.8-2.559 5.816-3.383 2.016-.82 4.055-1.278 6.106-1.38 2.05-.097 4.113.157 6.172.759 2.058.605 4.113 1.554 6.152 2.851 2.035 1.301 4.453 3.227 6.461 5.14 2.012 1.915 3.613 3.813 4.817 5.696 1.207 1.88 2.023 3.738 2.457 5.57.437 1.832.503 3.641.203 5.426-.297 1.785-.7 2.953-1.243 4.082a17.083 17.083 0 0 1-2.046 3.254 21.337 21.337 0 0 1-2.91 2.992 29.187 29.187 0 0 1-3.825 2.735c-1.426.867-2.633 1.48-3.847 1.965a19.237 19.237 0 0 1-3.684 1.062 17.797 17.797 0 0 1-3.762.274 19.085 19.085 0 0 1-3.863-.528c-1.305-.312-3.188-.941-4.875-1.664-1.688-.723-3.188-1.543-4.5-2.453a18.074 18.074 0 0 1-3.379-3.008 14.875 14.875 0 0 1-2.285-3.55c-.586-1.278-1.094-2.926-1.375-4.493-.281-1.566-.336-3.05-.172-4.457a12.623 12.623 0 0 1 1.164-4.008c.61-1.261 1.441-2.464 2.5-3.601a22.107 22.107 0 0 1 3.73-3.164c1.36-.918 2.766-1.63 4.208-2.114a13.421 13.421 0 0 1 4.41-.726c1.496.008 3.015.289 4.558.867 1.543.574 3.352 1.57 4.907 2.672 1.55 1.105 2.847 2.305 3.89 3.578 1.047 1.274 1.852 2.606 2.414 3.984.563 1.375.887 2.786.985 4.207.093 1.422.023 2.168-.168 2.907a8.3 8.3 0 0 1-.934 2.176 11.57 11.57 0 0 1-1.629 2.078 16.871 16.871 0 0 1-2.285 1.941 20.002 20.002 0 0 1-2.816 1.68c-.97.472-1.934.836-2.887 1.09a13.06 13.06 0 0 1-2.824.43 11.583 11.583 0 0 1-2.73-.216 11.555 11.555 0 0 1-2.563-.824 10.195 10.195 0 0 1-2.18-1.347 9.715 9.715 0 0 1-1.75-1.829 11.444 11.444 0 0 1-1.312-2.296 14.87 14.87 0 0 1-.864-2.782 10.847 10.847 0 0 1-.23-2.695 8.043 8.043 0 0 1 .457-2.402 7.52 7.52 0 0 1 1.14-2.094c.497-.645 1.184-1.332 1.88-1.899.695-.57 1.39-1.02 2.085-1.343a6.53 6.53 0 0 1 2.047-.598 5.06 5.06 0 0 1 1.969.16c.644.184 1.902.79 2.96 1.442 1.063.652 1.93 1.343 2.606 2.066.68.723 1.172 1.469 1.492 2.227.32.757.481 1.527.477 2.304 0 .778-.172 1.723-.46 2.477-.29.75-.684 1.312-1.169 1.707-.484.394-1.078.644-1.816.75-.739.11-1.625.066-2.54-.129-.91-.191-1.144-.59-1.5-1.11-.359-.515-.605-.972-.761-1.456-.156-.48-.23-1.047-.195-1.75.035-.704.218-1.555.277-2.055.355-1.004-1.527-1.438-1.227-1.942Zm0 0"
+                            ></path>
+                        </g>
+                    </svg>
+                </div>
             </div>
         </div>
 
@@ -755,63 +721,63 @@
                     sections: [
                         {
                             speaker: "",
-                            text: "Built upon the foundations of true community power, democracy is formed fromthe people’s decisions, for the people. Governance is no longer dictated by distantpoliticians or corporate elites but shaped collectively by those who live andbreathe their neighbourhoods everyday. Degrowth has reformed the bureaucraticpolitical processes of the past, policy is now pro-active, initiated by residents toserve fellow residents. Citizens’ assemblies have been created in every communitygiving people the direct power to allocate resources, shape development andreclaim control over their own futures. London is no longer a playground for thesuper-rich, its streets, homes and open spaces belong to the people once more.",
+                            text: "Built upon the foundations of true community power, democracy is formed from the people’s decisions, for the people. Governance is no longer dictated by distant politicians or corporate elites but shaped collectively by those who live and breathe their neighbourhoods everyday. Degrowth has reformed the bureaucratic political processes of the past, policy is now pro-active, initiated by residents to serve fellow residents. Citizens’ assemblies have been created in every community giving people the direct power to allocate resources, shape development and reclaim control over their own futures. London is no longer a playground for the super-rich, its streets, homes and open spaces belong to the people once more.",
                         },
                         {
-                            speaker: "Grassroots Action",
-                            text: "We reject the concentration of hierarchical power in the hands of the few. Instead,we embrace sociocracy and ‘decision-making’ methods to create policy whereevery voice matters and every decision is built upon collective consent. Top-downpower structures have been replaced by grassroots assemblies in whichautonomous social circles established by locals interlink across neighbourhoods tocover policy topics relevant to their people and area. This bottom-up approachestablishes the equality of individuals. Democracy is not ‘one man, one vote’ butrather a group of individuals discussing together until a consensus has been met.These local assemblies have transformed the two-party political binary and first-past-the-post system which historically served a capitalist hierarchy.",
+                            speaker: "",
+                            text: "We reject the concentration of hierarchical power in the hands of the few. Instead, we embrace sociocracy and ‘decision-making’ methods to create policy where every voice matters and every decision is built upon collective consent. Top-downpower structures have been replaced by grassroots assemblies in which autonomous social circles established by locals interlink across neighbourhoods to cover policy topics relevant to their people and area. This bottom-up approache stablishes the equality of individuals. Democracy is not ‘one man, one vote’ but rather a group of individuals discussing together until a consensus has been met. These local assemblies have transformed the two-party political binary and first-past-the-post system which historically served a capitalist hierarchy.",
                         },
                         {
-                            speaker: "Voting",
-                            text: "The age of majority which restricts the voting age and political input from those under 16 years of age has been overturned. All people of all ages andbackgrounds are encouraged to participate in policy-making and political discussion. Everyone is listened to; even the youngest’s dreams are involved infuture decisions. Politics holds a positive and joyous public perception.Community policy is trusted and valued, and the decision-making process isrespected, even enjoyable. Political debate has turned into communityconversation which is less binary, more open, personal and flowing betweenneighbours and friends who listen and catch-up with each other during monthlycitizens’ assemblies.",
+                            speaker: "",
+                            text: "The age of majority which restricts the voting age and political input from those under 16 years of age has been overturned. All people of all ages and backgrounds are encouraged to participate in policy-making and political discussion. Everyone is listened to; even the youngest’s dreams are involved in future decisions. Politics holds a positive and joyous public perception. Community policy is trusted and valued, and the decision-making process is respected, even enjoyable. Political debate has turned into community conversation which is less binary, more open, personal and flowing between neighbours and friends who listen and catch-up with each other during monthlycitizens’ assemblies.",
                         },
                         {
-                            speaker: "Inclusive Participation",
-                            text: "In this world, power is not hoarded but shared, and disagreements are not battlesbut opportunities for dialogue, empathy and understanding. Decentralisedcommunity assemblies have the freedom to shape their own spheres, ensuringthat democracy is not just an ideal but a lived reality in every corner of society.Degrowth is not about scarcity - it is about abundance in the things that trulymatter: connection, community, and care. Because we have dismantled politicalsystems of profit-driven destruction, we have cultivated spaces where peopleflourish and grow, where the earth is healed, and where justice is not an aspirationbut a daily practice. Local action is not just a stepping stone, it is the heartbeat ofsustainable transformation. Through these grassroots movements, we continue tobuild a world where everyone has a stake, where solidarity triumphs over division,and where the future is not dictated by markets but co-created and curated by themany.",
+                            speaker: "",
+                            text: "In this world, power is not hoarded but shared, and disagreements are not battles but opportunities for dialogue, empathy and understanding. Decentralised community assemblies have the freedom to shape their own spheres, ensuring that democracy is not just an ideal but a lived reality in every corner of society. Degrowth is not about scarcity – it is about abundance in the things that truly matter: connection, community, and care. Because we have dismantled political systems of profit-driven destruction, we have cultivated spaces where people flourish and grow, where the earth is healed, and where justice is not an aspiration but a daily practice. Local action is not just a stepping stone, it is the heartbeat of sustainable transformation. Through these grassroots movements, we continue to build a world where everyone has a stake, where solidarity triumphs over division, and where the future is not dictated by markets but co-created and curated by the many.",
                         },
                     ],
                     options: [
                         {
-                            text: "Learn about community assemblies",
+                            text: "[Discuss an issue]",
                             section: 1,
                         },
                         { text: "[Join the assembly]", section: 3 },
                         { text: "[Cast a vote]", section: 2 },
-                        { text: "Explore somewhere else", action: "close" },
+                        { text: "[Explore somewhere else]", action: "close" },
                     ],
                 },
                 {
                     x: 60,
                     y: 20, // Near the rooftops with solar potential
                     title: "Energy",
-                    subtitle: "Community-Owned Power",
+                    subtitle: "",
                     sections: [
                         {
-                            speaker: "Energy Independence",
-                            text: "In this neighbourhood, everyone has access to affordable, renewable energy. Solar panels are dotted across rooftops and above car parks too. Our homes and workplaces have been built or retrofitted to a high standard, so people no longer worry about damp, mould and cold.",
+                            speaker: "",
+                            text: "In this neighbourhood, everyone has access to affordable, renewable energy. Solar panels are dotted across rooftops and above car parks too. Our homes and workplaces have been built or retrofitted to a high standard, so people no longer have to worry about damp, mould and cold. Energy bills are lower too. Homes are heated with heat pumps or through heat networks, and everyone belongs to the local energy co-operative so we benefit from the energy we generate and use. There is a sense of collective responsibility and shared knowledge around energy.",
                         },
                         {
-                            speaker: "Community Response",
-                            text: "As energy prices rose, people became more conscious of their energy use. It became clear there was an issue of fairness, with those most affected being least able to pay, threatening health and wellbeing. In response, there was a groundswell of community action.",
+                            speaker: "",
+                            text: "As energy prices rose, people became more conscious of their energy use. It also became clear that there was an issue of fairness, with those most affected being least able to pay, threatening health and wellbeing. In response, there was a groundswell of community action. Groups started to form to campaign for energy rights - a right to affordable energy for all to be able to meet their needs. These groups joined forces with environmental campaigners who were calling for a shift away from fossil fuels, a reduction in energy use, and greater energy independence. Eventually, the Mayor of London listened.",
                         },
                         {
-                            speaker: "Fair Distribution",
-                            text: "A citizen's assembly decided that an equitable energy allowance should be set. The wealthiest in London, who used the most energy, would reduce their consumption or be charged a premium. The funds from this premium retrofit London's leakiest homes.",
+                            speaker: "",
+                            text: "A citizen’s assembly was formed to agree a way forward. They decided that an equitable energy allowance should be set. The wealthiest in London, who used the most energy, would reduce their consumption or be charged a premium for the extra energy they used. The funds from this premium would be used to retrofit and insulate London’s leakiest homes, improving living standards and wellbeing at the same time.",
                         },
                         {
-                            speaker: "Local Control",
-                            text: "Inspired by energy communities elsewhere in the UK, borough councils backed energy groups to change planning rules and energy policy. These networks give people control of their local energy, with every member given a voice and decisions taken democratically.",
+                            speaker: "",
+                            text: "Inspired by energy communities elsewhere in the UK, borough councils backed energy groups in the fight to change planning rules and energy policy to make it easier for neighbourhoods to build flexible, local renewable energy networks. These networks, like our energy cooperative, give people control of their local energy, with every member given a voice and decisions taken democratically. Any profits from the energy generated is reinvested in the community.",
                         },
                         {
-                            speaker: "Ongoing Challenges",
-                            text: "There are still challenges, with old infrastructure and limited grid capacity making it difficult to build community energy as fast as we'd like. People are working on sustainable supply chains so solar panels can be made ethically, without forced labour.",
+                            speaker: "",
+                            text: "There are still a number of challenges, with old infrastructure and limited grid capacity making it difficult to build community energy as fast as we’d like. People have started to work on sustainable supply chains in the UK and in Europe so that solar panels can be made ethically, without forced labour, and reduce harm to the environment but more work needs to be done. And while London has decided to tackle energy demand to meet climate goals and help with bills, energy demand from other sources, like AI and data centres, continues to grow, threatening progress. But people are seeing the benefits of a clean energy system, with local control and better homes, and the movement is growing.",
                         },
                     ],
                     options: [
                         { text: "Explore energy cooperatives", section: 3 },
                         { text: "Learn about fair distribution", section: 2 },
                         { text: "Understand community response", section: 1 },
-                        { text: "Explore somewhere else", action: "close" },
+                        { text: "[Explore somewhere else]", action: "close" },
                     ],
                 },
                 {
@@ -822,23 +788,31 @@
                     sections: [
                         {
                             speaker: "Living Classrooms",
-                            text: "Places of education are ecosystems of learning not confined by four walls. They are dynamic learning communities woven into the natural and social worlds around them. Students learn by doing, out there in the world.",
+                            text: "Places of education are ecosystems of learning not confined by four walls. They are dynamic learning communities woven into the natural and social worlds around them. Students are learning by doing, out there in the world. They immerse in hands-on activities, participating in local conservation projects, urban planning initiatives in cooperation with the local council and gain varied work experience with local B-corp businesses. Learning extends the classroom into spaces where students experience cooperation and conviviality and take on responsibility as eco-literate, compassionate change makers.",
                         },
                         {
                             speaker: "Hands-On Learning",
-                            text: "Students immerse in hands-on activities, participating in local conservation projects, urban planning initiatives with local councils, and gain varied work experience with local B-corp businesses. Learning extends into spaces where students experience cooperation and take on responsibility as eco-literate, compassionate change makers.",
+                            text: "Children practice autonomy by engaging in a range of decision-making processes. Sociocracy is practiced in and beyond classroom spaces; students vote for a larger library or allotment for growing vegetables for school lunches. Children access a range of such commons systems to cultivate fair resource sharing and the concept of stewardship. This cooperation is fostered from the first day of school, from early years and primary and beyond, with students tending to gardens or building model schools in teams. Students also collaborate through physical activity and sport involving team work; the value of cooperation is made explicit and the science behind the physical and mental health benefits are discovered. Through these activities students understand the interconnectedness of our world.",
                         },
                         {
                             speaker: "Student Democracy",
-                            text: "Children practice autonomy by engaging in decision-making processes. Sociocracy is practiced in and beyond classroom spaces - students vote for a larger library or allotment for growing vegetables for school lunches. This cooperation is fostered from the first day of school.",
+                            text: "Learning is multidisciplinary. Students make cross curricular links to cultivate synoptic thinking. In geography, they might collect water from a river and discover contaminants from a factory. They collaborate with students in economics who apply understanding of the commons as provisioning systems to reduce ecological degradation. Students observe that markets ruled by profit lead to ecological harm and work to lobby local councils for change. Budding healthcare professionals, scientists and ecological economists develop a scientific understanding of how the water contamination may impact our health and other life sustaining systems. Understanding food systems and their impact on the planet is part of the curricula across science, geography, PSHE and economics.",
                         },
                         {
                             speaker: "Interdisciplinary Approach",
-                            text: "Learning is multidisciplinary. Students make cross-curricular links to cultivate synoptic thinking. In geography, they might collect water from a river and discover contaminants. They collaborate with economics students who apply understanding of commons as provisioning systems.",
+                            text: "In the early years, children learn through immersion and wonder. Learning happens in biodiversity gardens, community spaces, and intergenerational settings. A typical day might begin with a morning circle where young learners practice mindfulness and develop communication skills through storytelling, listening circles, and intercultural exchanges that nurture empathy and understanding.",
                         },
                         {
                             speaker: "Transformative Higher Ed",
-                            text: "Higher education becomes a platform for transformative learning and societal innovation. Universities are interdisciplinary research hubs addressing global challenges. Degree programs are designed around solving complex, real-world challenges in partnership with local governments and businesses.",
+                            text: "In secondary school, mathematics is learned through practical problem-solving – measuring garden yields, understanding local resource distribution, and exploring patterns in nature. Science becomes a living inquiry, where children track local wildlife, understand food webs, and develop deep ecological literacy. Personal development programs focus on physical and mental health, financial and ecological literacy with an understanding of planetary ecosystems. Wilderness experiences cultivate systems thinking, teamwork, life skills, ecological understanding as well as resilience through survival challenges.",
+                        },
+                        {
+                            speaker: "",
+                            text: "Higher education becomes a platform for transformative learning and societal innovation. Universities are interdisciplinary research hubs that bring together diverse perspectives to address global challenges and work with local governments and business. Degree programs are designed around solving complex, real-world challenges in which students may design circular economic strategies or explore alternative governance models that prioritise collective wellbeing. They are incubators of regenerative solutions that prioritise planetary health and social equity. A learning space where age is no barrier, and knowledge is co-created across generations and cultures.",
+                        },
+                        {
+                            speaker: "",
+                            text: "Curricula across all levels of education are live and ever adapting to reflect human and ecological needs. Models incorporate human complexity and reciprocal behaviour. Models are qualitative; the role of care, reciprocity, and wellbeing is the foundation and empower and inspire equitable and sustainable imaginaries.",
                         },
                     ],
                     options: [
@@ -848,7 +822,7 @@
                             text: "Learn about interdisciplinary studies",
                             section: 3,
                         },
-                        { text: "Explore somewhere else", action: "close" },
+                        { text: "[Explore somewhere else]", action: "close" },
                     ],
                 },
                 {
@@ -859,36 +833,50 @@
                     sections: [
                         {
                             speaker: "Green City",
-                            text: "The city of London is much greener than today. Every block has a roof garden, and every windowsill has room for a mini herb or veg box. Green spaces are more common, bigger, surrounded by quieter roads to protect wildlife, with community gardens acting as knowledge exchange hubs.",
+                            text: "The city of London is much greener than the one today. Every block has a roof garden, and every windowsill has room for a mini herb or veg box. Green spaces are more common, bigger, surrounded by quieter roads to protect the wildlife, and with community gardens and workshops which act as knowledge exchange hubs. Having the space to grow your own food helps children and adults alike learn about the power of the soil.",
                         },
                         {
                             speaker: "Farmers Markets",
-                            text: "Around each city quarter is a farmers' market. Although the UK cannot be totally self-sufficient, this is the first step to reform the current food system. Rather than supermarkets, these are the primary places to buy food, reorganised around the values of being local, seasonal, and sustainable.",
+                            text: "Around each city quarter, is a farmers’ market. Although the UK cannot be totally self-sufficient, this is the first step to reform the current food system, to restore its resilience and improve its sustainability. Rather than supermarkets, these are the primary places to buy food. Human activities work with and are shaped by nature in a Degrowth society. Therefore, London has been reorganised around the values of being local, seasonal, and sustainable. These farmers and you, consumers, have a more direct relationship – you know where your food comes from, how it is produced, and how to prepare it with as little waste as possible. Buying more locally and directly from farmers not only supports the local economy and the farmers themselves but also promotes better quality and fairer produce. This is because fruit and vegetables which are grown in season are at their best during their time frame – they are fresher and more nutritious, as well as being cheaper and lower in associated carbon emissions than those transported across long(er) distances.",
                         },
                         {
-                            speaker: "Direct Relationships",
-                            text: "These farmers and you, consumers, have a more direct relationship. You know where your food comes from, how it is produced, and how to prepare it with as little waste as possible. Buying locally supports the local economy and promotes better quality, fairer produce.",
+                            speaker: "No plastic",
+                            text: "At the farmers’ market none of the packaging is plastic, and it can all be returned to the farmer for reuse or recycled. This is part of the second step to restoring the resilience and sustainability of the food system. Some industrial processing would continue, such as the pasteurisation of dairy products (which would be on a smaller scale), drying, canning, and dehydrating. However, on the whole, consumers would wash, cut, cook, juice, and freeze what they buy. For example, making your own jam, made possible by being able to gather the berries even in the city. Reforming the cultures around work and poverty brings more time for everyone to get involved.",
                         },
                         {
-                            speaker: "Sustainable Packaging",
-                            text: "At the farmers' market, none of the packaging is plastic, and it can all be returned to the farmer for reuse or recycling. Consumers wash, cut, cook, juice, and freeze what they buy - making their own jam from berries gathered even in the city.",
+                            speaker: "No processed foods",
+                            text: "There is also no longer the need for the processing and marketing of food, especially meat – both cost wise, as well as impact wise. Consumers are not pressured to buy unnecessary products, especially environmentally damaging ones at vast and unethical quantities such as chicken. As a result, a greater share of the dollar is returned to our farmers, and nutrition, quality, and the value of food is returned to the consumer. Decreasing the amount of processing that goes into our food is a reduction in added salts, sugars, fats, preservatives etc. But with better quality products, these are unnecessary anyway.",
                         },
                         {
                             speaker: "Zero Waste",
-                            text: "Compost is required to avoid any food waste going to landfill. It is collected, composted, and redistributed to local farmers by the council as fertiliser. No food is thrown out when perfectly edible - it's redistributed to anyone who needs it.",
+                            text: "The third step is better waste management. Compost is a requirement to avoid any food waste going to landfill. It is collected, composted, and redistributed to the local farmers by the council as fertiliser for fields. No food is chucked out when it is perfectly edible but is redistributed to anyone who needs it. Without the pressure for supermarkets and farmers to make a profit and over-purchase, and with the knowledge and extra time on the hands of consumers to make wiser decisions, food is more accurately produced and accessible for all. The phrase ‘fugal abundance’ best captures this moment where the lifecycle of food is over much smaller distances, in smaller quantities, but inclusive of all households.",
                         },
                     ],
                     options: [
                         {
-                            text: "Around each quarter is a farmers' market...",
+                            text: "[Look at the skyline]",
                             section: 1,
                         },
                         {
-                            text: "Learn about direct relationships",
+                            text: "[Look down the alley]",
                             section: 2,
                         },
-                        { text: "Discover zero waste systems", section: 4 },
-                        { text: "Explore somewhere else", action: "close" },
+                        {
+                            text: "[Browse the fresh produce]",
+                            section: 3,
+                        },
+                        {
+                            text: "[Buy some food from the market]",
+                            section: 4,
+                        },
+                        {
+                            text: "[Throw the trash out]",
+                            section: 5,
+                        },
+                        {
+                            text: "[Explore somewhere else]",
+                            action: "close",
+                        },
                     ],
                 },
                 {
@@ -925,7 +913,7 @@
                         },
                         { text: "Explore policy changes", section: 3 },
                         { text: "Discover diverse communities", section: 4 },
-                        { text: "Explore somewhere else", action: "close" },
+                        { text: "[Explore somewhere else]", action: "close" },
                     ],
                 },
                 {
@@ -962,7 +950,7 @@
                             section: 2,
                         },
                         { text: "Understand time freedom", section: 4 },
-                        { text: "Explore somewhere else", action: "close" },
+                        { text: "[Explore somewhere else]", action: "close" },
                     ],
                 },
             ];
@@ -981,7 +969,6 @@
                 "dialogueTextContainer",
             );
             const dialogueOptions = document.getElementById("dialogueOptions");
-            const closePanel = document.getElementById("closePanel");
             const helpOverlay = document.getElementById("helpOverlay");
             const helpClose = document.getElementById("helpClose");
 
@@ -992,6 +979,7 @@
                 currentY = 0;
             let currentStoryPoint = null;
             let pointElements = [];
+            let textSpeed = 1500; // milliseconds between paragraphs (default to medium)
 
             function initialize() {
                 createInteractivePoints();
@@ -1021,14 +1009,81 @@
                 container.addEventListener("touchstart", startDragTouch);
                 container.addEventListener("touchmove", dragTouch);
                 container.addEventListener("touchend", endDrag);
-                closePanel.addEventListener("click", hideDialogue);
+
+                // Auto-close intro popup when clicking on map or interacting with points
+                container.addEventListener("click", (e) => {
+                    // Only close if the welcome message is showing and user clicks on map area
+                    if (
+                        dialoguePanel.classList.contains("visible") &&
+                        currentStoryPoint === null &&
+                        !dialoguePanel.contains(e.target) &&
+                        !e.target.closest(".point")
+                    ) {
+                        hideDialogue();
+                    }
+                });
+
+                // Auto-close intro popup when any point is clicked
+                document.addEventListener("click", (e) => {
+                    if (
+                        e.target.closest(".point") &&
+                        dialoguePanel.classList.contains("visible") &&
+                        currentStoryPoint === null
+                    ) {
+                        hideDialogue();
+                    }
+                });
+
                 helpClose.addEventListener("click", () => {
                     helpOverlay.classList.add("hidden");
                 });
                 container.addEventListener("contextmenu", (e) =>
                     e.preventDefault(),
                 );
-                window.addEventListener("resize", updatePointPositions);
+
+                // Text speed toggle
+                const textSpeedToggle =
+                    document.getElementById("textSpeedToggle");
+                const textSpeeds = ["Fast", "Relaxed", "Patient"];
+                const speedValues = { Fast: 500, Relaxed: 1500, Patient: 3000 };
+                let currentSpeedIndex = 1; // Start with "Relaxed"
+
+                textSpeedToggle.addEventListener("click", () => {
+                    currentSpeedIndex =
+                        (currentSpeedIndex + 1) % textSpeeds.length;
+                    const speedName = textSpeeds[currentSpeedIndex];
+                    textSpeedToggle.textContent = speedName;
+                    textSpeed = speedValues[speedName];
+                });
+
+                // Contrast toggle with sun/moon icon
+                const contrastToggle =
+                    document.getElementById("contrastToggle");
+                let isHighContrast = false;
+
+                contrastToggle.addEventListener("click", () => {
+                    isHighContrast = !isHighContrast;
+                    document.body.classList.toggle(
+                        "high-contrast",
+                        isHighContrast,
+                    );
+
+                    // Toggle between sun and moon icons
+                    if (isHighContrast) {
+                        contrastToggle.innerHTML = `
+                            <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                            </svg>
+                        `;
+                    } else {
+                        contrastToggle.innerHTML = `
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="5"/>
+                                <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                            </svg>
+                        `;
+                    }
+                });
             }
 
             function startDrag(e) {
@@ -1118,20 +1173,66 @@
             function showSection(point, sectionIndex) {
                 const section = point.sections[sectionIndex];
 
-                // Clear and show current section
-                dialogueTextContainer.innerHTML = `
-                <div class="dialogue-entry">
-                    <div class="dialogue-speaker">${section.speaker}</div>
-                    <div class="section-text">${section.text}</div>
-                </div>
-            `;
+                // Clear container
+                dialogueTextContainer.innerHTML = "";
 
-                // Update options based on available sections
+                // Create dialogue entry
+                const dialogueEntry = document.createElement("div");
+                dialogueEntry.className = "dialogue-entry";
+
+                const speaker = document.createElement("div");
+                speaker.className = "dialogue-speaker";
+                speaker.textContent = section.speaker;
+                dialogueEntry.appendChild(speaker);
+
+                // Split text into sentences/paragraphs and animate them one by one using textSpeed
+                const sentences = section.text
+                    .split(/(?<=[.!?])\s+/)
+                    .filter((s) => s.trim().length > 0);
+
+                sentences.forEach((sentence, index) => {
+                    const paragraphElement = document.createElement("div");
+                    paragraphElement.className = "section-text";
+                    paragraphElement.textContent = sentence.trim();
+                    paragraphElement.style.opacity = "0";
+                    paragraphElement.style.transform = "translateY(10px)";
+                    paragraphElement.style.transition =
+                        "opacity 0.6s ease, transform 0.6s ease";
+
+                    dialogueEntry.appendChild(paragraphElement);
+
+                    // Show each paragraph with delay based on textSpeed
+                    setTimeout(() => {
+                        paragraphElement.style.opacity = "1";
+                        paragraphElement.style.transform = "translateY(0)";
+                    }, index * textSpeed);
+                });
+
+                dialogueTextContainer.appendChild(dialogueEntry);
+
+                // Update options - filter out the selected option
                 dialogueOptions.innerHTML = "";
                 point.options.forEach((option, index) => {
+                    // Skip the option that was just selected (except close option)
+                    if (
+                        option.section === sectionIndex &&
+                        option.action !== "close"
+                    ) {
+                        return;
+                    }
+
                     const optionButton = document.createElement("button");
                     optionButton.className = "dialogue-option";
-                    optionButton.innerHTML = `<span class="option-number">${index + 1}.</span>${option.text}`;
+
+                    // Renumber the remaining options
+                    const remainingOptions = point.options.filter(
+                        (opt, idx) =>
+                            opt.action === "close" ||
+                            opt.section !== sectionIndex,
+                    );
+                    const newIndex = remainingOptions.indexOf(option) + 1;
+
+                    optionButton.innerHTML = `<span class="option-number">${newIndex}.</span>${option.text}`;
 
                     if (option.action === "close") {
                         optionButton.addEventListener("click", () =>
@@ -1156,6 +1257,7 @@
             }
 
             function showWelcomeMessage() {
+                currentStoryPoint = null; // Ensure intro popup can be auto-closed
                 setTimeout(() => dialoguePanel.classList.add("visible"), 800);
             }
 
