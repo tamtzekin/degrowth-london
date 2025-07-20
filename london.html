@@ -255,8 +255,8 @@
                 background: transparent;
                 border: none;
                 color: #e8e8e8;
-                padding: 15px 18px;
-                margin-bottom: 12px;
+                padding: 7px 18px;
+                /* margin-bottom: 12px; */
                 text-align: left;
                 cursor: pointer;
                 transition: all 0.3s ease;
@@ -343,7 +343,14 @@
             @media (max-width: 768px) {
                 .dialogue-panel {
                     width: 100%;
+                    height: 50%;
+                    top: 50.5%; // sets text panel at bottom of screen
                 }
+
+                .help-overlay {
+                    min-width: 90%;
+                }
+
                 .ui-overlay {
                     top: 15px;
                     left: 15px;
@@ -362,6 +369,9 @@
                 }
                 .dialogue-header {
                     padding: 20px;
+                }
+                .section-text {
+                    font-size: 1.1em;
                 }
             }
 
@@ -784,7 +794,7 @@
                     x: 75,
                     y: 65, // Near the educational/workshop areas
                     title: "Education",
-                    subtitle: "Learning Ecosystems",
+                    subtitle: "",
                     sections: [
                         {
                             speaker: "Living Classrooms",
@@ -829,7 +839,7 @@
                     x: 45,
                     y: 50, // Central market area with food vendors
                     title: "Food",
-                    subtitle: "Local & Sustainable",
+                    subtitle: "",
                     sections: [
                         {
                             speaker: "Green City",
@@ -883,26 +893,26 @@
                     x: 80,
                     y: 30, // Near the housing/residential areas
                     title: "Housing",
-                    subtitle: "Community Ownership",
+                    subtitle: "",
                     sections: [
                         {
-                            speaker: "Thriving Neighbourhoods",
+                            speaker: "",
                             text: "London is now a thriving hub of interweaving neighbourhoods where housing is plentiful and owned and managed by local residents in cooperation with the local authority. Our homes are beautiful, spacious, full of natural light and our neighbourhoods are full and public art that celebrates our diversity and heritage. We live in homes that support our whole humanity - our built environment helps our spiritual, emotional and intellectual selves grow.",
                         },
                         {
-                            speaker: "Integrated Systems",
+                            speaker: "",
                             text: "Our housing operates synergistically with our transport and food systems. Public green andopen spaces encourage community and nature connection - community food growing schemes,hedgerows and fruit trees lining pathways through the heart of the city, canal systems andwetlands integrated into our neighbourhoods. Community space is integrated intoneighbourhoods and block; there’s free, sheltered and indoor space like fire pits with awnings orcommunal living rooms etc. There’s meeting spaces for community groups and hyper-localisedpublic services like libraries, medical centres, and places of worship.",
                         },
                         {
-                            speaker: "Community Stewardship",
+                            speaker: "",
                             text: "Especially in large cities like London, traditional understandings of community and connection to nature were lost. But now housing is part of our stewardship of the earth we inhabit and a tangible part of creating community around us. We have collective responsibility for the places in which we live and London as a whole. We meet regularly to consult about how to manage our housing together and plan community gatherings with different roles harnessing everyone’s talents and capacity.",
                         },
                         {
-                            speaker: "Policy Changes",
+                            speaker: "",
                             text: "Community groups and campaigns came together with local people across differences andmade the change happen. Instead of reactionary solutions and raw deals with corporationsleading to gentrification, the council supported. Instead of investing in development teams andpublic private partnerships they invested in large community engagement + tenant participationteams that learn how to effectively support residents + local businesses to steward + managetheir local areas. Compulsory purchase orders were issued against oligarch landlords and policynow bans absentee business owners holding data servers and empty office blocks and multipleholiday homes. Unique housing systems grew out of the heritage of each place - boaters andtourists and students and locals and immigrants. Self-build and retrofitting movements wereencouraged to thrive to uplift existing housing stock in line with planetary boundaries. (thinksolar punk + no demolition).",
                         },
                         {
-                            speaker: "Diverse Communities",
+                            speaker: "",
                             text: "London’s systems support a national system change. Our housing supports a decentralisation ofthe economy - less brain-drain and stronger local connections - makes London less expensive +strengthens rural economies in return - and this is replicated in how London’s pockets interactwith each other. Housing and wider land rights campaigns came together with the right to roamand the right to grow necessarily coming forward as part of a more equitable stewardship of howwe inhabit space (think trespass and diggers).",
                         },
                         {
@@ -932,26 +942,26 @@
                     x: 35,
                     y: 75, // Near the pedestrian walkways
                     title: "Transport",
-                    subtitle: "People-Centred Mobility",
+                    subtitle: "",
                     sections: [
                         {
-                            speaker: "Reclaimed Streets",
+                            speaker: "",
                             text: "Pedestrians, bikes, and well-funded green public transport networks weave seamlessly around the city. The space which used to be sacrificed for private cars is given back to the people, opening out walkways which are safe and accessible for wheelchair users, children, and other accessibility needs. Birdsong is more varied, no longer needing to compete over the noise of the traffic. The air is cleaner, and wildflowers, trees, and gardens can bloom down the streets.",
                         },
                         {
-                            speaker: "Natural Harmony",
+                            speaker: "",
                             text: "Roads specifically for rubbish lorries, delivery vans, and buses are carefully planned out to the essential points whilst avoiding main pedestrian hubs. Deliveries and rubbish collections, operating at a reduced rate as consumption and waste decreases, come only at specific times of the day, allowing for buses to be the main road users. These routes extend outside the city, ferrying people to their cars if they have one, which are kept in car parks that share their space with community gardens and parks. Cars which do exist outside the city are electric, and much smaller, taking the most practical and efficient form. The number of buses available has not needed to dramatically increase to accommodate the spike in users; rather intelligent time management, such as staggering school year groups’ leaving times, make use of the number of buses available.",
                         },
                         {
-                            speaker: "Cycling Infrastructure",
+                            speaker: "",
                             text: "Cycle routes are no longer crammed to the side of the road, competing for attention and jostling to be ahead of the cars, but given the space to wheel safely through London on smooth, well-drained surfaces. These paths are separate from pedestrian walkways but are similar in the way they are lined with plants and trees. The lights which illuminate the cyclists are subtle to not disturb nature, but strategically placed to help guide the way. Traffic lights are rare – if any at all – since there is no need for external enforcement between bikes.",
                         },
                         {
-                            speaker: "Transformation Process",
+                            speaker: "",
                             text: "Phasing cars out of the city was a challenging but rewarding process which took place simultaneously with bringing in more buses, training up drivers, creating more bike spaces – both parking and sharing, and incorporating cycling lessons into the school curriculum. With everyone given access to a bicycle or a motorised transport at bicycle-speed, cycling successfully replaced cars as the principal way of getting around the city. A participatory process was undertaken to co-design the new pedestrian, bike, and work-road routes, and nationalised rail (with no classes) and bus fares assured affordability in the place of the car. Transforming London’s old car-focused areas into green spaces, vegetable gardens, and parks was a collaborative project for local community groups including schools, community centres, and elderly homes. Bike hubs and workshops popped up in the place of petrol stations; wooden benches and colourful climbing frames in the place of roundabouts.",
                         },
                         {
-                            speaker: "Time Freedom",
+                            speaker: "",
                             text: "A key consequence of the slowing down of transport and the removal of traffic is that time is given back to us, where we are not rushing off to complete more work, feeling compelled to make special trips, or cram a holiday. By removing the price tag from time, we create a more equitable society.",
                         },
                     ],
