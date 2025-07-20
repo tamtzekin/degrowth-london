@@ -129,8 +129,13 @@
             }
 
             @keyframes flow {
-                0%, 100% { opacity: 0.6; }
-                50% { opacity: 0.9; }
+                0%,
+                100% {
+                    opacity: 0.6;
+                }
+                50% {
+                    opacity: 0.9;
+                }
             }
             .point {
                 position: fixed;
@@ -194,9 +199,9 @@
                 right: 0;
                 width: 450px;
                 height: 100vh;
-                background: rgba(8, 12, 8, 0.85);
+                background: rgba(153, 111, 105, 0.8);
                 backdrop-filter: blur(20px);
-                border-left: 3px solid rgba(125, 19, 58, 0.3);
+                border-left: 3px solid rgba(249, 193, 206, 0.4);
                 opacity: 0;
                 transform: translateX(100%);
                 transition: all 0.5s ease-out;
@@ -215,7 +220,7 @@
 
             .dialogue-header {
                 padding: 25px;
-                border-bottom: 2px solid rgba(125, 19, 58, 0.2);
+                border-bottom: 2px solid rgba(249, 193, 206, 0.4);
                 /* background: rgba(5, 8, 5, 0.7); */
             }
 
@@ -280,7 +285,7 @@
             }
 
             .section-text {
-                color: #fdf2f5;
+                color: #ece1e0;
                 font-size: 1.2em;
                 line-height: 1.65;
                 margin-bottom: 18px;
@@ -307,7 +312,7 @@
             /* Improved dialogue options */
             .dialogue-options {
                 padding: 25px;
-                border-top: 2px solid rgba(rgba(219, 192, 145, 0.2));
+                border-top: 2px solid rgba(249, 193, 206, 0.4);
                 background: rgba(5, 8, 5, 0.5);
             }
             .dialogue-option {
@@ -327,9 +332,7 @@
                 line-height: 1.5;
             }
             .dialogue-option:hover {
-                background: rgba(249, 193, 206, 0.7);
-                /* border-color: rgba(249, 193, 206, 0.7); */
-                color: black;
+                color: #f9c1ce;
             }
             .dialogue-option:active {
                 transform: translateX(3px) translateY(1px);
@@ -348,7 +351,7 @@
                 top: 50%;
                 left: 50%;
                 transform: translate(-50%, -50%);
-                background: rgba(157, 110, 109, 0.95);
+                background: rgba(153, 111, 105, 0.8);
                 backdrop-filter: blur(15px);
                 border-radius: 16px;
                 padding: 30px;
@@ -367,7 +370,7 @@
 
             .help-close {
                 position: absolute;
-                bottom: 20px;
+                bottom: 50px;
                 left: 50%;
                 transform: translateX(-50%);
                 background: rgba(249, 193, 206, 0.8);
@@ -410,7 +413,8 @@
                 .dialogue-panel {
                     width: 100%;
                     height: 50%;
-                    top: 50.5%; // sets text panel at bottom of screen
+                    top: 50.5%;
+                    border-left: none;
                 }
 
                 .dialogue-options {
@@ -515,20 +519,24 @@
 
             body.high-contrast .dialogue-panel {
                 background: rgba(26, 26, 26, 1);
-                border-color: #ffffff;
+                border-color: #f9c1ce;
             }
 
             body.high-contrast .dialogue-option {
-                background: rgba(51, 51, 51, 0.2);
-                border-color: #ffffff;
+                /* background: rgba(249, 193, 206, 0.2); */
+                border-color: #f9c1ce;
             }
 
             body.high-contrast .dialogue-option:hover {
-                background: rgba(51, 51, 51, 0.4);
+                background: rgba(249, 193, 206, 0.4);
+            }
+
+            body.high-contrast .location-title {
+                color: #f9c1ce;
             }
 
             body.high-contrast .section-text {
-                color: #ffffff;
+                color: #f9c1ce;
             }
 
             body.high-contrast .help-overlay {
@@ -636,7 +644,7 @@
                                 class="header-control text-speed-control"
                                 id="textSpeedToggle"
                             >
-                                Relaxed
+                                RELAXED MODE
                             </button>
                             <button class="header-control" id="contrastToggle">
                                 <svg
@@ -1219,9 +1227,9 @@
                 // Text speed toggle
                 const textSpeedToggle =
                     document.getElementById("textSpeedToggle");
-                const textSpeeds = ["Fast", "Relaxed", "Patient"];
+                const textSpeeds = ["FAST MODE", "RELAXED MODE", "ZEN MODE"];
                 const speedValues = { Fast: 500, Relaxed: 1500, Patient: 3000 };
-                let currentSpeedIndex = 1; // Start with "Relaxed"
+                let currentSpeedIndex = 1; // Start with "RELAXED MODE"
 
                 textSpeedToggle.addEventListener("click", () => {
                     currentSpeedIndex =
