@@ -18,9 +18,9 @@
             @font-face {
                 font-family: "QuestaSansLight";
                 src:
-                    url("/assets/fonts/questa_sans_light-webfont.woff2")
+                    url("./assets/fonts/questa_sans_light-webfont.woff2")
                         format("woff2"),
-                    url("/assets/fonts/questa_sans_light-webfont.woff")
+                    url("./assets/fonts/questa_sans_light-webfont.woff")
                         format("woff");
                 font-weight: normal;
                 font-style: normal;
@@ -33,10 +33,11 @@
             }
 
             body {
-                font-family: "Questrial", "Raleway", sans-serif;
+                font-family: "QuestaSansLight", sans-serif;
                 background: #1a1a1a;
                 overflow: hidden;
                 user-select: none;
+                letter-spacing: 1.75px;
             }
 
             .visual-novel-container {
@@ -72,12 +73,71 @@
                 height: 100%;
                 pointer-events: none;
             }
+
+            /* Connection lines between points */
+            .connection-lines {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                pointer-events: none;
+                z-index: 5;
+            }
+
+            .connection-line {
+                position: absolute;
+                height: 3px;
+                transform-origin: left center;
+                transition: all 0.3s ease;
+            }
+
+            .road-path {
+                background: linear-gradient(
+                    90deg,
+                    #895353 0%,
+                    #9d6e6d 50%,
+                    #b18988 100%
+                );
+                border-top: 1px solid rgba(137, 83, 83, 0.3);
+                border-bottom: 1px solid rgba(137, 83, 83, 0.3);
+                height: 4px;
+            }
+
+            .dirt-path {
+                background: repeating-linear-gradient(
+                    90deg,
+                    #c5a6a5 0px,
+                    #c5a6a5 4px,
+                    #d9c3c2 4px,
+                    #d9c3c2 8px
+                );
+                height: 2px;
+                opacity: 0.7;
+            }
+
+            .river-path {
+                background: linear-gradient(
+                    90deg,
+                    rgba(157, 110, 109, 0.4) 0%,
+                    rgba(177, 137, 136, 0.6) 50%,
+                    rgba(197, 166, 165, 0.4) 100%
+                );
+                height: 4px;
+                border-radius: 2px;
+                animation: flow 4s infinite ease-in-out;
+            }
+
+            @keyframes flow {
+                0%, 100% { opacity: 0.6; }
+                50% { opacity: 0.9; }
+            }
             .point {
                 position: fixed;
-                width: 30px;
-                height: 30px;
+                width: 40px;
+                height: 40px;
                 background: transparent;
-                border: 2.25px dashed #e8e8e8;
+                border: 4px dashed #e8e8e8;
                 border-radius: 50%;
                 cursor: pointer;
                 pointer-events: all;
@@ -134,7 +194,7 @@
                 right: 0;
                 width: 450px;
                 height: 100vh;
-                background: rgba(8, 12, 8, 0.75);
+                background: rgba(8, 12, 8, 0.85);
                 backdrop-filter: blur(20px);
                 border-left: 3px solid rgba(125, 19, 58, 0.3);
                 opacity: 0;
@@ -161,14 +221,15 @@
 
             .location-title {
                 color: #f9c1ce;
+                font-family: monospace;
                 font-size: 1.3em;
                 font-weight: bold;
                 margin-bottom: 8px;
                 text-transform: uppercase;
-                letter-spacing: 1px;
+                letter-spacing: 8px;
             }
             .location-subtitle {
-                color: #7d133a;
+                color: #ffff;
                 font-size: 0.95em;
                 font-style: italic;
             }
@@ -194,11 +255,11 @@
                 border-radius: 4px;
             }
             .dialogue-text-container::-webkit-scrollbar-thumb {
-                background: rgba(0, 255, 136, 0.7);
+                background: rgba(249, 193, 206, 0.7);
                 border-radius: 4px;
             }
             .dialogue-text-container::-webkit-scrollbar-thumb:hover {
-                background: rgba(0, 255, 136, 0.9);
+                background: rgba(249, 193, 206, 0.9);
             }
 
             .dialogue-entry {
@@ -238,7 +299,7 @@
                 left: 0;
                 right: 0;
                 height: 60px;
-                background: linear-gradient(transparent, rgba(5, 8, 5, 0.96));
+                background: linear-gradient(transparent, rgba(5, 8, 5, 0.95));
                 pointer-events: none;
                 z-index: 10;
             }
@@ -247,7 +308,7 @@
             .dialogue-options {
                 padding: 25px;
                 border-top: 2px solid rgba(rgba(219, 192, 145, 0.2));
-                background: rgba(5, 8, 5, 0.95);
+                background: rgba(5, 8, 5, 0.5);
             }
             .dialogue-option {
                 display: block;
@@ -268,7 +329,7 @@
             .dialogue-option:hover {
                 background: rgba(249, 193, 206, 0.7);
                 /* border-color: rgba(249, 193, 206, 0.7); */
-                color: #fff;
+                color: black;
             }
             .dialogue-option:active {
                 transform: translateX(3px) translateY(1px);
@@ -306,18 +367,23 @@
 
             .help-close {
                 position: absolute;
-                top: 5px;
-                right: 15px;
-                background: none;
-                border: none;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(249, 193, 206, 0.8);
+                border: 1px solid rgba(217, 195, 194, 0.5);
+                border-radius: 6px;
                 color: #ece1e0;
-                font-size: 35px;
+                padding: 12px 24px;
                 cursor: pointer;
-                transition: color 0.2s ease;
+                transition: all 0.3s ease;
+                font-family: inherit;
+                font-size: 1em;
             }
 
             .help-close:hover {
-                color: pink;
+                background: rgba(60, 60, 60, 0.9);
+                border-color: #f9c1ce;
             }
 
             .help-item {
@@ -347,6 +413,13 @@
                     top: 50.5%; // sets text panel at bottom of screen
                 }
 
+                .dialogue-options {
+                    padding: 5px;
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 12px;
+                }
+
                 .help-overlay {
                     min-width: 90%;
                 }
@@ -365,7 +438,15 @@
                     padding: 20px;
                 }
                 .dialogue-options {
-                    padding: 20px;
+                    padding: 5px;
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                }
+
+                .dialogue-option {
+                    margin-bottom: 0;
+                    font-size: 0.9em;
+                    padding: 12px 16px;
                 }
                 .dialogue-header {
                     padding: 20px;
@@ -543,6 +624,7 @@
                     "
                 ></div>
             </div>
+            <div class="connection-lines" id="connectionLines"></div>
             <div class="interactive-points" id="interactivePoints"></div>
 
             <!-- Enhanced dialogue panel -->
@@ -571,7 +653,7 @@
                             </button>
                         </div>
                         <div class="location-title" id="locationTitle">
-                            Degrowth London
+                            The Borough
                         </div>
                         <div class="location-subtitle" id="locationSubtitle">
                             A Vision for Sustainable Community
@@ -631,7 +713,7 @@
 
             <!-- Help overlay with SVG icons -->
             <div class="help-overlay" id="helpOverlay">
-                <button class="help-close" id="helpClose">×</button>
+                <button class="help-close" id="helpClose">Got it!</button>
                 <div class="help-item">
                     <svg class="help-icon" viewBox="0 0 24 24" fill="none">
                         <path
@@ -897,7 +979,7 @@
                     sections: [
                         {
                             speaker: "",
-                            text: "London is now a thriving hub of interweaving neighbourhoods where housing is plentiful and owned and managed by local residents in cooperation with the local authority. Our homes are beautiful, spacious, full of natural light and our neighbourhoods are full and public art that celebrates our diversity and heritage. We live in homes that support our whole humanity - our built environment helps our spiritual, emotional and intellectual selves grow.",
+                            text: "London is now a thriving hub of interweaving neighbourhoods where housing is plentiful and owned and managed by local residents in cooperation with the local authority. Our homes are beautiful, spacious, full of natural light and our neighbourhoods are full and public art that celebrates our diversity and heritage. We live in homes that support our whole humanity – our built environment helps our spiritual, emotional and intellectual selves grow.",
                         },
                         {
                             speaker: "",
@@ -1006,8 +1088,8 @@
             function initialize() {
                 createInteractivePoints();
                 setupEventListeners();
-                showWelcomeMessage();
                 updatePointPositions();
+                // Welcome message will show after help overlay is closed
             }
 
             function createInteractivePoints() {
@@ -1018,8 +1100,60 @@
                     pointElement.addEventListener("click", () =>
                         showDialogue(point, pointElement),
                     );
-                    document.body.appendChild(pointElement);
+                    interactivePoints.appendChild(pointElement);
                     pointElements.push(pointElement);
+                });
+
+                createConnectionLines();
+            }
+
+            function createConnectionLines() {
+                const connectionLines =
+                    document.getElementById("connectionLines");
+                const connections = [
+                    { from: 0, to: 1, type: "road-path" }, // Democracy to Energy
+                    { from: 0, to: 2, type: "dirt-path" }, // Democracy to Education
+                    { from: 1, to: 3, type: "river-path" }, // Energy to Housing
+                    { from: 2, to: 4, type: "dirt-path" }, // Education to Transport
+                    { from: 3, to: 4, type: "road-path" }, // Housing to Transport
+                ];
+
+                connections.forEach((connection) => {
+                    const line = document.createElement("div");
+                    line.className = `connection-line ${connection.type}`;
+                    line.dataset.from = connection.from;
+                    line.dataset.to = connection.to;
+                    connectionLines.appendChild(line);
+                });
+            }
+
+            function updateConnectionLines() {
+                const lines = document.querySelectorAll(".connection-line");
+                lines.forEach((line) => {
+                    const fromIndex = parseInt(line.dataset.from);
+                    const toIndex = parseInt(line.dataset.to);
+
+                    if (pointElements[fromIndex] && pointElements[toIndex]) {
+                        const fromRect =
+                            pointElements[fromIndex].getBoundingClientRect();
+                        const toRect =
+                            pointElements[toIndex].getBoundingClientRect();
+
+                        const fromX = fromRect.left + fromRect.width / 2;
+                        const fromY = fromRect.top + fromRect.height / 2;
+                        const toX = toRect.left + toRect.width / 2;
+                        const toY = toRect.top + toRect.height / 2;
+
+                        const dx = toX - fromX;
+                        const dy = toY - fromY;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+                        line.style.left = fromX + "px";
+                        line.style.top = fromY + "px";
+                        line.style.width = distance + "px";
+                        line.style.transform = `rotate(${angle}deg)`;
+                    }
                 });
             }
 
@@ -1056,12 +1190,31 @@
                     }
                 });
 
+                // Auto-close help overlay when clicking anywhere except help overlay
+                document.addEventListener("click", (e) => {
+                    if (
+                        !helpOverlay.classList.contains("hidden") &&
+                        !helpOverlay.contains(e.target)
+                    ) {
+                        helpOverlay.classList.add("hidden");
+                        // Show welcome message after help closes
+                        setTimeout(() => showWelcomeMessage(), 500);
+                    }
+                });
+
                 helpClose.addEventListener("click", () => {
                     helpOverlay.classList.add("hidden");
+                    // Show welcome message after help closes
+                    setTimeout(() => showWelcomeMessage(), 500);
                 });
                 container.addEventListener("contextmenu", (e) =>
                     e.preventDefault(),
                 );
+
+                // Update connection lines on window resize
+                window.addEventListener("resize", () => {
+                    updatePointPositions();
+                });
 
                 // Text speed toggle
                 const textSpeedToggle =
@@ -1177,6 +1330,9 @@
                         pointElement.style.top = y + "px";
                     }
                 });
+
+                // Update connection lines when points move
+                updateConnectionLines();
             }
 
             function showDialogue(point, pointElement) {
@@ -1280,7 +1436,7 @@
 
             function showWelcomeMessage() {
                 currentStoryPoint = null; // Ensure intro popup can be auto-closed
-                setTimeout(() => dialoguePanel.classList.add("visible"), 800);
+                setTimeout(() => dialoguePanel.classList.add("visible"), 300);
             }
 
             window.addEventListener("load", initialize);
