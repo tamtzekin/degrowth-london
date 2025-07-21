@@ -221,6 +221,7 @@
             .dialogue-header {
                 padding: 25px;
                 border-bottom: 2px solid rgba(249, 193, 206, 0.4);
+                border-top: 1.5px solid rgba(153, 170, 187, 0.5);
                 /* background: rgba(5, 8, 5, 0.7); */
             }
 
@@ -421,14 +422,6 @@
                     top: 50.5%;
                     border-left: none;
                 }
-
-                .dialogue-options {
-                    padding: 5px;
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 12px;
-                }
-
                 .help-overlay {
                     min-width: 90%;
                 }
@@ -444,21 +437,23 @@
                     height: 35px;
                 }
                 .dialogue-text-container {
-                    padding: 20px;
-                }
-                .dialogue-options {
-                    padding: 5px;
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                }
-
-                .dialogue-option {
-                    margin-bottom: 0;
-                    font-size: 0.9em;
-                    padding: 12px 16px;
+                    padding: 0px 26px 0 10px;
                 }
                 .dialogue-header {
-                    padding: 20px;
+                    padding: 2px 0 0 20px;
+                }
+                .dialogue-header-controls {
+                    top: -2.5px !important;
+                }
+                .dialogue-options {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    padding: 0;
+                }
+                .dialogue-option {
+                    margin-bottom: 0;
+                    font-size: 1.2em;
+                    padding: 12px 16px;
                 }
                 .section-text {
                     font-size: 1.1em;
