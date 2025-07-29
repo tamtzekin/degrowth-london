@@ -1,0 +1,286 @@
+[
+  {
+    "x": 20,
+    "y": 40,
+    "title": "Urban Rooftop Garden",
+    "subtitle": "Education & Governance",
+    "sections": [
+      {
+        "speaker": "Green public transport",
+        "text": "Pedestrians, bikes, and well-funded green public transport networks weave seamlessly around the city. The space once sacrificed for private cars was returned to the people in the form of safe and accessible walkways for children and all accessibility needs. With traffic gone, a chorus of birdsong carries through leafy streets lined with gardens of blooming wildflowers.\nCities are carefully planned so roads for deliveries, buses and rubbish collection don’t dominate the cityscape. As consumption and waste plummet, deliveries and rubbish collection operate at a reduced rate, creating space for more buses."
+      },
+      {
+        "speaker": "Routes",
+        "text": "Bus routes weave beyond the city, ferrying commuters to their cars which are kept in car parks in the suburbs. Better bus and walking routes mean less cars, and the ones that still exist are small and electric, efficient and practical. Intelligent time management, such as staggering school years leaving times, makes better use of the existing buses we have.\nCycle routes are no longer crammed on the roadside, but have space to wheel safely on smooth, well-drained surfaces. Clearly delineated from the pedestrian walkways, these bike-paths are similarly lined with trees and subtly illuminated by lights which minimise disruption of nature.\nTraffic lights are rare since there is no need for external enforcement between bikes.\nMore buses, bike routes and parks, and trains, and better transport time management all were essential steps in phasing cars out of London. Incorporating cycling lessons into schools and giving everyone access to a bike or motorised transport at bike-speed, saw cycling successfully replace cars as the primary form of transport.\nResidents co-designed the new pedestrian, bike and work-road routes, with nationalised rail and bus fares keeping prices low in the place of cars."
+      },
+      {
+        "speaker": "Car park",
+        "text": "Transforming London's old car-focused areas into green spaces, vegetable gardens, and parks was a collaborative project for local community groups including schools, community centres, and elderly homes. Bike hubs and workshops popped up in the place of petrol stations; wooden benches and colourful climbing frames in the place of roundabouts.\nBy slowing down transport and removing traffic, we gave time back to ourselves. We no longer rush to work, or feel compelled to cram in a holiday. By removing the price tag from time, we create a more equitable society."
+      }
+    ],
+    "options": [
+      {
+        "text": "[Look at the network of roads]",
+        "section": 1
+      },
+      {
+        "text": "[Look at routes]",
+        "section": 2
+      },
+      {
+        "text": "[Look at the towering car park]",
+        "section": 3
+      },
+      {
+        "text": "[Explore somewhere else]",
+        "action": "close"
+      }
+    ]
+  },
+  {
+    "x": 65,
+    "y": 25,
+    "title": "Energy",
+    "subtitle": "",
+    "sections": [
+      {
+        "speaker": "",
+        "text": "In this neighbourhood, everyone has access to affordable, renewable energy. Solar panels are dotted across rooftops and above car parks too. Our homes and workplaces have been built or retrofitted to a high standard, so people no longer have to worry about damp, mould and cold. Energy bills are lower too. Homes are heated with heat pumps or through heat networks, and everyone belongs to the local energy co-operative so we benefit from the energy we generate and use. There is a sense of collective responsibility and shared knowledge around energy."
+      },
+      {
+        "speaker": "",
+        "text": "As energy prices rose, people became more conscious of their energy use. It also became clear that there was an issue of fairness, with those most affected being least able to pay, threatening health and wellbeing. In response, there was a groundswell of community action. Groups started to form to campaign for energy rights - a right to affordable energy for all to be able to meet their needs. These groups joined forces with environmental campaigners who were calling for a shift away from fossil fuels, a reduction in energy use, and greater energy independence. Eventually, the Mayor of London listened."
+      },
+      {
+        "speaker": "",
+        "text": "A citizen's assembly was formed to agree a way forward. They decided that an equitable energy allowance should be set. The wealthiest in London, who used the most energy, would reduce their consumption or be charged a premium for the extra energy they used. The funds from this premium would be used to retrofit and insulate London's leakiest homes, improving living standards and wellbeing at the same time."
+      },
+      {
+        "speaker": "",
+        "text": "Inspired by energy communities elsewhere in the UK, borough councils backed energy groups in the fight to change planning rules and energy policy to make it easier for neighbourhoods to build flexible, local renewable energy networks. These networks, like our energy cooperative, give people control of their local energy, with every member given a voice and decisions taken democratically. Any profits from the energy generated is reinvested in the community."
+      },
+      {
+        "speaker": "",
+        "text": "There are still a number of challenges, with old infrastructure and limited grid capacity making it difficult to build community energy as fast as we'd like. People have started to work on sustainable supply chains in the UK and in Europe so that solar panels can be made ethically, without forced labour, and reduce harm to the environment but more work needs to be done. And while London has decided to tackle energy demand to meet climate goals and help with bills, energy demand from other sources, like AI and data centres, continues to grow, threatening progress. But people are seeing the benefits of a clean energy system, with local control and better homes, and the movement is growing."
+      }
+    ],
+    "options": [
+      {
+        "text": "Explore energy cooperatives",
+        "section": 3
+      },
+      {
+        "text": "Learn about fair distribution",
+        "section": 2
+      },
+      {
+        "text": "Understand community response",
+        "section": 1
+      },
+      {
+        "text": "[Explore somewhere else]",
+        "action": "close"
+      }
+    ]
+  },
+  {
+    "x": 70,
+    "y": 60,
+    "title": "Education",
+    "subtitle": "",
+    "sections": [
+      {
+        "speaker": "Living Classrooms",
+        "text": "Places of education are ecosystems of learning not confined by four walls. They are dynamic learning communities woven into the natural and social worlds around them. Students are learning by doing, out there in the world. They immerse in hands-on activities, participating in local conservation projects, urban planning initiatives in cooperation with the local council and gain varied work experience with local B-corp businesses. Learning extends the classroom into spaces where students experience cooperation and conviviality and take on responsibility as eco-literate, compassionate change makers."
+      },
+      {
+        "speaker": "Hands-On Learning",
+        "text": "Children practice autonomy by engaging in a range of decision-making processes. Sociocracy is practiced in and beyond classroom spaces; students vote for a larger library or allotment for growing vegetables for school lunches. Children access a range of such commons systems to cultivate fair resource sharing and the concept of stewardship. This cooperation is fostered from the first day of school, from early years and primary and beyond, with students tending to gardens or building model schools in teams. Students also collaborate through physical activity and sport involving team work; the value of cooperation is made explicit and the science behind the physical and mental health benefits are discovered. Through these activities students understand the interconnectedness of our world."
+      },
+      {
+        "speaker": "Student Democracy",
+        "text": "Learning is multidisciplinary. Students make cross curricular links to cultivate synoptic thinking. In geography, they might collect water from a river and discover contaminants from a factory. They collaborate with students in economics who apply understanding of the commons as provisioning systems to reduce ecological degradation. Students observe that markets ruled by profit lead to ecological harm and work to lobby local councils for change. Budding healthcare professionals, scientists and ecological economists develop a scientific understanding of how the water contamination may impact our health and other life sustaining systems. Understanding food systems and their impact on the planet is part of the curricula across science, geography, PSHE and economics."
+      },
+      {
+        "speaker": "Interdisciplinary Approach",
+        "text": "In the early years, children learn through immersion and wonder. Learning happens in biodiversity gardens, community spaces, and intergenerational settings. A typical day might begin with a morning circle where young learners practice mindfulness and develop communication skills through storytelling, listening circles, and intercultural exchanges that nurture empathy and understanding."
+      },
+      {
+        "speaker": "Transformative Higher Ed",
+        "text": "In secondary school, mathematics is learned through practical problem-solving – measuring garden yields, understanding local resource distribution, and exploring patterns in nature. Science becomes a living inquiry, where children track local wildlife, understand food webs, and develop deep ecological literacy. Personal development programs focus on physical and mental health, financial and ecological literacy with an understanding of planetary ecosystems. Wilderness experiences cultivate systems thinking, teamwork, life skills, ecological understanding as well as resilience through survival challenges."
+      },
+      {
+        "speaker": "",
+        "text": "Higher education becomes a platform for transformative learning and societal innovation. Universities are interdisciplinary research hubs that bring together diverse perspectives to address global challenges and work with local governments and business. Degree programs are designed around solving complex, real-world challenges in which students may design circular economic strategies or explore alternative governance models that prioritise collective wellbeing. They are incubators of regenerative solutions that prioritise planetary health and social equity. A learning space where age is no barrier, and knowledge is co-created across generations and cultures."
+      },
+      {
+        "speaker": "",
+        "text": "Curricula across all levels of education are live and ever adapting to reflect human and ecological needs. Models incorporate human complexity and reciprocal behaviour. Models are qualitative; the role of care, reciprocity, and wellbeing is the foundation and empower and inspire equitable and sustainable imaginaries."
+      }
+    ],
+    "options": [
+      {
+        "text": "Discover hands-on learning",
+        "section": 1
+      },
+      {
+        "text": "Explore student democracy",
+        "section": 2
+      },
+      {
+        "text": "Learn about interdisciplinary studies",
+        "section": 3
+      },
+      {
+        "text": "[Explore somewhere else]",
+        "action": "close"
+      }
+    ]
+  },
+  {
+    "x": 45,
+    "y": 50,
+    "title": "Food",
+    "subtitle": "",
+    "sections": [
+      {
+        "speaker": "Green City",
+        "text": "The city of London is much greener than the one today. Every block has a roof garden, and every windowsill has room for a mini herb or veg box. Green spaces are more common, bigger, surrounded by quieter roads to protect the wildlife, and with community gardens and workshops which act as knowledge exchange hubs. Having the space to grow your own food helps children and adults alike learn about the power of the soil."
+      },
+      {
+        "speaker": "Farmers Markets",
+        "text": "Around each city quarter, is a farmers' market. Although the UK cannot be totally self-sufficient, this is the first step to reform the current food system, to restore its resilience and improve its sustainability. Rather than supermarkets, these are the primary places to buy food. Human activities work with and are shaped by nature in a Degrowth society. Therefore, London has been reorganised around the values of being local, seasonal, and sustainable. These farmers and you, consumers, have a more direct relationship – you know where your food comes from, how it is produced, and how to prepare it with as little waste as possible. Buying more locally and directly from farmers not only supports the local economy and the farmers themselves but also promotes better quality and fairer produce. This is because fruit and vegetables which are grown in season are at their best during their time frame – they are fresher and more nutritious, as well as being cheaper and lower in associated carbon emissions than those transported across long(er) distances."
+      },
+      {
+        "speaker": "No plastic",
+        "text": "At the farmers' market none of the packaging is plastic, and it can all be returned to the farmer for reuse or recycled. This is part of the second step to restoring the resilience and sustainability of the food system. Some industrial processing would continue, such as the pasteurisation of dairy products (which would be on a smaller scale), drying, canning, and dehydrating. However, on the whole, consumers would wash, cut, cook, juice, and freeze what they buy. For example, making your own jam, made possible by being able to gather the berries even in the city. Reforming the cultures around work and poverty brings more time for everyone to get involved."
+      },
+      {
+        "speaker": "No processed foods",
+        "text": "There is also no longer the need for the processing and marketing of food, especially meat – both cost wise, as well as impact wise. Consumers are not pressured to buy unnecessary products, especially environmentally damaging ones at vast and unethical quantities such as chicken. As a result, a greater share of the dollar is returned to our farmers, and nutrition, quality, and the value of food is returned to the consumer. Decreasing the amount of processing that goes into our food is a reduction in added salts, sugars, fats, preservatives etc. But with better quality products, these are unnecessary anyway."
+      }
+    ],
+    "options": [
+      {
+        "text": "[Look at the skyline]",
+        "section": 1
+      },
+      {
+        "text": "[Look down the alley]",
+        "section": 2
+      },
+      {
+        "text": "[Browse the fresh produce]",
+        "section": 3
+      },
+      {
+        "text": "[Explore somewhere else]",
+        "action": "close"
+      }
+    ]
+  },
+  {
+    "x": 75,
+    "y": 35,
+    "title": "Housing",
+    "subtitle": "",
+    "sections": [
+      {
+        "speaker": "",
+        "text": "London is now a thriving hub of interweaving neighbourhoods where housing is plentiful and owned and managed by local residents in cooperation with the local authority. Our homes are beautiful, spacious, full of natural light and our neighbourhoods are full and public art that celebrates our diversity and heritage. We live in homes that support our whole humanity – our built environment helps our spiritual, emotional and intellectual selves grow."
+      },
+      {
+        "speaker": "",
+        "text": "Our housing operates synergistically with our transport and food systems. Public green andopen spaces encourage community and nature connection - community food growing schemes,hedgerows and fruit trees lining pathways through the heart of the city, canal systems andwetlands integrated into our neighbourhoods. Community space is integrated intoneighbourhoods and block; there's free, sheltered and indoor space like fire pits with awnings orcommunal living rooms etc. There's meeting spaces for community groups and hyper-localisedpublic services like libraries, medical centres, and places of worship."
+      },
+      {
+        "speaker": "",
+        "text": "Especially in large cities like London, traditional understandings of community and connection to nature were lost. But now housing is part of our stewardship of the earth we inhabit and a tangible part of creating community around us. We have collective responsibility for the places in which we live and London as a whole. We meet regularly to consult about how to manage our housing together and plan community gatherings with different roles harnessing everyone's talents and capacity."
+      },
+      {
+        "speaker": "",
+        "text": "Community groups and campaigns came together with local people across differences andmade the change happen. Instead of reactionary solutions and raw deals with corporationsleading to gentrification, the council supported. Instead of investing in development teams andpublic private partnerships they invested in large community engagement + tenant participationteams that learn how to effectively support residents + local businesses to steward + managetheir local areas. Compulsory purchase orders were issued against oligarch landlords and policynow bans absentee business owners holding data servers and empty office blocks and multipleholiday homes. Unique housing systems grew out of the heritage of each place - boaters andtourists and students and locals and immigrants. Self-build and retrofitting movements wereencouraged to thrive to uplift existing housing stock in line with planetary boundaries. (thinksolar punk + no demolition)."
+      },
+      {
+        "speaker": "",
+        "text": "London's systems support a national system change. Our housing supports a decentralisation ofthe economy - less brain-drain and stronger local connections - makes London less expensive +strengthens rural economies in return - and this is replicated in how London's pockets interactwith each other. Housing and wider land rights campaigns came together with the right to roamand the right to grow necessarily coming forward as part of a more equitable stewardship of howwe inhabit space (think trespass and diggers)."
+      },
+      {
+        "speaker": "",
+        "text": "London's neighbourhoods now house whole diverse intermixed communities, made up of people from all different classes, ethnic and religious backgrounds, ages and cultures. We have integrated specialised and supported housing for those who are more vulnerable, like supported temporary accommodation for care-leavers or refugees or the homeless, or a high supply of housing built for the needs of those who are disabled. There is plentiful short-term housing that is integrated into local neighbourhoods for example sustainable tourism and cultural exchange or student housing."
+      },
+      {
+        "speaker": "",
+        "text": "Everything operates on a diversity of approaches and ownership and rental structures - buthousing structures are a lot more fluid. Communal and intergenerational housing is also thenorm, intentionally set up for community - a queering of the nuclear family and embracingextended family structures. This is often synergetic with nurseries or youth hostels withvolunteer schemes in homes for the elderly - creative studios in purpose built housingcommunities - or housing coops for groups of families and individuals that grow food together."
+      },
+      {
+        "speaker": "",
+        "text": "Of course, we have ongoing challenges. We are learning how to retrieve building materials from sunken villages when the sea-levels rose and how to manage our housing supple for people fleeing from climate disaster in other parts of the world. We are learning to build houses of living trees from English Oaks and learning about limestone coral reefs that have become the foundations of Venice's floating buildings. We are adapting and creating as we go."
+      }
+    ],
+    "options": [
+      {
+        "text": "Learn about community stewardship",
+        "section": 2
+      },
+      {
+        "text": "Explore policy changes",
+        "section": 3
+      },
+      {
+        "text": "Discover diverse communities",
+        "section": 4
+      },
+      {
+        "text": "[Explore somewhere else]",
+        "action": "close"
+      }
+    ]
+  },
+  {
+    "x": 30,
+    "y": 80,
+    "title": "Transport",
+    "subtitle": "",
+    "sections": [
+      {
+        "speaker": "",
+        "text": "Pedestrians, bikes, and well-funded green public transport networks weave seamlessly around the city. The space once sacrificed for private cars was returned to the people in the form of safe and accessible walkways for children and all accessibility needs. With traffic gone, a chorus of birdsong carries through leafy streets lined with gardens of blooming wildflowers."
+      },
+      {
+        "speaker": "",
+        "text": "Cities are carefully planned so roads for deliveries, buses and rubbish collection don't dominate the cityscape. As consumption and waste plummet, deliveries and rubbish collection operate at a reduced rate, creating space for more buses. Bus routes weave beyond the city, ferrying commuters to their cars which are kept in car parks in the suburbs. Better bus and walking routes mean less cars, and the ones that still exist are small and electric, efficient and practical. Intelligent time management, such as staggering school years leaving times, makes better use of the existing buses we have. Cycle routes are no longer crammed on the roadside, but have space to wheel safely on smooth, well-drained surfaces. Clearly delineated from the pedestrian walkways, these bike-paths are similarly lined with trees and subtly illuminated by lights which minimise disruption of nature. Traffic lights are rare since there is no need for external enforcement between bikes."
+      },
+      {
+        "speaker": "",
+        "text": "More buses, bike routes and parks, and trains, and better transport time management all were essential steps in phasing cars out of London. Incorporating cycling lessons into schools and giving everyone access to a bike or motorised transport at bike-speed, saw cycling successfully replace cars as the primary form of transport. Residents co-designed the new pedestrian, bike and work-road routes, with nationalised rail and bus fares keeping prices low in the place of cars. Transforming London's old car-focused areas into green spaces, vegetable gardens, and parks was a collaborative project for local community groups including schools, community centres, and elderly homes. Bike hubs and workshops popped up in the place of petrol stations; wooden benches and colourful climbing frames in the place of roundabouts. By slowing down transport and removing traffic, we gave time back to ourselves. We no longer rush to work, or feel compelled to cram i a holiday. By removing the price tag from time, we create a more equitable society."
+      },
+      {
+        "speaker": "",
+        "text": "Phasing cars out of the city was a challenging but rewarding process which took place simultaneously with bringing in more buses, training up drivers, creating more bike spaces – both parking and sharing, and incorporating cycling lessons into the school curriculum. With everyone given access to a bicycle or a motorised transport at bicycle-speed, cycling successfully replaced cars as the principal way of getting around the city. A participatory process was undertaken to co-design the new pedestrian, bike, and work-road routes, and nationalised rail (with no classes) and bus fares assured affordability in the place of the car. Transforming London's old car-focused areas into green spaces, vegetable gardens, and parks was a collaborative project for local community groups including schools, community centres, and elderly homes. Bike hubs and workshops popped up in the place of petrol stations; wooden benches and colourful climbing frames in the place of roundabouts."
+      },
+      {
+        "speaker": "",
+        "text": "A key consequence of the slowing down of transport and the removal of traffic is that time is given back to us, where we are not rushing off to complete more work, feeling compelled to make special trips, or cram a holiday. By removing the price tag from time, we create a more equitable society."
+      }
+    ],
+    "options": [
+      {
+        "text": "Explore reclaimed streets",
+        "section": 0
+      },
+      {
+        "text": "Learn about cycling infrastructure",
+        "section": 2
+      },
+      {
+        "text": "Understand time freedom",
+        "section": 4
+      },
+      {
+        "text": "[Explore somewhere else]",
+        "action": "close"
+      }
+    ]
+  }
+]

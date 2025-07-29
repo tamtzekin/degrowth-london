@@ -1,0 +1,41 @@
+{
+  "name": "degrowth-london",
+  "version": "1.0.0",
+  "description": "An interactive exploration of a reimagined London transformed by degrowth principles",
+  "main": "london.html",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "serve": "npx http-server . -p 8080 -o",
+    "serve-simple": "npx http-server . -p 3000 -o",
+    "build": "echo 'No build process needed for static site'",
+    "lint": "echo 'No linting configured'",
+    "test": "echo 'No tests configured'"
+  },
+  "keywords": [
+    "degrowth",
+    "london",
+    "interactive",
+    "sustainability",
+    "community",
+    "visualization"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "homepage": "",
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}
