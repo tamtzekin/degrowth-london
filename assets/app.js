@@ -7,7 +7,7 @@ let currentX = 0;
 let currentY = 0;
 let currentStoryPoint = null;
 let pointElements = [];
-let textSpeed = 50; // milliseconds between letters (default to medium)
+let textSpeed = 15; // milliseconds between letters (default to medium)
 
 // DOM elements
 const container = document.getElementById("container");
@@ -129,7 +129,7 @@ function setupEventListeners() {
   const textSpeeds = ["FAST", "RELAXED", "ZEN"];
   const speedValues = { FAST: 0, RELAXED: 15, ZEN: 40 };
   let currentSpeedIndex = 1; // Start with "Relaxed"
-  let currentSectionIndex = 0; // Track current section
+  let currentSectionIndex = 0; // Track cTheurrent section
 
   textSpeedToggle.addEventListener("click", () => {
     currentSpeedIndex = (currentSpeedIndex + 1) % textSpeeds.length;

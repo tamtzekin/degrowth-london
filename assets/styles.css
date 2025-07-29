@@ -115,26 +115,76 @@ body {
 }
 .point {
     position: fixed;
-    width: 40px;
-    height: 40px;
-    background: transparent;
-    border: 4px dashed #e8e8e8;
+    width: 100px;
+    height: 100px;
+    background: radial-gradient(
+        circle at 30% 30%,
+        rgba(255, 255, 255, 0.2),
+        rgba(0, 0, 0, 0.1)
+    );
+    border: 3px dashed #e8e8e8;
     border-radius: 50%;
-    cursor: pointer;
+    cursor: crosshair;
     pointer-events: all;
-    transition: all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 10;
+    box-shadow:
+        inset 2px 2px 6px rgba(255, 255, 255, 0.3),
+        inset -2px -2px 6px rgba(0, 0, 0, 0.4),
+        0 4px 12px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .point:hover {
     border-color: #f9c1ce;
-    box-shadow: 0 0 15px rgba(249, 193, 206, 0.4);
-    transform: scale(1.1);
+    background: linear-gradient(
+        145deg,
+        rgba(249, 193, 206, 0.2),
+        rgba(157, 110, 109, 0.3)
+    );
+    box-shadow:
+        inset 2px 2px 8px rgba(255, 255, 255, 0.4),
+        inset -2px -2px 8px rgba(0, 0, 0, 0.5),
+        0 6px 20px rgba(249, 193, 206, 0.4),
+        0 0 25px rgba(249, 193, 206, 0.3),
+        0 0 0 2px rgba(249, 193, 206, 0.2);
+    transform: scale(1.05);
 }
 
 .point.selected {
     background: rgba(157, 110, 109, 0.3);
     border-color: #f9c1ce;
+    animation: selectedPulse 2s infinite ease-in-out;
+    box-shadow:
+        0 0 0 0 rgba(249, 193, 206, 0.7),
+        0 0 20px rgba(249, 193, 206, 0.5),
+        inset 2px 2px 8px rgba(255, 255, 255, 0.4),
+        inset -2px -2px 8px rgba(0, 0, 0, 0.4);
+    transform: scale(5.5);
+}
+
+@keyframes selectedPulse {
+    0% {
+        box-shadow:
+            0 0 0 0 rgba(249, 193, 206, 0.7),
+            0 0 20px rgba(249, 193, 206, 0.5),
+            inset 2px 2px 8px rgba(255, 255, 255, 0.4),
+            inset -2px -2px 8px rgba(0, 0, 0, 0.4);
+    }
+    50% {
+        box-shadow:
+            0 0 0 0 rgba(249, 193, 206, 0.7),
+            0 0 40px rgba(249, 193, 206, 0.8),
+            inset 2px 2px 8px rgba(255, 255, 255, 0.4),
+            inset -2px -2px 8px rgba(0, 0, 0, 0.4);
+    }
+    100% {
+        box-shadow:
+            0 0 0 0 rgba(249, 193, 206, 0.7),
+            0 0 20px rgba(249, 193, 206, 0.5),
+            inset 2px 2px 8px rgba(255, 255, 255, 0.4),
+            inset -2px -2px 8px rgba(0, 0, 0, 0.4);
+    }
 }
 
 /* Connection lines between points */
@@ -382,8 +432,26 @@ body {
     flex-shrink: 0;
 }
 
+.help-icon.clickpoint-style {
+    background: radial-gradient(
+        circle at 30% 30%,
+        rgba(255, 255, 255, 0.2),
+        rgba(0, 0, 0, 0.1)
+    );
+    border: 2px dashed #e8e8e8;
+    border-radius: 50%;
+    box-shadow:
+        inset 2px 2px 6px rgba(255, 255, 255, 0.3),
+        inset -2px -2px 6px rgba(0, 0, 0, 0.4),
+        0 4px 12px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 /* Mobile responsive */
-@media (max-width: 768px) {
+@media (max-width: 480px) {
     .dialogue-panel {
         width: 100%;
         height: 50%;
@@ -392,6 +460,7 @@ body {
     }
     .help-overlay {
         min-width: 90%;
+        padding: 20px;
     }
 
     .ui-overlay {
@@ -403,6 +472,7 @@ body {
     .point {
         width: 35px;
         height: 35px;
+        border-width: 4px;
     }
     .dialogue-text-container {
         padding: 0px 26px 0 10px;
@@ -426,11 +496,82 @@ body {
     .section-text {
         font-size: 1.1em;
     }
+    .spiral-logo {
+        width: 60px;
+        height: 60px;
+        top: -5px;
+        left: 5px;
+    }
 }
 
-@media (max-width: 1024px) and (min-width: 769px) {
+/* Tablet responsive */
+@media (min-width: 481px) and (max-width: 768px) {
+    .dialogue-panel {
+        width: 320px;
+        height: 60%;
+        top: 40%;
+        border-left: 2px solid rgba(249, 193, 206, 0.4);
+    }
+    .help-overlay {
+        min-width: 85%;
+        padding: 25px;
+    }
+    .point {
+        width: 60px;
+        height: 60px;
+        border-width: 6px;
+    }
+    .dialogue-text-container {
+        padding: 15px 20px 0 15px;
+    }
+    .dialogue-header {
+        padding: 15px 0 10px 20px;
+    }
+    .dialogue-options {
+        padding: 15px;
+    }
+    .dialogue-option {
+        font-size: 1.1em;
+        padding: 10px 15px;
+        margin-bottom: 8px;
+    }
+    .section-text {
+        font-size: 1.15em;
+    }
+    .spiral-logo {
+        width: 80px;
+        height: 80px;
+        top: -8px;
+        left: 8px;
+    }
+}
+
+/* Desktop responsive */
+@media (min-width: 769px) and (max-width: 1024px) {
     .dialogue-panel {
         width: 400px;
+    }
+    .point {
+        width: 80px;
+        height: 80px;
+    }
+    .spiral-logo {
+        width: 100px;
+        height: 100px;
+    }
+}
+
+@media (min-width: 1025px) {
+    .dialogue-panel {
+        width: 450px;
+    }
+    .point {
+        width: 100px;
+        height: 100px;
+    }
+    .spiral-logo {
+        width: 120px;
+        height: 120px;
     }
 }
 
@@ -533,10 +674,19 @@ body.high-contrast .text-speed-control {
 }
 .spiral-logo {
     position: fixed;
-    left: 20px;
+    top: -10px;
+    left: 10px;
+    width: 120px;
+    height: 120px;
     z-index: 2000;
-    opacity: 0.6;
+    opacity: 0.8;
     transition: opacity 0.3s ease;
+    overflow: visible;
+}
+
+.spiral-logo svg {
+    width: 100%;
+    height: 100%;
 }
 
 .spiral-logo:hover {
