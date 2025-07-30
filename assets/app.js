@@ -8,6 +8,10 @@ let currentY = 0;
 let currentStoryPoint = null;
 let pointElements = [];
 let textSpeed = 15; // milliseconds between letters (default to medium)
+let isTyping = false;
+let currentTypingTimeout = null;
+let skipToNextSentence = false;
+let hasUsedSkip = false;
 
 // DOM elements
 const container = document.getElementById("container");
@@ -17,7 +21,7 @@ const dialoguePanel = document.getElementById("dialoguePanel");
 const locationTitle = document.getElementById("locationTitle");
 const locationSubtitle = document.getElementById("locationSubtitle");
 const dialogueTextContainer = document.getElementById("dialogueTextContainer");
-const dialogueOptions = document.getElementById("dialogueOptions");
+// Removed dialogueOptions reference
 const helpOverlay = document.getElementById("helpOverlay");
 const helpClose = document.getElementById("helpClose");
 
@@ -30,6 +34,7 @@ async function initialize() {
 
     createInteractivePoints();
     setupEventListeners();
+    setupDialogueSkipListener();
     // Initial positioning of points
     updatePointPositions();
     // Welcome message will show after help overlay is closed
@@ -111,18 +116,7 @@ function setupEventListeners() {
     updatePointPositions();
   });
 
-  // Number key support for dialogue options
-  document.addEventListener("keydown", (e) => {
-    if (dialoguePanel.classList.contains("visible")) {
-      const num = parseInt(e.key);
-      if (num >= 1 && num <= 9) {
-        const options = document.querySelectorAll(".dialogue-option");
-        if (options[num - 1]) {
-          options[num - 1].click();
-        }
-      }
-    }
-  });
+  // Removed number key support since we no longer use numbered options
 
   // Text speed toggle
   const textSpeedToggle = document.getElementById("textSpeedToggle");
@@ -246,9 +240,48 @@ function showDialogue(point, pointElement) {
   pointElements.forEach((el) => el.classList.remove("selected"));
   pointElement.classList.add("selected");
 
+  // Center the selected point on screen
+  centerPointOnScreen(pointElement);
+
   // Show first section
   currentSectionIndex = 0;
   showSection(point, 0);
+}
+
+function centerPointOnScreen(pointElement) {
+  const rect = pointElement.getBoundingClientRect();
+  const centerX = window.innerWidth / 2;
+  const centerY = window.innerHeight / 2;
+
+  // Calculate the exact center of the circle
+  const circleCenterX = rect.left + rect.width / 2;
+  const circleCenterY = rect.top + rect.height / 2;
+
+  // Calculate how much we need to move to center it
+  const offsetX = centerX - circleCenterX;
+  const offsetY = centerY - circleCenterY;
+
+  // Apply the offset to our current position
+  currentX += offsetX;
+  currentY += offsetY;
+
+  // Clamp to prevent going too far out of bounds
+  const maxX = window.innerWidth * 0.1;
+  const maxY = window.innerHeight * 0.1;
+  currentX = Math.max(-maxX, Math.min(maxX, currentX));
+  currentY = Math.max(-maxY, Math.min(maxY, currentY));
+
+  // Add smooth transition for camera movement
+  backgroundContainer.style.transition = "transform 0.8s ease-out";
+  interactivePoints.style.transition = "transform 0.8s ease-out";
+
+  updateBackgroundPosition();
+
+  // Remove transition after animation completes
+  setTimeout(() => {
+    backgroundContainer.style.transition = "transform 0.3s ease-out";
+    interactivePoints.style.transition = "";
+  }, 800);
 }
 
 function showSection(point, sectionIndex) {
@@ -275,64 +308,252 @@ function showSection(point, sectionIndex) {
   // Add container first
   dialogueTextContainer.appendChild(dialogueEntry);
 
-  // Animate text typing letter by letter
-  typeWriter(text, section.text, 0);
-
-  // Update options - filter out the selected option and show immediately
-  dialogueOptions.innerHTML = "";
-  point.options.forEach((option, index) => {
-    // Skip the option that was just selected (except close option)
-    if (option.section === sectionIndex && option.action !== "close") {
-      return;
-    }
-
-    const optionButton = document.createElement("button");
-    optionButton.className = "dialogue-option";
-
-    // Renumber the remaining options
-    const remainingOptions = point.options.filter(
-      (opt, idx) => opt.action === "close" || opt.section !== sectionIndex,
-    );
-    const newIndex = remainingOptions.indexOf(option) + 1;
-
-    optionButton.innerHTML = `<span class="option-number">${newIndex}.</span>${option.text}`;
-
-    if (option.action === "close") {
-      optionButton.addEventListener("click", () => hideDialogue());
-    } else if (option.section !== undefined) {
-      optionButton.addEventListener("click", () => {
-        currentSectionIndex = option.section;
-        showSection(point, option.section);
-      });
-    }
-
-    dialogueOptions.appendChild(optionButton);
-  });
+  // Animate text typing letter by letter with inline link parsing
+  typeWriterWithLinks(text, section.text, 0, point, sectionIndex);
 
   dialoguePanel.classList.add("visible");
   dialogueTextContainer.scrollTop = 0;
 }
 
-function typeWriter(element, text, index) {
+function parseTextWithLinks(text, point) {
+  // Parse text for inline links using syntax: [link text](section:1) or [link text](close)
+  const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = linkRegex.exec(text)) !== null) {
+    // Add text before the link
+    if (match.index > lastIndex) {
+      parts.push({
+        type: "text",
+        content: text.substring(lastIndex, match.index),
+      });
+    }
+
+    // Add the link
+    const linkText = match[1];
+    const linkTarget = match[2];
+
+    parts.push({
+      type: "link",
+      content: linkText,
+      target: linkTarget,
+    });
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining text after last link
+  if (lastIndex < text.length) {
+    parts.push({
+      type: "text",
+      content: text.substring(lastIndex),
+    });
+  }
+
+  // If no links found, treat as plain text
+  if (parts.length === 0) {
+    parts.push({
+      type: "text",
+      content: text,
+    });
+  }
+
+  return parts;
+}
+
+function typeWriterWithLinks(element, text, index, point, sectionIndex) {
+  const textParts = parseTextWithLinks(text, point);
+
   if (textSpeed === 0) {
     // FAST mode: show all text instantly
-    element.textContent = text;
+    renderParsedText(element, textParts, point, sectionIndex);
+    isTyping = false;
+    dialogueTextContainer.classList.remove("typing");
     return;
   }
 
-  if (index < text.length) {
-    element.textContent += text.charAt(index);
-    setTimeout(() => typeWriter(element, text, index + 1), textSpeed);
+  // For typewriter effect, we'll type out each part
+  isTyping = true;
+  skipToNextSentence = false;
+  if (!hasUsedSkip) {
+    dialogueTextContainer.classList.add("typing");
   }
+  typeWriterParts(element, textParts, 0, 0, point, sectionIndex);
+}
+
+function typeWriterParts(
+  element,
+  parts,
+  partIndex,
+  charIndex,
+  point,
+  sectionIndex,
+) {
+  if (partIndex >= parts.length) {
+    isTyping = false;
+    dialogueTextContainer.classList.remove("typing");
+    return; // Done typing
+  }
+
+  const currentPart = parts[partIndex];
+
+  if (currentPart.type === "text") {
+    // Check if we should skip to next sentence
+    if (skipToNextSentence) {
+      // Find the next sentence end in current part
+      const remainingText = currentPart.content.substring(charIndex);
+      const sentenceEnd = remainingText.search(/[.!?]\s+/);
+
+      if (sentenceEnd !== -1) {
+        // Complete current sentence
+        const completeToIndex = charIndex + sentenceEnd + 2; // Include punctuation and space
+        const textToAdd = currentPart.content.substring(
+          charIndex,
+          completeToIndex,
+        );
+        element.appendChild(document.createTextNode(textToAdd));
+
+        skipToNextSentence = false; // Reset skip flag
+
+        // Continue from next sentence
+        setTimeout(
+          () =>
+            typeWriterParts(
+              element,
+              parts,
+              partIndex,
+              completeToIndex,
+              point,
+              sectionIndex,
+            ),
+          textSpeed,
+        );
+        return;
+      } else {
+        // No sentence end found, complete this part
+        const textToAdd = currentPart.content.substring(charIndex);
+        element.appendChild(document.createTextNode(textToAdd));
+        skipToNextSentence = false;
+        typeWriterParts(element, parts, partIndex + 1, 0, point, sectionIndex);
+        return;
+      }
+    }
+
+    // Type out regular text character by character
+    if (charIndex < currentPart.content.length) {
+      element.appendChild(
+        document.createTextNode(currentPart.content.charAt(charIndex)),
+      );
+      currentTypingTimeout = setTimeout(
+        () =>
+          typeWriterParts(
+            element,
+            parts,
+            partIndex,
+            charIndex + 1,
+            point,
+            sectionIndex,
+          ),
+        textSpeed,
+      );
+    } else {
+      // Move to next part
+      typeWriterParts(element, parts, partIndex + 1, 0, point, sectionIndex);
+    }
+  } else if (currentPart.type === "link") {
+    // Create clickable link element instantly
+    const linkSpan = document.createElement("span");
+    linkSpan.className = "interactive-text";
+    linkSpan.textContent = currentPart.content;
+
+    // Add click handler based on target
+    if (currentPart.target === "close") {
+      linkSpan.addEventListener("click", () => hideDialogue());
+    } else if (currentPart.target.startsWith("section:")) {
+      const targetSection = parseInt(currentPart.target.split(":")[1]);
+      linkSpan.addEventListener("click", () => {
+        currentSectionIndex = targetSection;
+        showSection(point, targetSection);
+      });
+    }
+
+    element.appendChild(linkSpan);
+    // Move to next part immediately
+    typeWriterParts(element, parts, partIndex + 1, 0, point, sectionIndex);
+  }
+}
+
+function renderParsedText(element, parts, point, sectionIndex) {
+  parts.forEach((part) => {
+    if (part.type === "text") {
+      element.appendChild(document.createTextNode(part.content));
+    } else if (part.type === "link") {
+      const linkSpan = document.createElement("span");
+      linkSpan.className = "interactive-text";
+      linkSpan.textContent = part.content;
+
+      // Add click handler based on target
+      if (part.target === "close") {
+        linkSpan.addEventListener("click", () => hideDialogue());
+      } else if (part.target.startsWith("section:")) {
+        const targetSection = parseInt(part.target.split(":")[1]);
+        linkSpan.addEventListener("click", () => {
+          currentSectionIndex = targetSection;
+          showSection(point, targetSection);
+        });
+      }
+
+      element.appendChild(linkSpan);
+    }
+  });
 }
 
 function hideDialogue() {
   dialoguePanel.classList.remove("visible");
   pointElements.forEach((el) => el.classList.remove("selected"));
+  isTyping = false;
+  dialogueTextContainer.classList.remove("typing");
+  if (currentTypingTimeout) {
+    clearTimeout(currentTypingTimeout);
+    currentTypingTimeout = null;
+  }
+}
+
+function setupDialogueSkipListener() {
+  // Add click handler to dialogue text container for skip functionality
+  dialogueTextContainer.addEventListener("click", (e) => {
+    // Only skip if we're typing and not clicking on interactive text
+    if (isTyping && !e.target.classList.contains("interactive-text")) {
+      skipToNextSentence = true;
+      hasUsedSkip = true;
+      dialogueTextContainer.classList.remove("typing");
+    }
+  });
 }
 
 function showWelcomeMessage() {
   currentStoryPoint = null; // Ensure intro popup can be auto-closed
+
+  // Parse and render the welcome message with inline links
+  const welcomeTextElement = document.querySelector(
+    ".dialogue-text-container .section-text:last-child",
+  );
+  if (welcomeTextElement) {
+    const welcomeText = welcomeTextElement.textContent;
+    welcomeTextElement.innerHTML = ""; // Clear existing content
+
+    // Create a fake point object for parsing
+    const fakePoint = { options: [] };
+    renderParsedText(
+      welcomeTextElement,
+      parseTextWithLinks(welcomeText, fakePoint),
+      fakePoint,
+      0,
+    );
+  }
+
   setTimeout(() => dialoguePanel.classList.add("visible"), 300);
 }
 
