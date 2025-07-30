@@ -12,6 +12,7 @@ let isTyping = false;
 let currentTypingTimeout = null;
 let skipToNextSentence = false;
 let hasUsedSkip = false;
+let navigationHistory = []; // Track navigation history for back button
 
 // DOM elements
 const container = document.getElementById("container");
@@ -123,7 +124,6 @@ function setupEventListeners() {
   const textSpeeds = ["FAST", "RELAXED", "ZEN"];
   const speedValues = { FAST: 0, RELAXED: 15, ZEN: 40 };
   let currentSpeedIndex = 1; // Start with "Relaxed"
-  let currentSectionIndex = 0; // Track cTheurrent section
 
   textSpeedToggle.addEventListener("click", () => {
     currentSpeedIndex = (currentSpeedIndex + 1) % textSpeeds.length;
@@ -139,7 +139,7 @@ function setupEventListeners() {
 
     // Reload current text at new speed if dialogue is showing
     if (dialoguePanel.classList.contains("visible") && currentStoryPoint) {
-      showSection(currentStoryPoint, currentSectionIndex);
+      showMainText(currentStoryPoint);
     }
   });
 
@@ -236,6 +236,9 @@ function showDialogue(point, pointElement) {
   currentStoryPoint = point;
   locationTitle.textContent = point.title;
 
+  // Reset navigation history when opening new dialogue
+  navigationHistory = [];
+
   // Update selected state
   pointElements.forEach((el) => el.classList.remove("selected"));
   pointElement.classList.add("selected");
@@ -243,9 +246,8 @@ function showDialogue(point, pointElement) {
   // Center the selected point on screen
   centerPointOnScreen(pointElement);
 
-  // Show first section
-  currentSectionIndex = 0;
-  showSection(point, 0);
+  // Show main text
+  showMainText(point);
 }
 
 function centerPointOnScreen(pointElement) {
@@ -284,10 +286,7 @@ function centerPointOnScreen(pointElement) {
   }, 800);
 }
 
-function showSection(point, sectionIndex) {
-  currentSectionIndex = sectionIndex; // Track current section
-  const section = point.sections[sectionIndex];
-
+function showMainText(point) {
   // Clear container and any existing timeouts
   dialogueTextContainer.innerHTML = "";
 
@@ -297,7 +296,7 @@ function showSection(point, sectionIndex) {
 
   const speaker = document.createElement("div");
   speaker.className = "dialogue-speaker";
-  speaker.textContent = section.speaker;
+  speaker.textContent = point.mainText.speaker;
   dialogueEntry.appendChild(speaker);
 
   // Create text container for letter-by-letter animation
@@ -309,14 +308,99 @@ function showSection(point, sectionIndex) {
   dialogueTextContainer.appendChild(dialogueEntry);
 
   // Animate text typing letter by letter with inline link parsing
-  typeWriterWithLinks(text, section.text, 0, point, sectionIndex);
+  typeWriterWithLinks(text, point.mainText.text, 0, point, () => {
+    addBackButton(text, point, "main");
+  });
 
   dialoguePanel.classList.add("visible");
   dialogueTextContainer.scrollTop = 0;
 }
 
+function showSection(point, optionKey) {
+  // Find the option with the matching key
+  const option = point.options.find((opt) => opt.key === optionKey);
+  if (!option || !option.content) return;
+
+  // Add current state to history before navigating
+  addToHistory(point, optionKey);
+
+  // Clear container and any existing timeouts
+  dialogueTextContainer.innerHTML = "";
+
+  // Create dialogue entry
+  const dialogueEntry = document.createElement("div");
+  dialogueEntry.className = "dialogue-entry";
+
+  const speaker = document.createElement("div");
+  speaker.className = "dialogue-speaker";
+  speaker.textContent = option.content.speaker;
+  dialogueEntry.appendChild(speaker);
+
+  // Create text container for letter-by-letter animation
+  const text = document.createElement("div");
+  text.className = "section-text";
+  dialogueEntry.appendChild(text);
+
+  // Add container first
+  dialogueTextContainer.appendChild(dialogueEntry);
+
+  // Animate text typing letter by letter with inline link parsing
+  typeWriterWithLinks(text, option.content.text, 0, point, () => {
+    addBackButton(text, point, optionKey);
+  });
+
+  dialoguePanel.classList.add("visible");
+  dialogueTextContainer.scrollTop = 0;
+}
+
+function addToHistory(point, optionKey) {
+  navigationHistory.push({ point, optionKey });
+}
+
+function addBackButton(textContainer, point, currentKey) {
+  if (navigationHistory.length === 0 && currentKey !== "main") {
+    // If no history but not on main, can go back to main
+    const backButton = createBackButton(() => showMainText(point));
+    textContainer.appendChild(backButton);
+  } else if (navigationHistory.length > 0) {
+    // Can go back to previous section
+    const backButton = createBackButton(() => goBack());
+    textContainer.appendChild(backButton);
+  }
+}
+
+function createBackButton(clickHandler) {
+  const backButton = document.createElement("span");
+  backButton.className = "back-button";
+  backButton.innerHTML = `
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="cursor: pointer; opacity: 0.7;">
+      <path d="M8 1l-1.5 1.5L11 7H1v2h10l-4.5 4.5L8 15l7-7z" transform="rotate(180 8 8)"/>
+    </svg>
+  `;
+  backButton.style.cursor = "pointer";
+  backButton.addEventListener("click", clickHandler);
+  return backButton;
+}
+
+function goBack() {
+  if (navigationHistory.length === 0) return;
+
+  // Remove current state from history
+  navigationHistory.pop();
+
+  if (navigationHistory.length === 0) {
+    // Go back to main text
+    showMainText(currentStoryPoint);
+  } else {
+    // Go back to previous section
+    const previousState = navigationHistory[navigationHistory.length - 1];
+    navigationHistory.pop(); // Remove it so showSection doesn't add it again
+    showSection(previousState.point, previousState.optionKey);
+  }
+}
+
 function parseTextWithLinks(text, point) {
-  // Parse text for inline links using syntax: [link text](section:1) or [link text](close)
+  // Parse text for inline links using syntax: [link text](key) or [link text](close)
   const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
   const parts = [];
   let lastIndex = 0;
@@ -363,14 +447,15 @@ function parseTextWithLinks(text, point) {
   return parts;
 }
 
-function typeWriterWithLinks(element, text, index, point, sectionIndex) {
+function typeWriterWithLinks(element, text, charIndex, point, onComplete) {
   const textParts = parseTextWithLinks(text, point);
 
   if (textSpeed === 0) {
     // FAST mode: show all text instantly
-    renderParsedText(element, textParts, point, sectionIndex);
+    renderParsedText(element, textParts, point);
     isTyping = false;
     dialogueTextContainer.classList.remove("typing");
+    if (onComplete) onComplete();
     return;
   }
 
@@ -380,7 +465,7 @@ function typeWriterWithLinks(element, text, index, point, sectionIndex) {
   if (!hasUsedSkip) {
     dialogueTextContainer.classList.add("typing");
   }
-  typeWriterParts(element, textParts, 0, 0, point, sectionIndex);
+  typeWriterParts(element, textParts, 0, 0, point, onComplete);
 }
 
 function typeWriterParts(
@@ -389,12 +474,13 @@ function typeWriterParts(
   partIndex,
   charIndex,
   point,
-  sectionIndex,
+  onComplete,
 ) {
   if (partIndex >= parts.length) {
     isTyping = false;
     dialogueTextContainer.classList.remove("typing");
-    return; // Done typing
+    if (onComplete) onComplete();
+    return;
   }
 
   const currentPart = parts[partIndex];
@@ -426,7 +512,7 @@ function typeWriterParts(
               partIndex,
               completeToIndex,
               point,
-              sectionIndex,
+              onComplete,
             ),
           textSpeed,
         );
@@ -436,7 +522,7 @@ function typeWriterParts(
         const textToAdd = currentPart.content.substring(charIndex);
         element.appendChild(document.createTextNode(textToAdd));
         skipToNextSentence = false;
-        typeWriterParts(element, parts, partIndex + 1, 0, point, sectionIndex);
+        typeWriterParts(element, parts, partIndex + 1, 0, point, onComplete);
         return;
       }
     }
@@ -454,13 +540,13 @@ function typeWriterParts(
             partIndex,
             charIndex + 1,
             point,
-            sectionIndex,
+            onComplete,
           ),
         textSpeed,
       );
     } else {
       // Move to next part
-      typeWriterParts(element, parts, partIndex + 1, 0, point, sectionIndex);
+      typeWriterParts(element, parts, partIndex + 1, 0, point, onComplete);
     }
   } else if (currentPart.type === "link") {
     // Create clickable link element instantly
@@ -471,21 +557,20 @@ function typeWriterParts(
     // Add click handler based on target
     if (currentPart.target === "close") {
       linkSpan.addEventListener("click", () => hideDialogue());
-    } else if (currentPart.target.startsWith("section:")) {
-      const targetSection = parseInt(currentPart.target.split(":")[1]);
+    } else {
+      // Target is now a key, not a section number
       linkSpan.addEventListener("click", () => {
-        currentSectionIndex = targetSection;
-        showSection(point, targetSection);
+        showSection(point, currentPart.target);
       });
     }
 
     element.appendChild(linkSpan);
     // Move to next part immediately
-    typeWriterParts(element, parts, partIndex + 1, 0, point, sectionIndex);
+    typeWriterParts(element, parts, partIndex + 1, 0, point, onComplete);
   }
 }
 
-function renderParsedText(element, parts, point, sectionIndex) {
+function renderParsedText(element, parts, point) {
   parts.forEach((part) => {
     if (part.type === "text") {
       element.appendChild(document.createTextNode(part.content));
@@ -497,11 +582,10 @@ function renderParsedText(element, parts, point, sectionIndex) {
       // Add click handler based on target
       if (part.target === "close") {
         linkSpan.addEventListener("click", () => hideDialogue());
-      } else if (part.target.startsWith("section:")) {
-        const targetSection = parseInt(part.target.split(":")[1]);
+      } else {
+        // Target is now a key, not a section number
         linkSpan.addEventListener("click", () => {
-          currentSectionIndex = targetSection;
-          showSection(point, targetSection);
+          showSection(point, part.target);
         });
       }
 

@@ -252,7 +252,7 @@ body {
 }
 
 .location-title {
-    color: #f9c1ce;
+    color: #ece1e0;
     font-family: monospace;
     font-size: 1.3em;
     font-weight: bold;
@@ -350,6 +350,28 @@ body {
     background: rgba(249, 193, 206, 0.2);
     text-decoration: underline solid;
     transform: translateY(-1px);
+}
+
+.back-button {
+    display: inline-block;
+    margin-left: 8px;
+    color: #f9c1ce;
+    opacity: 0.7;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0px 5px 0px 5px;
+    border-radius: 3px;
+}
+
+.back-button:hover {
+    opacity: 1;
+    background: rgba(249, 193, 206, 0.2);
+    transform: translateY(-1px);
+}
+
+.back-button svg {
+    vertical-align: middle;
+    fill: currentColor;
 }
 
 /* Enhanced gradient fade */
@@ -634,6 +656,15 @@ body.high-contrast .interactive-text {
 }
 
 body.high-contrast .interactive-text:hover {
+    background: rgba(249, 193, 206, 0.4);
+    color: #f9c1ce;
+}
+
+body.high-contrast .back-button {
+    color: #ffffff;
+}
+
+body.high-contrast .back-button:hover {
     background: rgba(249, 193, 206, 0.4);
     color: #f9c1ce;
 }
