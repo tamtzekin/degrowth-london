@@ -1,7 +1,7 @@
 [
   {
-    "x": 20,
-    "y": 40,
+    "x": 28,
+    "y": 39,
     "title": "Transport",
     "subtitle": "",
     "mainText": {
@@ -48,8 +48,8 @@
     ]
   },
   {
-    "x": 65,
-    "y": 25,
+    "x": 80,
+    "y": -3,
     "title": "Energy",
     "subtitle": "",
     "mainText": {
@@ -88,8 +88,8 @@
     ]
   },
   {
-    "x": 70,
-    "y": 60,
+    "x": 65,
+    "y": 69,
     "title": "Education",
     "subtitle": "",
     "mainText": {
@@ -208,8 +208,8 @@
     ]
   },
   {
-    "x": 30,
-    "y": 80,
+    "x": 11,
+    "y": 35,
     "title": "Transport",
     "subtitle": "",
     "mainText": {
