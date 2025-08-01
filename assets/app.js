@@ -14,6 +14,12 @@ let skipToNextSentence = false;
 let hasUsedSkip = false;
 let navigationHistory = []; // Track navigation history for back button
 
+// Music variables
+let backgroundMusic = null;
+let isMusicMuted = false; // Start unmuted but paused until user interaction
+let musicReady = false;
+let userHasInteracted = false;
+
 // DOM elements
 const container = document.getElementById("container");
 const backgroundContainer = document.getElementById("backgroundContainer");
@@ -36,6 +42,9 @@ async function initialize() {
     createInteractivePoints();
     setupEventListeners();
     setupDialogueSkipListener();
+    initializeMusic();
+    createMusicToggleButton();
+    setupUserInteractionDetection();
     // Initial positioning of points
     updatePointPositions();
     // Welcome message will show after help overlay is closed
@@ -100,6 +109,8 @@ function setupEventListeners() {
       !dialoguePanel.contains(e.target)
     ) {
       helpOverlay.classList.add("hidden");
+      // Start music when user interacts (closes help overlay)
+      handleUserInteractionForMusic();
       // Show welcome message after help closes
       setTimeout(() => showWelcomeMessage(), 500);
     }
@@ -107,6 +118,8 @@ function setupEventListeners() {
 
   helpClose.addEventListener("click", () => {
     helpOverlay.classList.add("hidden");
+    // Start music when user interacts (closes help overlay)
+    handleUserInteractionForMusic();
     // Show welcome message after help closes
     setTimeout(() => showWelcomeMessage(), 500);
   });
@@ -239,6 +252,18 @@ function showDialogue(point, pointElement) {
   // Reset navigation history when opening new dialogue
   navigationHistory = [];
 
+  // Reset skip-related state variables
+  skipToNextSentence = false;
+  hasUsedSkip = false;
+  isTyping = false;
+  console.log("showDialogue: Reset skip state variables");
+
+  // Clear any existing typing timeout
+  if (currentTypingTimeout) {
+    clearTimeout(currentTypingTimeout);
+    currentTypingTimeout = null;
+  }
+
   // Update selected state
   pointElements.forEach((el) => el.classList.remove("selected"));
   pointElement.classList.add("selected");
@@ -287,6 +312,18 @@ function centerPointOnScreen(pointElement) {
 }
 
 function showMainText(point) {
+  // Reset skip state variables for new main text
+  skipToNextSentence = false;
+  hasUsedSkip = false;
+  isTyping = false;
+  console.log("showMainText: Reset skip state variables");
+
+  // Clear any existing typing timeout
+  if (currentTypingTimeout) {
+    clearTimeout(currentTypingTimeout);
+    currentTypingTimeout = null;
+  }
+
   // Clear container and any existing timeouts
   dialogueTextContainer.innerHTML = "";
 
@@ -323,6 +360,18 @@ function showSection(point, optionKey) {
 
   // Add current state to history before navigating
   addToHistory(point, optionKey);
+
+  // Reset skip state variables for new section
+  skipToNextSentence = false;
+  hasUsedSkip = false;
+  isTyping = false;
+  console.log("showSection: Reset skip state variables");
+
+  // Clear any existing typing timeout
+  if (currentTypingTimeout) {
+    clearTimeout(currentTypingTimeout);
+    currentTypingTimeout = null;
+  }
 
   // Clear container and any existing timeouts
   dialogueTextContainer.innerHTML = "";
@@ -462,9 +511,11 @@ function typeWriterWithLinks(element, text, charIndex, point, onComplete) {
   // For typewriter effect, we'll type out each part
   isTyping = true;
   skipToNextSentence = false;
-  if (!hasUsedSkip) {
-    dialogueTextContainer.classList.add("typing");
-  }
+  console.log(
+    "Starting typewriter - isTyping set to true, hasUsedSkip:",
+    hasUsedSkip,
+  );
+  dialogueTextContainer.classList.add("typing");
   typeWriterParts(element, textParts, 0, 0, point, onComplete);
 }
 
@@ -477,6 +528,7 @@ function typeWriterParts(
   onComplete,
 ) {
   if (partIndex >= parts.length) {
+    console.log("Typewriter completed - setting isTyping to false");
     isTyping = false;
     dialogueTextContainer.classList.remove("typing");
     if (onComplete) onComplete();
@@ -488,6 +540,7 @@ function typeWriterParts(
   if (currentPart.type === "text") {
     // Check if we should skip to next sentence
     if (skipToNextSentence) {
+      console.log("Processing skip to next sentence");
       // Find the next sentence end in current part
       const remainingText = currentPart.content.substring(charIndex);
       const sentenceEnd = remainingText.search(/[.!?]\s+/);
@@ -502,6 +555,7 @@ function typeWriterParts(
         element.appendChild(document.createTextNode(textToAdd));
 
         skipToNextSentence = false; // Reset skip flag
+        console.log("Skipped to end of sentence, continuing...");
 
         // Continue from next sentence
         setTimeout(
@@ -522,6 +576,7 @@ function typeWriterParts(
         const textToAdd = currentPart.content.substring(charIndex);
         element.appendChild(document.createTextNode(textToAdd));
         skipToNextSentence = false;
+        console.log("No sentence end found, completed entire part");
         typeWriterParts(element, parts, partIndex + 1, 0, point, onComplete);
         return;
       }
@@ -597,8 +652,13 @@ function renderParsedText(element, parts, point) {
 function hideDialogue() {
   dialoguePanel.classList.remove("visible");
   pointElements.forEach((el) => el.classList.remove("selected"));
+
+  // Reset all typing and skip state variables
   isTyping = false;
+  skipToNextSentence = false;
+  hasUsedSkip = false;
   dialogueTextContainer.classList.remove("typing");
+
   if (currentTypingTimeout) {
     clearTimeout(currentTypingTimeout);
     currentTypingTimeout = null;
@@ -608,13 +668,69 @@ function hideDialogue() {
 function setupDialogueSkipListener() {
   // Add click handler to dialogue text container for skip functionality
   dialogueTextContainer.addEventListener("click", (e) => {
+    console.log(
+      "Skip click detected - isTyping:",
+      isTyping,
+      "target:",
+      e.target,
+      "hasInteractiveClass:",
+      e.target.classList.contains("interactive-text"),
+    );
+
     // Only skip if we're typing and not clicking on interactive text
     if (isTyping && !e.target.classList.contains("interactive-text")) {
+      console.log("Executing skip to next sentence");
+
+      // Play gentle click sound
+      playSkipSound();
+
       skipToNextSentence = true;
       hasUsedSkip = true;
       dialogueTextContainer.classList.remove("typing");
+    } else {
+      console.log(
+        "Skip blocked - isTyping:",
+        isTyping,
+        "isInteractive:",
+        e.target.classList.contains("interactive-text"),
+      );
     }
   });
+}
+
+function playSkipSound() {
+  // Create a gentle click sound using Web Audio API
+  if (
+    typeof AudioContext !== "undefined" ||
+    typeof webkitAudioContext !== "undefined"
+  ) {
+    const audioContext = new (window.AudioContext ||
+      window.webkitAudioContext)();
+
+    // Create a gentle, leafy click sound
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    // Gentle, high-pitched click with quick decay
+    oscillator.frequency.setValueAtTime(1200, audioContext.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(
+      800,
+      audioContext.currentTime + 0.1,
+    );
+
+    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(
+      0.01,
+      audioContext.currentTime + 0.15,
+    );
+
+    oscillator.type = "sine";
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.15);
+  }
 }
 
 function showWelcomeMessage() {
@@ -639,6 +755,152 @@ function showWelcomeMessage() {
   }
 
   setTimeout(() => dialoguePanel.classList.add("visible"), 300);
+}
+
+// Start music after user interaction (clicking "Got it")
+function startMusicAfterUserInteraction() {
+  if (backgroundMusic && !isMusicMuted) {
+    backgroundMusic.play().catch((e) => {
+      console.warn("Could not start background music:", e);
+      // If autoplay still fails, we'll let the user manually start it with the toggle
+    });
+  }
+}
+
+// Music initialization and control functions
+function initializeMusic() {
+  backgroundMusic = new Audio("assets/sound/06-julian.mp3");
+  backgroundMusic.loop = true;
+  backgroundMusic.volume = 0.3; // Set to a comfortable level
+
+  // Handle audio loading errors gracefully
+  backgroundMusic.addEventListener("error", function (e) {
+    console.warn("Background music failed to load:", e);
+  });
+
+  // Mark music as ready when loaded - don't autoplay, wait for user interaction
+  backgroundMusic.addEventListener("canplaythrough", function () {
+    musicReady = true;
+    console.log("Background music loaded and ready to play");
+  });
+}
+
+function createMusicToggleButton() {
+  const musicToggle = document.createElement("div");
+  musicToggle.className = "music-toggle";
+  musicToggle.id = "musicToggle";
+
+  // Simple quaver note icons for muted and unmuted states
+  const mutedIcon = `
+    <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+      <path d="M9 18V5l12-2v13"/>
+      <circle cx="6" cy="18" r="3"/>
+      <circle cx="18" cy="16" r="3"/>
+      <path d="M15 9l6-6M21 9l-6-6" stroke="currentColor" stroke-width="2"/>
+    </svg>
+  `;
+
+  const unmutedIcon = `
+    <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+      <path d="M9 18V5l12-2v13"/>
+      <circle cx="6" cy="18" r="3"/>
+      <circle cx="18" cy="16" r="3"/>
+    </svg>
+  `;
+
+  // Set initial icon (unmuted since we start playing)
+  musicToggle.innerHTML = unmutedIcon;
+  musicToggle.classList.add("playing");
+
+  // Add click event listener
+  musicToggle.addEventListener("click", toggleMusic);
+
+  // Add to container
+  container.appendChild(musicToggle);
+}
+
+function toggleMusic() {
+  const musicToggle = document.getElementById("musicToggle");
+
+  if (isMusicMuted) {
+    // Unmute and play
+    if (backgroundMusic) {
+      backgroundMusic.play().catch((e) => {
+        console.warn("Could not play background music:", e);
+      });
+    }
+    isMusicMuted = false;
+
+    // Update icon to unmuted
+    musicToggle.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+        <path d="M9 18V5l12-2v13"/>
+        <circle cx="6" cy="18" r="3"/>
+        <circle cx="18" cy="16" r="3"/>
+      </svg>
+    `;
+    musicToggle.classList.add("playing");
+  } else {
+    // Mute and pause
+    if (backgroundMusic) {
+      backgroundMusic.pause();
+    }
+    isMusicMuted = true;
+
+    // Update icon to muted
+    musicToggle.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+        <path d="M9 18V5l12-2v13"/>
+        <circle cx="6" cy="18" r="3"/>
+        <circle cx="18" cy="16" r="3"/>
+        <path d="M15 9l6-6M21 9l-6-6" stroke="currentColor" stroke-width="2"/>
+      </svg>
+    `;
+    musicToggle.classList.remove("playing");
+  }
+}
+
+// Setup user interaction detection for autoplay
+function setupUserInteractionDetection() {
+  function handleFirstInteraction() {
+    userHasInteracted = true;
+
+    // Try to start music if it's ready and not muted
+    if (musicReady && !isMusicMuted && backgroundMusic) {
+      backgroundMusic.play().catch((e) => {
+        console.log("Music will start when toggle is clicked");
+      });
+    }
+
+    // Remove listeners after first interaction
+    document.removeEventListener("click", handleFirstInteraction);
+    document.removeEventListener("keydown", handleFirstInteraction);
+    document.removeEventListener("touchstart", handleFirstInteraction);
+  }
+
+  // Listen for any user interaction
+  document.addEventListener("click", handleFirstInteraction);
+  document.addEventListener("keydown", handleFirstInteraction);
+  document.addEventListener("touchstart", handleFirstInteraction);
+}
+
+// Function to handle user interaction and start music
+function handleUserInteractionForMusic() {
+  userHasInteracted = true;
+
+  if (backgroundMusic && !isMusicMuted && musicReady) {
+    backgroundMusic
+      .play()
+      .then(() => {
+        console.log("Background music started successfully!");
+      })
+      .catch((e) => {
+        console.warn(
+          "Could not start background music after user interaction:",
+          e,
+        );
+      });
+  }
 }
 
 window.addEventListener("load", initialize);

@@ -43,7 +43,7 @@ body {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    background: url("/assets/city.png") center/cover;
+    background: url("/assets/street.png") center/cover;
 }
 
 .interactive-points {
@@ -154,13 +154,33 @@ body {
 .point.selected {
     background: rgba(157, 110, 109, 0.3);
     border-color: #f9c1ce;
-    animation: selectedPulse 2s infinite ease-in-out;
+    animation: selectedPulse 2s infinite ease-in-out, rotateBorder 4s linear infinite;
     box-shadow:
         0 0 0 0 rgba(249, 193, 206, 0.7),
         0 0 20px rgba(249, 193, 206, 0.5),
         inset 2px 2px 8px rgba(255, 255, 255, 0.4),
         inset -2px -2px 8px rgba(0, 0, 0, 0.4);
-    transform: scale(5.5);
+    transform: scale(1.05);
+}
+
+@keyframes rotateBorder {
+    0% {
+        border-color: #f9c1ce;
+        transform: scale(1.05) rotate(0deg);
+    }
+    25% {
+        border-color: rgba(249, 193, 206, 0.8);
+    }
+    50% {
+        border-color: rgba(249, 193, 206, 0.6);
+    }
+    75% {
+        border-color: rgba(249, 193, 206, 0.9);
+    }
+    100% {
+        border-color: #f9c1ce;
+        transform: scale(1.05) rotate(360deg);
+    }
 }
 
 @keyframes selectedPulse {
@@ -227,7 +247,8 @@ body {
     height: 60vh;
     background: rgba(153, 111, 105, 0.8);
     backdrop-filter: blur(20px);
-    border-left: 3px solid rgba(249, 193, 206, 0.4);
+    border-left: 2px solid rgba(249, 193, 206, 0.4);
+    border-radius: 16px;
     opacity: 0;
     transform: translateX(100%);
     transition: all 0.5s ease-out;
@@ -245,7 +266,7 @@ body {
 }
 
 .dialogue-header {
-    padding: 25px;
+    padding: 15px 25px 10px 25px;
     border-bottom: 2px solid rgba(249, 193, 206, 0.4);
     border-top: 1.5px solid rgba(153, 170, 187, 0.5);
     /* background: rgba(5, 8, 5, 0.7); */
@@ -508,7 +529,7 @@ body {
         font-size: 1.1em;
     }
     .spiral-logo {
-        width: 60px;
+        width: 40px;
         height: 60px;
         top: -5px;
         left: 5px;
@@ -607,14 +628,14 @@ body {
 }
 
 .header-control:hover {
-    background: rgba(217, 195, 194, 0.2);
+    background: rgba(249, 193, 206, 0.2);
 }
 
 .header-control svg {
     width: 20px;
     height: 20px;
-    fill: #ece1e0;
-    stroke: #ece1e0;
+    fill: #f9c1ce;
+    stroke: #f9c1ce;
 }
 
 .text-speed-control {
@@ -696,10 +717,10 @@ body.high-contrast .text-speed-control {
 }
 .spiral-logo {
     position: fixed;
-    top: -10px;
+    top: -15px;
     left: 10px;
-    width: 120px;
-    height: 120px;
+    width: 90px;
+    height: 90px;
     z-index: 2000;
     opacity: 0.8;
     transition: opacity 0.3s ease;
@@ -714,3 +735,107 @@ body.high-contrast .text-speed-control {
 .spiral-logo:hover {
     opacity: 1;
 }
+
+/* Music toggle button */
+.music-toggle {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    padding: 8px;
+    border-radius: 4px;
+}
+
+.music-toggle:hover {
+    background: rgba(249, 193, 206, 0.2);
+    transform: scale(1.05);
+}
+
+.music-toggle svg {
+    width: 28px;
+    height: 28px;
+    color: #ece1e0;
+    transition: color 0.3s ease;
+    filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.5));
+}
+
+.music-toggle.playing svg {
+    color: #f9c1ce;
+}
+
+/* Mobile responsive for music toggle */
+@media (max-width: 480px) {
+    .music-toggle {
+        bottom: 15px;
+        left: 15px;
+        padding: 6px;
+    }
+
+    .music-toggle svg {
+        width: 24px;
+        height: 24px;
+    }
+}
+
+/* Tablet responsive for music toggle */
+@media (min-width: 481px) and (max-width: 768px) {
+    .music-toggle {
+        bottom: 18px;
+        left: 18px;
+        padding: 7px;
+    }
+
+    .music-toggle svg {
+        width: 26px;
+        height: 26px;
+    }
+}
+
+/* High contrast mode for music toggle */
+body.high-contrast .music-toggle {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+body.high-contrast .music-toggle:hover {
+    background: rgba(0, 0, 0, 0.9);
+}
+
+body.high-contrast .music-toggle svg {
+    color: #ffffff;
+}
+
+body.high-contrast .music-toggle.playing svg {
+    color: #f9c1ce;
+}
+
+/* Music activation hint */
+.music-toggle::after {
+    content: "🎵";
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: rgba(249, 193, 206, 0.9);
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    animation: musicPulse 2s infinite ease-in-out;
+    transition: opacity 0.3s ease;
+}
+
+.music-toggle.user-interacted::after {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.

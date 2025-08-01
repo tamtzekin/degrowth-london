@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Music Test - Degrowth London</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background: #1a1a1a;
+                color: #ece1e0;
+                padding: 20px;
+                margin: 0;
+            }
+            .container {
+                max-width: 800px;
+                margin: 0 auto;
+            }
+            .test-button {
+                background: rgba(153, 111, 105, 0.8);
+                border: 2px solid rgba(249, 193, 206, 0.4);
+                border-radius: 8px;
+                color: #ece1e0;
+                padding: 15px 30px;
+                margin: 10px;
+                cursor: pointer;
+                font-size: 16px;
+                transition: all 0.3s ease;
+            }
+            .test-button:hover {
+                background: rgba(153, 111, 105, 0.9);
+                border-color: rgba(249, 193, 206, 0.7);
+            }
+            .music-toggle {
+                position: fixed;
+                bottom: 20px;
+                left: 20px;
+                width: 50px;
+                height: 50px;
+                background: rgba(153, 111, 105, 0.8);
+                backdrop-filter: blur(10px);
+                border: 2px solid rgba(249, 193, 206, 0.4);
+                border-radius: 50%;
+                cursor: pointer;
+                z-index: 2000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.3s ease;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            }
+            .music-toggle:hover {
+                background: rgba(153, 111, 105, 0.9);
+                border-color: rgba(249, 193, 206, 0.7);
+                transform: scale(1.05);
+                box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+            }
+            .music-toggle svg {
+                width: 24px;
+                height: 24px;
+                color: #ece1e0;
+                transition: color 0.3s ease;
+            }
+            .music-toggle.playing {
+                border-color: rgba(249, 193, 206, 0.8);
+                box-shadow: 0 0 15px rgba(249, 193, 206, 0.3);
+            }
+            .music-toggle.playing svg {
+                color: #f9c1ce;
+            }
+            .status {
+                background: rgba(0, 0, 0, 0.5);
+                padding: 10px;
+                border-radius: 5px;
+                margin: 10px 0;
+            }
+            .highlight {
+                color: #f9c1ce;
+                font-weight: bold;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🎵 Music Functionality Test</h1>
+            <p>
+                This test page verifies that the background music and toggle
+                button work correctly.
+            </p>
+
+            <div class="status" id="status">
+                <p>
+                    <span class="highlight">Status:</span> Music system
+                    initializing...
+                </p>
+            </div>
+
+            <h2>Test Controls</h2>
+            <button class="test-button" onclick="testMusicLoad()">
+                Test Music Load
+            </button>
+            <button class="test-button" onclick="testVolumeControl()">
+                Test Volume Control
+            </button>
+            <button class="test-button" onclick="testToggleFunction()">
+                Test Toggle Function
+            </button>
+            <button class="test-button" onclick="resetTest()">
+                Reset Test
+            </button>
+
+            <h2>Expected Behavior</h2>
+            <ul>
+                <li>Music toggle button appears in bottom-left corner</li>
+                <li>Initially shows muted icon (musical note with X)</li>
+                <li>Clicking toggles between muted and playing states</li>
+                <li>When playing, icon shows musical note with sound waves</li>
+                <li>Music starts muted and loops when playing</li>
+            </ul>
+
+            <h2>Audio File</h2>
+            <p>Using: <code>assets/sound/06-julian.mp3</code></p>
+        </div>
+
+        <script>
+            // Music variables
+            let backgroundMusic = null;
+            let isMusicMuted = false;
+            let musicReady = false;
+            let userHasInteracted = false;
+
+            // Status logging
+            function updateStatus(message) {
+                document.getElementById("status").innerHTML =
+                    `<p><span class="highlight">Status:</span> ${message}</p>`;
+            }
+
+            // Initialize music
+            function initializeMusic() {
+                try {
+                    backgroundMusic = new Audio("assets/sound/06-julian.mp3");
+                    backgroundMusic.loop = true;
+                    backgroundMusic.volume = 0.3;
+
+                    backgroundMusic.addEventListener("loadstart", () => {
+                        updateStatus("Music loading started...");
+                    });
+
+                    backgroundMusic.addEventListener("canplay", () => {
+                        updateStatus(
+                            "Music loaded successfully! Ready to play.",
+                        );
+                    });
+
+                    backgroundMusic.addEventListener("canplaythrough", () => {
+                        musicReady = true;
+                        updateStatus("Music ready for playback");
+                    });
+
+                    backgroundMusic.addEventListener("error", (e) => {
+                        updateStatus(
+                            `Music load error: ${e.message || "Unknown error"}`,
+                        );
+                        console.error("Music load error:", e);
+                    });
+
+                    backgroundMusic.addEventListener("play", () => {
+                        updateStatus("Music is now playing!");
+                    });
+
+                    backgroundMusic.addEventListener("pause", () => {
+                        updateStatus("Music is paused/muted.");
+                    });
+                } catch (error) {
+                    updateStatus(`Error initializing music: ${error.message}`);
+                    console.error("Error initializing music:", error);
+                }
+            }
+
+            // Create music toggle button
+            function createMusicToggleButton() {
+                const musicToggle = document.createElement("div");
+                musicToggle.className = "music-toggle";
+                musicToggle.id = "musicToggle";
+
+                // Add click handler to enable user interaction
+                musicToggle.addEventListener("click", () => {
+                    userHasInteracted = true;
+                    toggleMusic();
+                });
+
+                // Muted icon
+                const mutedIcon = `
+                <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                    <path d="M16 6l6-6M22 6l-6-6" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            `;
+
+                // Set initial icon to unmuted (playing state)
+                const unmutedIcon = `
+                <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                    <circle cx="18" cy="6" r="1" fill="currentColor"/>
+                    <circle cx="20" cy="8" r="1" fill="currentColor"/>
+                    <circle cx="16" cy="8" r="1" fill="currentColor"/>
+                </svg>
+            `;
+
+                musicToggle.innerHTML = unmutedIcon;
+                musicToggle.classList.add("playing");
+                document.body.appendChild(musicToggle);
+
+                // Start music if ready and user has interacted
+                if (musicReady && userHasInteracted && !isMusicMuted) {
+                    backgroundMusic.play().catch((e) => {
+                        updateStatus(`Could not start music: ${e.message}`);
+                    });
+                }
+            }
+
+            // Toggle music function
+            function toggleMusic() {
+                const musicToggle = document.getElementById("musicToggle");
+                userHasInteracted = true; // Ensure interaction is recorded
+
+                if (isMusicMuted) {
+                    // Unmute and play
+                    if (backgroundMusic && musicReady) {
+                        backgroundMusic
+                            .play()
+                            .then(() => {
+                                updateStatus("Music playing successfully!");
+                            })
+                            .catch((e) => {
+                                updateStatus(
+                                    `Could not play music: ${e.message}`,
+                                );
+                                console.warn(
+                                    "Could not play background music:",
+                                    e,
+                                );
+                            });
+                    }
+                    isMusicMuted = false;
+
+                    // Update icon to unmuted
+                    musicToggle.innerHTML = `
+                    <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                        <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                        <circle cx="18" cy="6" r="1" fill="currentColor"/>
+                        <circle cx="20" cy="8" r="1" fill="currentColor"/>
+                        <circle cx="16" cy="8" r="1" fill="currentColor"/>
+                    </svg>
+                `;
+                    musicToggle.classList.add("playing");
+                } else {
+                    // Mute and pause
+                    if (backgroundMusic) {
+                        backgroundMusic.pause();
+                    }
+                    isMusicMuted = true;
+
+                    // Update icon to muted
+                    musicToggle.innerHTML = `
+                    <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                        <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                        <path d="M16 6l6-6M22 6l-6-6" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                `;
+                    musicToggle.classList.remove("playing");
+                }
+            }
+
+            // Test functions
+            function testMusicLoad() {
+                if (backgroundMusic) {
+                    updateStatus(
+                        `Music object exists. ReadyState: ${backgroundMusic.readyState}, Duration: ${backgroundMusic.duration || "Unknown"}`,
+                    );
+                } else {
+                    updateStatus("Music object not initialized!");
+                }
+            }
+
+            function testVolumeControl() {
+                if (backgroundMusic) {
+                    backgroundMusic.volume =
+                        backgroundMusic.volume === 0.3 ? 0.1 : 0.3;
+                    updateStatus(
+                        `Volume changed to: ${backgroundMusic.volume}`,
+                    );
+                } else {
+                    updateStatus("No music object to control volume!");
+                }
+            }
+
+            function testToggleFunction() {
+                toggleMusic();
+                updateStatus(`Toggle executed. Muted state: ${isMusicMuted}`);
+            }
+
+            function resetTest() {
+                if (backgroundMusic) {
+                    backgroundMusic.pause();
+                    backgroundMusic.currentTime = 0;
+                }
+                isMusicMuted = false;
+                const musicToggle = document.getElementById("musicToggle");
+                if (musicToggle) {
+                    musicToggle.classList.add("playing");
+                    musicToggle.innerHTML = `
+                    <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                        <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                        <circle cx="18" cy="6" r="1" fill="currentColor"/>
+                        <circle cx="20" cy="8" r="1" fill="currentColor"/>
+                        <circle cx="16" cy="8" r="1" fill="currentColor"/>
+                    </svg>
+                `;
+                }
+                updateStatus("Test reset to initial state (music playing).");
+            }
+
+            // Initialize on page load
+            window.addEventListener("load", () => {
+                initializeMusic();
+                createMusicToggleButton();
+                updateStatus(
+                    "Test page loaded. Click the music toggle to start music!",
+                );
+            });
+        </script>
+    </body>
+</html>
