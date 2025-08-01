@@ -88,6 +88,17 @@ function setupEventListeners() {
     ) {
       hideDialogue();
     }
+    
+    // Reset map position when clicking off a selected circle
+    if (
+      !e.target.closest(".point") &&
+      !dialoguePanel.contains(e.target) &&
+      !e.target.closest(".music-toggle") &&
+      currentStoryPoint !== null
+    ) {
+      resetMapPosition();
+      hideDialogue();
+    }
   });
 
   // Auto-close intro popup when any point is clicked
@@ -111,8 +122,7 @@ function setupEventListeners() {
       helpOverlay.classList.add("hidden");
       // Start music when user interacts (closes help overlay)
       handleUserInteractionForMusic();
-      // Show welcome message after help closes
-      setTimeout(() => showWelcomeMessage(), 500);
+      // Skip welcome message - go straight to dialogue
     }
   });
 
@@ -120,8 +130,7 @@ function setupEventListeners() {
     helpOverlay.classList.add("hidden");
     // Start music when user interacts (closes help overlay)
     handleUserInteractionForMusic();
-    // Show welcome message after help closes
-    setTimeout(() => showWelcomeMessage(), 500);
+    // Skip welcome message - go straight to dialogue
   });
   container.addEventListener("contextmenu", (e) => e.preventDefault());
 
@@ -139,6 +148,9 @@ function setupEventListeners() {
   let currentSpeedIndex = 1; // Start with "Relaxed"
 
   textSpeedToggle.addEventListener("click", () => {
+    // Play page turn sound effect
+    playPageTurnSound();
+    
     currentSpeedIndex = (currentSpeedIndex + 1) % textSpeeds.length;
     const speedName = textSpeeds[currentSpeedIndex];
     textSpeedToggle.textContent = speedName;
@@ -162,6 +174,10 @@ function setupEventListeners() {
 
   contrastToggle.addEventListener("click", (e) => {
     e.stopPropagation(); // Prevent event bubbling
+    
+    // Play light switch sound effect
+    playLightSwitchSound();
+    
     isHighContrast = !isHighContrast;
     document.body.classList.toggle("high-contrast", isHighContrast);
 
@@ -270,6 +286,9 @@ function showDialogue(point, pointElement) {
 
   // Center the selected point on screen
   centerPointOnScreen(pointElement);
+
+  // Position speech bubble line to connect to selected circle
+  positionSpeechBubbleLine(pointElement);
 
   // Show main text
   showMainText(point);
@@ -651,7 +670,22 @@ function renderParsedText(element, parts, point) {
 
 function hideDialogue() {
   dialoguePanel.classList.remove("visible");
-  pointElements.forEach((el) => el.classList.remove("selected"));
+  
+  // Animate de-selection of circles
+  pointElements.forEach((el) => {
+    if (el.classList.contains("selected")) {
+      el.classList.remove("selected");
+      el.classList.add("deselecting");
+      
+      // Remove deselecting class after animation completes
+      setTimeout(() => {
+        el.classList.remove("deselecting");
+      }, 300);
+    }
+  });
+  
+  // Reset current story point
+  currentStoryPoint = null;
 
   // Reset all typing and skip state variables
   isTyping = false;
@@ -663,6 +697,49 @@ function hideDialogue() {
     clearTimeout(currentTypingTimeout);
     currentTypingTimeout = null;
   }
+}
+
+function positionSpeechBubbleLine(pointElement) {
+  const pointRect = pointElement.getBoundingClientRect();
+  const dialogueRect = dialoguePanel.getBoundingClientRect();
+  
+  // Calculate the connection point on the circle (right edge center)
+  const circleX = pointRect.left + pointRect.width;
+  const circleY = pointRect.top + pointRect.height / 2;
+  
+  // Calculate the connection point on the dialogue panel (left edge center)
+  const panelX = dialogueRect.left;
+  const panelY = dialogueRect.top + dialogueRect.height / 2;
+  
+  // Calculate distance and angle
+  const deltaX = panelX - circleX;
+  const deltaY = panelY - circleY;
+  const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+  const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
+  
+  // Update the speech bubble line
+  const line = dialoguePanel;
+  line.style.setProperty('--line-length', `${distance}px`);
+  line.style.setProperty('--line-angle', `${angle}deg`);
+  line.style.setProperty('--line-top', `${circleY - dialogueRect.top}px`);
+}
+
+function resetMapPosition() {
+  // Reset map to default position with smooth animation
+  currentX = 0;
+  currentY = 0;
+  
+  // Add smooth transition for camera movement
+  backgroundContainer.style.transition = "transform 0.8s ease-out";
+  interactivePoints.style.transition = "transform 0.8s ease-out";
+  
+  updateBackgroundPosition();
+  
+  // Remove transition after animation completes
+  setTimeout(() => {
+    backgroundContainer.style.transition = "transform 0.3s ease-out";
+    interactivePoints.style.transition = "";
+  }, 800);
 }
 
 function setupDialogueSkipListener() {
@@ -733,6 +810,101 @@ function playSkipSound() {
   }
 }
 
+function playPageTurnSound() {
+  // Create a page turn sound using Web Audio API
+  if (
+    typeof AudioContext !== "undefined" ||
+    typeof webkitAudioContext !== "undefined"
+  ) {
+    const audioContext = new (window.AudioContext ||
+      window.webkitAudioContext)();
+
+    // Create a gentle page turn sound with multiple frequencies
+    const oscillator1 = audioContext.createOscillator();
+    const oscillator2 = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    const filterNode = audioContext.createBiquadFilter();
+
+    oscillator1.connect(filterNode);
+    oscillator2.connect(filterNode);
+    filterNode.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    // Set up filter for paper-like texture
+    filterNode.type = "highpass";
+    filterNode.frequency.setValueAtTime(200, audioContext.currentTime);
+
+    // Two frequencies for a rustling paper sound
+    oscillator1.frequency.setValueAtTime(150, audioContext.currentTime);
+    oscillator1.frequency.exponentialRampToValueAtTime(
+      80,
+      audioContext.currentTime + 0.2,
+    );
+    
+    oscillator2.frequency.setValueAtTime(300, audioContext.currentTime);
+    oscillator2.frequency.exponentialRampToValueAtTime(
+      200,
+      audioContext.currentTime + 0.15,
+    );
+
+    gainNode.gain.setValueAtTime(0.08, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(
+      0.01,
+      audioContext.currentTime + 0.25,
+    );
+
+    oscillator1.type = "sawtooth";
+    oscillator2.type = "triangle";
+    
+    oscillator1.start(audioContext.currentTime);
+    oscillator2.start(audioContext.currentTime);
+    oscillator1.stop(audioContext.currentTime + 0.25);
+    oscillator2.stop(audioContext.currentTime + 0.2);
+  }
+}
+
+function playLightSwitchSound() {
+  // Create a light switch sound using Web Audio API
+  if (
+    typeof AudioContext !== "undefined" ||
+    typeof webkitAudioContext !== "undefined"
+  ) {
+    const audioContext = new (window.AudioContext ||
+      window.webkitAudioContext)();
+
+    // Create a sharp click sound like a light switch
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    const filterNode = audioContext.createBiquadFilter();
+
+    oscillator.connect(filterNode);
+    filterNode.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    // Set up filter for sharp click
+    filterNode.type = "bandpass";
+    filterNode.frequency.setValueAtTime(2000, audioContext.currentTime);
+    filterNode.Q.setValueAtTime(10, audioContext.currentTime);
+
+    // Sharp, brief frequency for switch sound
+    oscillator.frequency.setValueAtTime(2500, audioContext.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(
+      1500,
+      audioContext.currentTime + 0.05,
+    );
+
+    gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(
+      0.01,
+      audioContext.currentTime + 0.08,
+    );
+
+    oscillator.type = "square";
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.08);
+  }
+}
+
 function showWelcomeMessage() {
   currentStoryPoint = null; // Ensure intro popup can be auto-closed
 
@@ -790,21 +962,25 @@ function createMusicToggleButton() {
   musicToggle.className = "music-toggle";
   musicToggle.id = "musicToggle";
 
-  // Simple quaver note icons for muted and unmuted states
+  // Simple pink quaver note pair icons for muted and unmuted states
   const mutedIcon = `
-    <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
-      <path d="M9 18V5l12-2v13"/>
-      <circle cx="6" cy="18" r="3"/>
-      <circle cx="18" cy="16" r="3"/>
-      <path d="M15 9l6-6M21 9l-6-6" stroke="currentColor" stroke-width="2"/>
+    <svg viewBox="0 0 24 24" fill="#f9c1ce">
+      <circle cx="5" cy="18" r="2"/>
+      <rect x="7" y="8" width="1.5" height="10"/>
+      <circle cx="15" cy="16" r="2"/>
+      <rect x="17" y="6" width="1.5" height="10"/>
+      <path d="M8.5 8 L17 6 L17 12 L8.5 14 Z" fill="#f9c1ce"/>
+      <path d="M10 12l8-8M18 12l-8-8" stroke="#f9c1ce" stroke-width="2" opacity="0.7"/>
     </svg>
   `;
 
   const unmutedIcon = `
-    <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
-      <path d="M9 18V5l12-2v13"/>
-      <circle cx="6" cy="18" r="3"/>
-      <circle cx="18" cy="16" r="3"/>
+    <svg viewBox="0 0 24 24" fill="#f9c1ce">
+      <circle cx="5" cy="18" r="2"/>
+      <rect x="7" y="8" width="1.5" height="10"/>
+      <circle cx="15" cy="16" r="2"/>
+      <rect x="17" y="6" width="1.5" height="10"/>
+      <path d="M8.5 8 L17 6 L17 12 L8.5 14 Z" fill="#f9c1ce"/>
     </svg>
   `;
 
@@ -832,13 +1008,7 @@ function toggleMusic() {
     isMusicMuted = false;
 
     // Update icon to unmuted
-    musicToggle.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
-        <path d="M9 18V5l12-2v13"/>
-        <circle cx="6" cy="18" r="3"/>
-        <circle cx="18" cy="16" r="3"/>
-      </svg>
-    `;
+    musicToggle.innerHTML = unmutedIcon;
     musicToggle.classList.add("playing");
   } else {
     // Mute and pause
@@ -848,14 +1018,7 @@ function toggleMusic() {
     isMusicMuted = true;
 
     // Update icon to muted
-    musicToggle.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
-        <path d="M9 18V5l12-2v13"/>
-        <circle cx="6" cy="18" r="3"/>
-        <circle cx="18" cy="16" r="3"/>
-        <path d="M15 9l6-6M21 9l-6-6" stroke="currentColor" stroke-width="2"/>
-      </svg>
-    `;
+    musicToggle.innerHTML = mutedIcon;
     musicToggle.classList.remove("playing");
   }
 }
@@ -902,5 +1065,15 @@ function handleUserInteractionForMusic() {
       });
   }
 }
+
+// Update speech bubble line position on window resize
+window.addEventListener('resize', () => {
+  if (dialoguePanel.classList.contains('visible') && currentStoryPoint) {
+    const selectedPoint = document.querySelector('.point.selected');
+    if (selectedPoint) {
+      setTimeout(() => positionSpeechBubbleLine(selectedPoint), 100);
+    }
+  }
+});
 
 window.addEventListener("load", initialize);

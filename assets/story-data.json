@@ -1,7 +1,7 @@
 [
   {
-    "x": 28,
-    "y": 39,
+    "x": 37,
+    "y": 55,
     "title": "Transport",
     "subtitle": "",
     "mainText": {
@@ -48,8 +48,8 @@
     ]
   },
   {
-    "x": 80,
-    "y": -3,
+    "x": 92,
+    "y": 15,
     "title": "Energy",
     "subtitle": "",
     "mainText": {
@@ -88,8 +88,8 @@
     ]
   },
   {
-    "x": 65,
-    "y": 69,
+    "x": 95,
+    "y": 75,
     "title": "Education",
     "subtitle": "",
     "mainText": {
@@ -128,8 +128,8 @@
     ]
   },
   {
-    "x": 45,
-    "y": 50,
+    "x": 9,
+    "y": 80,
     "title": "Food",
     "subtitle": "",
     "mainText": {
@@ -208,8 +208,8 @@
     ]
   },
   {
-    "x": 11,
-    "y": 35,
+    "x": 5,
+    "y": 45,
     "title": "Transport",
     "subtitle": "",
     "mainText": {
