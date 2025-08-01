@@ -94,6 +94,8 @@ function setupEventListeners() {
       !e.target.closest(".point") &&
       !dialoguePanel.contains(e.target) &&
       !e.target.closest(".music-toggle") &&
+      !e.target.classList.contains("interactive-text") &&
+      !e.target.closest(".interactive-text") &&
       currentStoryPoint !== null
     ) {
       resetMapPosition();
@@ -374,8 +376,14 @@ function showMainText(point) {
 
 function showSection(point, optionKey) {
   // Find the option with the matching key
+  console.log('showSection called with:', optionKey, 'point:', point.title);
+  console.log('Available options:', point.options.map(opt => opt.key));
   const option = point.options.find((opt) => opt.key === optionKey);
-  if (!option || !option.content) return;
+  if (!option || !option.content) {
+    console.log('Option not found or no content:', option);
+    return;
+  }
+  console.log('Found option:', option);
 
   // Add current state to history before navigating
   addToHistory(point, optionKey);
@@ -630,10 +638,17 @@ function typeWriterParts(
 
     // Add click handler based on target
     if (currentPart.target === "close") {
-      linkSpan.addEventListener("click", () => hideDialogue());
+      linkSpan.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        hideDialogue();
+      });
     } else {
       // Target is now a key, not a section number
-      linkSpan.addEventListener("click", () => {
+      linkSpan.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Interactive text clicked:', currentPart.target);
         showSection(point, currentPart.target);
       });
     }
@@ -655,10 +670,17 @@ function renderParsedText(element, parts, point) {
 
       // Add click handler based on target
       if (part.target === "close") {
-        linkSpan.addEventListener("click", () => hideDialogue());
+        linkSpan.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          hideDialogue();
+        });
       } else {
         // Target is now a key, not a section number
-        linkSpan.addEventListener("click", () => {
+        linkSpan.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('Interactive text clicked (fast mode):', part.target);
           showSection(point, part.target);
         });
       }
