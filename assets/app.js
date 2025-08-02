@@ -14,6 +14,20 @@ let skipToNextSentence = false;
 let hasUsedSkip = false;
 let navigationHistory = []; // Track navigation history for back button
 
+// View toggle variables
+let isMapView = true;
+let panoramaScene, panoramaCamera, panoramaRenderer, panoramaSphere;
+let isMouseDown = false;
+let mouseX = 0, mouseY = 0;
+let targetRotation = { x: 0, y: 0 };
+let currentRotation = { x: 0, y: 0 };
+let panoramaPoints = [];
+let raycaster, mouse;
+let dragStartTime = 0;
+let dragStartPosition = { x: 0, y: 0 };
+let hasDragged = false;
+let lon = 0, lat = 0; // Global panorama camera rotation
+
 // Music variables
 let backgroundMusic = null;
 let isMusicMuted = false; // Start unmuted but paused until user interaction
@@ -28,9 +42,12 @@ const dialoguePanel = document.getElementById("dialoguePanel");
 const locationTitle = document.getElementById("locationTitle");
 const locationSubtitle = document.getElementById("locationSubtitle");
 const dialogueTextContainer = document.getElementById("dialogueTextContainer");
-// Removed dialogueOptions reference
 const helpOverlay = document.getElementById("helpOverlay");
 const helpClose = document.getElementById("helpClose");
+const viewToggle = document.getElementById("viewToggle");
+const panoramaContainer = document.getElementById("panoramaContainer");
+const panoramaCanvas = document.getElementById("panoramaCanvas");
+const panoramaOverlay = document.getElementById("panoramaOverlay");
 
 // Initialize the application
 async function initialize() {
@@ -45,6 +62,8 @@ async function initialize() {
     initializeMusic();
     createMusicToggleButton();
     setupUserInteractionDetection();
+    initializePanorama();
+    setupViewToggle();
     // Initial positioning of points
     updatePointPositions();
     // Welcome message will show after help overlay is closed
@@ -719,6 +738,20 @@ function hideDialogue() {
     clearTimeout(currentTypingTimeout);
     currentTypingTimeout = null;
   }
+  
+  // Reset panorama points when dialogue is hidden
+  if (panoramaPoints) {
+    document.querySelectorAll('.panorama-point').forEach(p => {
+      if (p.classList.contains('selected')) {
+        p.classList.remove('selected');
+        p.classList.add('deselecting');
+        // Remove deselecting class after animation
+        setTimeout(() => {
+          p.classList.remove('deselecting');
+        }, 300);
+      }
+    });
+  }
 }
 
 function positionSpeechBubbleLine(pointElement) {
@@ -984,25 +1017,25 @@ function createMusicToggleButton() {
   musicToggle.className = "music-toggle";
   musicToggle.id = "musicToggle";
 
-  // Simple pink quaver note pair icons for muted and unmuted states
+  // Black quaver note pair icons for muted and unmuted states
   const mutedIcon = `
-    <svg viewBox="0 0 24 24" fill="#f9c1ce">
+    <svg viewBox="0 0 24 24" fill="#000000">
       <circle cx="5" cy="18" r="2"/>
       <rect x="7" y="8" width="1.5" height="10"/>
       <circle cx="15" cy="16" r="2"/>
       <rect x="17" y="6" width="1.5" height="10"/>
-      <path d="M8.5 8 L17 6 L17 12 L8.5 14 Z" fill="#f9c1ce"/>
-      <path d="M10 12l8-8M18 12l-8-8" stroke="#f9c1ce" stroke-width="2" opacity="0.7"/>
+      <path d="M8.5 8 L17 6 L17 12 L8.5 14 Z" fill="#000000"/>
+      <path d="M10 12l8-8M18 12l-8-8" stroke="#000000" stroke-width="2" opacity="0.7"/>
     </svg>
   `;
 
   const unmutedIcon = `
-    <svg viewBox="0 0 24 24" fill="#f9c1ce">
+    <svg viewBox="0 0 24 24" fill="#000000">
       <circle cx="5" cy="18" r="2"/>
       <rect x="7" y="8" width="1.5" height="10"/>
       <circle cx="15" cy="16" r="2"/>
       <rect x="17" y="6" width="1.5" height="10"/>
-      <path d="M8.5 8 L17 6 L17 12 L8.5 14 Z" fill="#f9c1ce"/>
+      <path d="M8.5 8 L17 6 L17 12 L8.5 14 Z" fill="#000000"/>
     </svg>
   `;
 
@@ -1097,5 +1130,387 @@ window.addEventListener('resize', () => {
     }
   }
 });
+
+// Initialize 360° panorama view
+function initializePanorama() {
+  try {
+    console.log('Initializing panorama...');
+    
+    // Create scene
+    panoramaScene = new THREE.Scene();
+    
+    // Create camera
+    panoramaCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    
+    // Create renderer
+    panoramaRenderer = new THREE.WebGLRenderer({ canvas: panoramaCanvas, antialias: true });
+    panoramaRenderer.setSize(window.innerWidth, window.innerHeight);
+    panoramaRenderer.setClearColor(0x000000);
+    
+    // Create sphere geometry for 360° photo - higher resolution for better quality
+    const geometry = new THREE.SphereGeometry(500, 60, 40);
+    
+    // Fix UV mapping for correct orientation - flip both U and V
+    const uvs = geometry.attributes.uv.array;
+    for (let i = 0; i < uvs.length; i += 2) {
+      uvs[i] = 1 - uvs[i]; // Flip U coordinate
+      uvs[i + 1] = 1 - uvs[i + 1]; // Flip V coordinate
+    }
+    geometry.attributes.uv.needsUpdate = true;
+    
+    // Load texture with error handling
+    const textureLoader = new THREE.TextureLoader();
+    const texture = textureLoader.load(
+      'assets/360.jpg',
+      function (texture) {
+        console.log('360.jpg loaded successfully');
+        // Texture loaded successfully - don't set format manually
+        texture.minFilter = THREE.LinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+        texture.flipY = false; // Don't flip - we'll handle it with UV mapping
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        
+        // Update the material with the loaded texture
+        if (panoramaSphere && panoramaSphere.material) {
+          panoramaSphere.material.map = texture;
+          panoramaSphere.material.color.setHex(0xffffff); // Remove blue tint
+          panoramaSphere.material.needsUpdate = true;
+          console.log('Texture applied to sphere material');
+        } else {
+          console.error('Panorama sphere or material not found');
+        }
+      },
+      function (progress) {
+        console.log('Loading progress:', progress);
+      },
+      function (error) {
+        console.error('Error loading 360.jpg:', error);
+      }
+    );
+    
+    // Create material without setting format initially - start with a color so we can see the sphere
+    const material = new THREE.MeshBasicMaterial({ 
+      color: 0x0066cc, // Blue color as temporary placeholder
+      side: THREE.BackSide // Inside-out sphere
+    });
+    
+    // Create sphere mesh
+    panoramaSphere = new THREE.Mesh(geometry, material);
+    panoramaScene.add(panoramaSphere);
+    
+    // Set initial camera position
+    panoramaCamera.position.set(0, 0, 0.1);
+    panoramaCamera.lookAt(0, 0, -1);
+    
+    // Handle window resize
+    window.addEventListener('resize', onPanoramaWindowResize, false);
+    
+    // Setup panorama controls
+    setupPanoramaControls();
+    
+    // Create 3D story points
+    createPanoramaStoryPoints();
+    
+    // Initialize raycaster for click detection
+    raycaster = new THREE.Raycaster();
+    mouse = new THREE.Vector2();
+    
+    console.log('Panorama initialized successfully');
+  } catch (error) {
+    console.error('Error initializing panorama:', error);
+  }
+}
+
+// Setup panorama mouse/touch controls
+function setupPanoramaControls() {
+  let onMouseDownMouseX = 0, onMouseDownMouseY = 0;
+  let onMouseDownLon = 0, onMouseDownLat = 0;
+  let phi = 0, theta = 0;
+  
+  function onMouseDown(event) {
+    event.preventDefault();
+    isMouseDown = true;
+    hasDragged = false;
+    dragStartTime = Date.now();
+    panoramaCanvas.style.cursor = 'grabbing';
+    
+    onMouseDownMouseX = event.clientX;
+    onMouseDownMouseY = event.clientY;
+    dragStartPosition.x = event.clientX;
+    dragStartPosition.y = event.clientY;
+    onMouseDownLon = lon;
+    onMouseDownLat = lat;
+  }
+  
+  function onMouseMove(event) {
+    if (isMouseDown) {
+      // Check if this constitutes a drag
+      const dragDistance = Math.sqrt(
+        Math.pow(event.clientX - dragStartPosition.x, 2) + 
+        Math.pow(event.clientY - dragStartPosition.y, 2)
+      );
+      
+      if (dragDistance > 5) { // Threshold for distinguishing click from drag
+        hasDragged = true;
+      }
+      
+      // Handle dragging
+      lon = (onMouseDownMouseX - event.clientX) * 0.1 + onMouseDownLon;
+      lat = (event.clientY - onMouseDownMouseY) * 0.1 + onMouseDownLat;
+      
+      // Limit vertical rotation
+      lat = Math.max(-85, Math.min(85, lat));
+    }
+  }
+  
+  function onMouseUp() {
+    isMouseDown = false;
+    panoramaCanvas.style.cursor = 'grab';
+    
+    // Reset drag flag after a short delay to allow click event to process
+    setTimeout(() => {
+      hasDragged = false;
+    }, 10);
+  }
+  
+  function onTouchStart(event) {
+    if (event.touches.length === 1) {
+      event.preventDefault();
+      isMouseDown = true;
+      
+      onMouseDownMouseX = event.touches[0].pageX;
+      onMouseDownMouseY = event.touches[0].pageY;
+      onMouseDownLon = lon;
+      onMouseDownLat = lat;
+    }
+  }
+  
+  function onTouchMove(event) {
+    if (event.touches.length === 1 && isMouseDown) {
+      event.preventDefault();
+      
+      lon = (onMouseDownMouseX - event.touches[0].pageX) * 0.1 + onMouseDownLon;
+      lat = (event.touches[0].pageY - onMouseDownMouseY) * 0.1 + onMouseDownLat;
+      
+      // Limit vertical rotation
+      lat = Math.max(-85, Math.min(85, lat));
+    }
+  }
+  
+  function onTouchEnd() {
+    isMouseDown = false;
+  }
+  
+  // Animation loop for smooth camera movement
+  function animate() {
+    requestAnimationFrame(animate);
+    
+    if (!isMapView && panoramaRenderer && panoramaScene && panoramaCamera) {
+      // Convert spherical coordinates to camera rotation
+      phi = THREE.MathUtils.degToRad(90 - lat);
+      theta = THREE.MathUtils.degToRad(lon);
+      
+      const target = new THREE.Vector3(
+        500 * Math.sin(phi) * Math.cos(theta),
+        500 * Math.cos(phi),
+        500 * Math.sin(phi) * Math.sin(theta)
+      );
+      
+      panoramaCamera.lookAt(target);
+      panoramaRenderer.render(panoramaScene, panoramaCamera);
+      
+      // Debug info every 60 frames (roughly 1 second at 60fps)
+      if (Math.floor(Date.now() / 1000) % 5 === 0 && Math.floor(Date.now() / 16) % 60 === 0) {
+        console.log('Rendering panorama - Camera position:', panoramaCamera.position, 'Target:', target);
+      }
+    }
+  }
+  
+  // Add event listeners to panorama canvas (removed click handler - now using HTML overlay)
+  panoramaCanvas.addEventListener('mousedown', onMouseDown, false);
+  panoramaCanvas.addEventListener('mousemove', onMouseMove, false);
+  panoramaCanvas.addEventListener('mouseup', onMouseUp, false);
+  panoramaCanvas.addEventListener('touchstart', onTouchStart, false);
+  panoramaCanvas.addEventListener('touchmove', onTouchMove, false);
+  panoramaCanvas.addEventListener('touchend', onTouchEnd, false);
+  
+  // Start animation loop immediately
+  animate();
+}
+
+// Handle window resize for panorama
+function onPanoramaWindowResize() {
+  if (panoramaCamera && panoramaRenderer) {
+    panoramaCamera.aspect = window.innerWidth / window.innerHeight;
+    panoramaCamera.updateProjectionMatrix();
+    panoramaRenderer.setSize(window.innerWidth, window.innerHeight);
+  }
+}
+
+// Setup view toggle functionality
+function setupViewToggle() {
+  viewToggle.addEventListener('click', toggleView);
+}
+
+// Toggle between map view and 360° photo view
+function toggleView() {
+  console.log('Toggling view, current isMapView:', isMapView);
+  isMapView = !isMapView;
+  
+  if (isMapView) {
+    // Switch to map view
+    panoramaContainer.style.display = 'none';
+    backgroundContainer.style.display = 'block';
+    interactivePoints.style.display = 'block';
+    
+    // Update icon to show 360° view option
+    viewToggle.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 13L21 19V17H23V9H21ZM1 9V17H3V19L9 13L3 7V9H1ZM8 12C8 15.87 11.13 19 15 19C15.28 19 15.56 18.98 15.83 18.95C14.94 18.63 14.12 18.16 13.41 17.55C12.32 16.5 11.64 15.07 11.64 13.5C11.64 11.93 12.32 10.5 13.41 9.45C14.12 8.84 14.94 8.37 15.83 8.05C15.56 8.02 15.28 8 15 8C11.13 8 8 11.13 8 15C8 15.34 8.04 15.67 8.09 16H8C8 14 8 13 8 12Z"/>
+      </svg>
+    `;
+    console.log('Switched to map view');
+  } else {
+    // Switch to 360° photo view
+    panoramaContainer.style.display = 'block';
+    backgroundContainer.style.display = 'none';
+    interactivePoints.style.display = 'none';
+    
+    // Hide dialogue if open
+    if (dialoguePanel.classList.contains('visible')) {
+      hideDialogue();
+    }
+    
+    // Update icon to show map view option
+    viewToggle.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M20.5 3L20.34 3.03L15 5.1L9 3L3.36 4.9C3.15 4.97 3 5.15 3 5.38V20.5C3 20.78 3.22 21 3.5 21L3.66 20.97L9 18.9L15 21L20.64 19.1C20.85 19.03 21 18.85 21 18.62V3.5C21 3.22 20.78 3 20.5 3ZM15 19L9 17V5L15 7V19Z"/>
+      </svg>
+    `;
+    
+    // Resize renderer in case window was resized while in map view
+    onPanoramaWindowResize();
+    
+    // Start rendering the panorama
+    if (panoramaRenderer && panoramaScene && panoramaCamera) {
+      panoramaRenderer.render(panoramaScene, panoramaCamera);
+      console.log('Rendered initial frame');
+    } else {
+      console.warn('Panorama components not initialized:', {
+        renderer: !!panoramaRenderer,
+        scene: !!panoramaScene,
+        camera: !!panoramaCamera
+      });
+    }
+    
+    console.log('Switched to panorama view');
+  }
+}
+
+// Create HTML overlay points for panorama view
+function createPanoramaStoryPoints() {
+  // Clear existing panorama points
+  panoramaOverlay.innerHTML = '';
+  panoramaPoints = [];
+  
+  // Create HTML overlay points for each story point
+  storyPoints.forEach((point, index) => {
+    // Create HTML element for the point
+    const pointElement = document.createElement('div');
+    pointElement.className = 'panorama-point';
+    pointElement.dataset.index = index;
+    
+    // Position the point based on story data
+    // Map story point coordinates to screen position
+    pointElement.style.left = `${point.x}%`;
+    pointElement.style.top = `${point.y}%`;
+    
+    // Add click handler
+    pointElement.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('Panorama point clicked:', point.title);
+      
+      // Remove selected and deselecting classes from all points
+      document.querySelectorAll('.panorama-point').forEach(p => {
+        if (p.classList.contains('selected')) {
+          p.classList.remove('selected');
+          p.classList.add('deselecting');
+          // Remove deselecting class after animation
+          setTimeout(() => {
+            p.classList.remove('deselecting');
+          }, 300);
+        }
+      });
+      
+      // Add selected class to clicked point
+      pointElement.classList.add('selected');
+      
+      // Center the panorama view on the selected point
+      centerPanoramaOnPoint(pointElement);
+      
+      // Show dialogue
+      const originalPointElement = pointElements[index];
+      showDialogue(point, originalPointElement);
+    });
+    
+    // Add to overlay
+    panoramaOverlay.appendChild(pointElement);
+    
+    // Store in array
+    panoramaPoints.push({
+      element: pointElement,
+      storyPoint: point,
+      index: index
+    });
+  });
+  
+  console.log(`Created ${panoramaPoints.length} HTML panorama story points`);
+}
+
+// Center panorama camera on selected point
+function centerPanoramaOnPoint(pointElement) {
+  if (!panoramaCamera || isMapView) return;
+  
+  // Get the point's position as percentages
+  const leftPercent = parseFloat(pointElement.style.left);
+  const topPercent = parseFloat(pointElement.style.top);
+  
+  // Convert percentage position to longitude/latitude
+  // Map x (0-100%) to longitude (-180 to 180 degrees)
+  // Map y (0-100%) to latitude (-90 to 90 degrees)
+  const targetLongitude = (leftPercent - 50) * 3.6; // -180 to 180
+  const targetLatitude = (50 - topPercent) * 1.8; // 90 to -90 (inverted Y)
+  
+  // Smooth transition to new camera position
+  const startLon = lon;
+  const startLat = lat;
+  const targetLon = targetLongitude;
+  const targetLat = Math.max(-85, Math.min(85, targetLatitude)); // Clamp latitude
+  
+  const duration = 800; // Animation duration in ms
+  const startTime = Date.now();
+  
+  function animateCamera() {
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    
+    // Easing function (ease-out)
+    const easeOut = 1 - Math.pow(1 - progress, 3);
+    
+    // Interpolate between start and target positions
+    lon = startLon + (targetLon - startLon) * easeOut;
+    lat = startLat + (targetLat - startLat) * easeOut;
+    
+    if (progress < 1) {
+      requestAnimationFrame(animateCamera);
+    }
+  }
+  
+  animateCamera();
+}
+
+// Note: Panorama click handling now done via HTML overlay elements directly
 
 window.addEventListener("load", initialize);

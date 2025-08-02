@@ -24,6 +24,12 @@
                 <div class="background-image"></div>
             </div>
 
+            <!-- 360 Photo View -->
+            <div class="panorama-container" id="panoramaContainer" style="display: none;">
+                <canvas id="panoramaCanvas"></canvas>
+                <div class="panorama-overlay" id="panoramaOverlay"></div>
+            </div>
+
             <div class="interactive-points" id="interactivePoints"></div>
 
             <!-- Spiral Logo in top left -->
@@ -160,6 +166,14 @@
             </div>
         </div>
 
+        <!-- View Toggle Button -->
+        <div class="view-toggle" id="viewToggle">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 13L21 19V17H23V9H21ZM1 9V17H3V19L9 13L3 7V9H1ZM8 12C8 15.87 11.13 19 15 19C15.28 19 15.56 18.98 15.83 18.95C14.94 18.63 14.12 18.16 13.41 17.55C12.32 16.5 11.64 15.07 11.64 13.5C11.64 11.93 12.32 10.5 13.41 9.45C14.12 8.84 14.94 8.37 15.83 8.05C15.56 8.02 15.28 8 15 8C11.13 8 8 11.13 8 15C8 15.34 8.04 15.67 8.09 16H8C8 14 8 13 8 12Z"/>
+            </svg>
+        </div>
+
+        <script src="assets/three.global.js"></script>
         <script src="assets/app.js"></script>
     </body>
 </html>
