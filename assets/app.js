@@ -16,7 +16,7 @@ let navigationHistory = []; // Track navigation history for back button
 
 // View toggle variables
 let isMapView = true;
-let panoramaScene, panoramaCamera, panoramaRenderer, panoramaSphere;
+let panoramaScene, panoramaCamera, panoramaRenderer, panoramaSphere, panoramaSun, panoramaAmbientLight;
 let isMouseDown = false;
 let mouseX = 0, mouseY = 0;
 let targetRotation = { x: 0, y: 0 };
@@ -28,11 +28,9 @@ let dragStartPosition = { x: 0, y: 0 };
 let hasDragged = false;
 let lon = 0, lat = 0; // Global panorama camera rotation
 
-// Music variables
+// Background music
 let backgroundMusic = null;
-let isMusicMuted = false; // Start unmuted but paused until user interaction
-let musicReady = false;
-let userHasInteracted = false;
+
 
 // DOM elements
 const container = document.getElementById("container");
@@ -44,7 +42,6 @@ const locationSubtitle = document.getElementById("locationSubtitle");
 const dialogueTextContainer = document.getElementById("dialogueTextContainer");
 const helpOverlay = document.getElementById("helpOverlay");
 const helpClose = document.getElementById("helpClose");
-const viewToggle = document.getElementById("viewToggle");
 const panoramaContainer = document.getElementById("panoramaContainer");
 const panoramaCanvas = document.getElementById("panoramaCanvas");
 const panoramaOverlay = document.getElementById("panoramaOverlay");
@@ -60,10 +57,7 @@ async function initialize() {
     setupEventListeners();
     setupDialogueSkipListener();
     initializeMusic();
-    createMusicToggleButton();
-    setupUserInteractionDetection();
     initializePanorama();
-    setupViewToggle();
     // Initial positioning of points
     updatePointPositions();
     // Welcome message will show after help overlay is closed
@@ -80,7 +74,7 @@ function createInteractivePoints() {
     pointElement.style.top = `${point.y}%`;
     pointElement.dataset.index = index;
     pointElement.addEventListener("click", () =>
-      showDialogue(point, pointElement),
+      handleCircleClick(point, pointElement, index),
     );
     interactivePoints.appendChild(pointElement);
     pointElements.push(pointElement);
@@ -92,8 +86,8 @@ function setupEventListeners() {
   container.addEventListener("mousemove", drag);
   container.addEventListener("mouseup", endDrag);
   container.addEventListener("mouseleave", endDrag);
-  container.addEventListener("touchstart", startDragTouch);
-  container.addEventListener("touchmove", dragTouch);
+  container.addEventListener("touchstart", startDragTouch, { passive: false });
+  container.addEventListener("touchmove", dragTouch, { passive: false });
   container.addEventListener("touchend", endDrag);
 
   // Auto-close intro popup when clicking on map or interacting with points
@@ -112,7 +106,6 @@ function setupEventListeners() {
     if (
       !e.target.closest(".point") &&
       !dialoguePanel.contains(e.target) &&
-      !e.target.closest(".music-toggle") &&
       !e.target.classList.contains("interactive-text") &&
       !e.target.closest(".interactive-text") &&
       currentStoryPoint !== null
@@ -142,7 +135,7 @@ function setupEventListeners() {
     ) {
       helpOverlay.classList.add("hidden");
       // Start music when user interacts (closes help overlay)
-      handleUserInteractionForMusic();
+      startMusicAfterUserInteraction();
       // Skip welcome message - go straight to dialogue
     }
   });
@@ -150,7 +143,7 @@ function setupEventListeners() {
   helpClose.addEventListener("click", () => {
     helpOverlay.classList.add("hidden");
     // Start music when user interacts (closes help overlay)
-    handleUserInteractionForMusic();
+    startMusicAfterUserInteraction();
     // Skip welcome message - go straight to dialogue
   });
   container.addEventListener("contextmenu", (e) => e.preventDefault());
@@ -202,6 +195,11 @@ function setupEventListeners() {
     isHighContrast = !isHighContrast;
     document.body.classList.toggle("high-contrast", isHighContrast);
 
+    // Animate sun in 360° view if currently in panorama mode
+    if (!isMapView) {
+      animateSunPosition(isHighContrast);
+    }
+
     // Toggle between sun and moon icons
     if (isHighContrast) {
       contrastToggle.innerHTML = `
@@ -213,7 +211,7 @@ function setupEventListeners() {
       contrastToggle.innerHTML = `
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="5"/>
-                    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                    <path d="M12 0.5v3M12 20.5v3M3.5 3.5l2.12 2.12M17.88 17.88l2.12 2.12M0.5 12h3M20.5 12h3M3.5 20.5l2.12-2.12M17.88 6.12l2.12-2.12"/>
                 </svg>
             `;
     }
@@ -257,21 +255,54 @@ function dragTouch(e) {
   if (!isDragging) return;
   e.preventDefault();
   const touch = e.touches[0];
-  currentX = touch.clientX - startX;
-  currentY = touch.clientY - startY;
+  
+  // Calculate new position with slight momentum
+  const newX = touch.clientX - startX;
+  const newY = touch.clientY - startY;
+  
+  // Apply some smoothing for more fluid feel
+  currentX = newX;
+  currentY = newY;
+  
   updateBackgroundPosition();
 }
 
 function endDrag() {
   isDragging = false;
   container.classList.remove("dragging");
+  
+  // Re-enable smooth transitions after drag ends for a polished feel
+  backgroundContainer.style.transition = 'transform 0.15s ease-out';
+  interactivePoints.style.transition = 'transform 0.15s ease-out';
 }
 
 function updateBackgroundPosition() {
-  const maxX = window.innerWidth * 0.1;
-  const maxY = window.innerHeight * 0.1;
+  const isMobile = window.innerWidth <= 480;
+  
+  let maxX, maxY;
+  
+  if (isMobile) {
+    // Mobile: Allow full image width dragging
+    // Container is 350% of viewport width, centered at -125%
+    // So we can drag from -125% to +125% = 250% total range
+    // Image is 2142px, viewport might be ~375px, so we need generous limits
+    maxX = window.innerWidth * 1.25; // Allow dragging 125% of viewport width in each direction
+    maxY = window.innerHeight * 0.15; // Keep Y limits reasonable
+  } else {
+    // Desktop: Keep original limits
+    maxX = window.innerWidth * 0.1;
+    maxY = window.innerHeight * 0.1;
+  }
+  
   currentX = Math.max(-maxX, Math.min(maxX, currentX));
   currentY = Math.max(-maxY, Math.min(maxY, currentY));
+  
+  // Remove any transitions during active dragging for instant response
+  if (isDragging) {
+    backgroundContainer.style.transition = 'none';
+    interactivePoints.style.transition = 'none';
+  }
+  
   backgroundContainer.style.transform = `translate(${currentX}px, ${currentY}px)`;
 
   // Move points with the background using the same transform
@@ -280,6 +311,119 @@ function updateBackgroundPosition() {
 
 function updatePointPositions() {
   // Points now move with background via CSS transform, no individual positioning needed
+}
+
+// Handle circle click - zoom and switch to 360° view only for Energy, otherwise show dialogue normally
+function handleCircleClick(point, pointElement, index) {
+  console.log('Circle clicked:', point.title);
+  
+  // Check if this point has a 360° image (only Energy for now)
+  const has360Image = point.title === "Energy";
+  
+  if (!has360Image) {
+    // No 360° image - just show dialogue in street view
+    console.log('No 360° image for', point.title, '- showing dialogue in street view');
+    showDialogue(point, pointElement);
+    return;
+  }
+  
+  console.log('Has 360° image - starting zoom effect');
+  
+  // Get the circle's position for zoom target
+  const rect = pointElement.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  
+  // Calculate the required translation to center the circle in viewport
+  const viewportCenterX = window.innerWidth / 2;
+  const viewportCenterY = window.innerHeight / 2;
+  const targetX = viewportCenterX - centerX;
+  const targetY = viewportCenterY - centerY;
+  
+  // Add zoom class to circle for visual feedback
+  pointElement.classList.add('zooming');
+  
+  // Apply zoom transform to background and points
+  backgroundContainer.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+  interactivePoints.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+  
+  const zoomScale = 1.5; // Zoom level (reduced from 2 to 1.5 for gentler effect)
+  const newTransform = `translate(${currentX + targetX}px, ${currentY + targetY}px) scale(${zoomScale})`;
+  
+  backgroundContainer.style.transform = newTransform;
+  interactivePoints.style.transform = newTransform;
+  
+  // Start preparing 360° view early while zoom is happening
+  setTimeout(() => {
+    // Prepare panorama without showing it yet
+    onPanoramaWindowResize();
+    if (panoramaRenderer && panoramaScene && panoramaCamera) {
+      panoramaRenderer.render(panoramaScene, panoramaCamera);
+    }
+    loadPanoramaImage(point);
+    
+    // Start showing panorama container (but transparent) to eliminate black screen
+    panoramaContainer.style.display = 'block';
+    panoramaContainer.style.opacity = '0';
+    
+    // Set up gradual cross-fade transitions
+    panoramaContainer.style.transition = 'opacity 1.2s ease-in-out';
+    backgroundContainer.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 1.2s ease-in-out';
+    interactivePoints.style.transition = 'opacity 1.2s ease-in-out';
+  }, 200); // Start prep earlier for slower zoom
+  
+  // Begin gradual cross-fade early in the zoom
+  setTimeout(() => {
+    // Start very gradual fade: panorama begins to appear, map begins to disappear
+    panoramaContainer.style.opacity = '0.3';
+    backgroundContainer.style.opacity = '0.7';
+    interactivePoints.style.opacity = '0.7';
+  }, 300); // Start fade early
+  
+  // Continue the cross-fade
+  setTimeout(() => {
+    // Mid-fade: both scenes equally visible
+    panoramaContainer.style.opacity = '0.6';
+    backgroundContainer.style.opacity = '0.4';
+    interactivePoints.style.opacity = '0.4';
+  }, 500);
+  
+  // Near completion of zoom
+  setTimeout(() => {
+    // Almost complete fade: panorama dominant, map nearly gone
+    panoramaContainer.style.opacity = '0.9';
+    backgroundContainer.style.opacity = '0.1';
+    interactivePoints.style.opacity = '0.1';
+  }, 700);
+  
+  // Complete the cross-fade after zoom finishes
+  setTimeout(() => {
+    // Final fade: panorama fully visible, map completely gone
+    panoramaContainer.style.opacity = '1';
+    backgroundContainer.style.opacity = '0';
+    interactivePoints.style.opacity = '0';
+  }, 800); // Complete at end of zoom
+  
+  // After cross-fade completes, finalize the view switch
+  setTimeout(() => {
+    // Remove zoom class
+    pointElement.classList.remove('zooming');
+    
+    // Complete the switch (map is already invisible)
+    isMapView = false;
+    backgroundContainer.style.display = 'none';
+    interactivePoints.style.display = 'none';
+    
+    // Reset transforms for next time
+    backgroundContainer.style.transform = `translate(${currentX}px, ${currentY}px)`;
+    interactivePoints.style.transform = `translate(${currentX}px, ${currentY}px)`;
+    
+    // Show dialogue after cross-fade completes
+    setTimeout(() => {
+      showDialogue(point, pointElement);
+    }, 100);
+    
+  }, 1200); // Wait for cross-fade to complete (800ms zoom + 400ms extra fade)
 }
 
 function showDialogue(point, pointElement) {
@@ -316,39 +460,54 @@ function showDialogue(point, pointElement) {
 }
 
 function centerPointOnScreen(pointElement) {
-  const rect = pointElement.getBoundingClientRect();
-  const centerX = window.innerWidth / 2;
-  const centerY = window.innerHeight / 2;
-
-  // Calculate the exact center of the circle
-  const circleCenterX = rect.left + rect.width / 2;
-  const circleCenterY = rect.top + rect.height / 2;
-
-  // Calculate how much we need to move to center it
-  const offsetX = centerX - circleCenterX;
-  const offsetY = centerY - circleCenterY;
-
-  // Apply the offset to our current position
+  // Different approach - calculate target position directly
+  const isMobile = window.innerWidth <= 480;
+  
+  // Get point's current position relative to its container
+  const pointRect = pointElement.getBoundingClientRect();
+  const containerRect = interactivePoints.getBoundingClientRect();
+  
+  // Calculate where we want the point to be on screen
+  const targetScreenX = window.innerWidth / 2;
+  const targetScreenY = isMobile ? window.innerHeight / 3 : window.innerHeight / 2;
+  
+  // Current point center relative to its container
+  const pointCenterX = pointRect.left + pointRect.width / 2 - containerRect.left;
+  const pointCenterY = pointRect.top + pointRect.height / 2 - containerRect.top;
+  
+  // Calculate the container's current screen position
+  const containerCurrentX = containerRect.left;
+  const containerCurrentY = containerRect.top;
+  
+  // Calculate where the container needs to be to put the point at target position
+  const newContainerX = targetScreenX - pointCenterX;
+  const newContainerY = targetScreenY - pointCenterY;
+  
+  // Calculate the offset needed
+  const offsetX = newContainerX - containerCurrentX;
+  const offsetY = newContainerY - containerCurrentY;
+  
+  // Apply the offset to current position
   currentX += offsetX;
   currentY += offsetY;
 
-  // Clamp to prevent going too far out of bounds
-  const maxX = window.innerWidth * 0.1;
-  const maxY = window.innerHeight * 0.1;
+  // More generous bounds for mobile
+  const maxX = isMobile ? window.innerWidth * 0.4 : window.innerWidth * 0.15;
+  const maxY = isMobile ? window.innerHeight * 0.4 : window.innerHeight * 0.15;
   currentX = Math.max(-maxX, Math.min(maxX, currentX));
   currentY = Math.max(-maxY, Math.min(maxY, currentY));
 
   // Add smooth transition for camera movement
-  backgroundContainer.style.transition = "transform 0.8s ease-out";
-  interactivePoints.style.transition = "transform 0.8s ease-out";
+  backgroundContainer.style.transition = "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+  interactivePoints.style.transition = "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
 
   updateBackgroundPosition();
 
   // Remove transition after animation completes
   setTimeout(() => {
-    backgroundContainer.style.transition = "transform 0.3s ease-out";
-    interactivePoints.style.transition = "";
-  }, 800);
+    backgroundContainer.style.transition = "transform 0.15s ease-out";
+    interactivePoints.style.transition = "transform 0.15s ease-out";
+  }, 600);
 }
 
 function showMainText(point) {
@@ -785,16 +944,16 @@ function resetMapPosition() {
   currentY = 0;
   
   // Add smooth transition for camera movement
-  backgroundContainer.style.transition = "transform 0.8s ease-out";
-  interactivePoints.style.transition = "transform 0.8s ease-out";
+  backgroundContainer.style.transition = "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+  interactivePoints.style.transition = "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
   
   updateBackgroundPosition();
   
   // Remove transition after animation completes
   setTimeout(() => {
-    backgroundContainer.style.transition = "transform 0.3s ease-out";
-    interactivePoints.style.transition = "";
-  }, 800);
+    backgroundContainer.style.transition = "transform 0.15s ease-out";
+    interactivePoints.style.transition = "transform 0.15s ease-out";
+  }, 600);
 }
 
 function setupDialogueSkipListener() {
@@ -984,142 +1143,6 @@ function showWelcomeMessage() {
   setTimeout(() => dialoguePanel.classList.add("visible"), 300);
 }
 
-// Start music after user interaction (clicking "Got it")
-function startMusicAfterUserInteraction() {
-  if (backgroundMusic && !isMusicMuted) {
-    backgroundMusic.play().catch((e) => {
-      console.warn("Could not start background music:", e);
-      // If autoplay still fails, we'll let the user manually start it with the toggle
-    });
-  }
-}
-
-// Music initialization and control functions
-function initializeMusic() {
-  backgroundMusic = new Audio("assets/sound/06-julian.mp3");
-  backgroundMusic.loop = true;
-  backgroundMusic.volume = 0.3; // Set to a comfortable level
-
-  // Handle audio loading errors gracefully
-  backgroundMusic.addEventListener("error", function (e) {
-    console.warn("Background music failed to load:", e);
-  });
-
-  // Mark music as ready when loaded - don't autoplay, wait for user interaction
-  backgroundMusic.addEventListener("canplaythrough", function () {
-    musicReady = true;
-    console.log("Background music loaded and ready to play");
-  });
-}
-
-function createMusicToggleButton() {
-  const musicToggle = document.createElement("div");
-  musicToggle.className = "music-toggle";
-  musicToggle.id = "musicToggle";
-
-  // Black quaver note pair icons for muted and unmuted states
-  const mutedIcon = `
-    <svg viewBox="0 0 24 24" fill="#000000">
-      <circle cx="5" cy="18" r="2"/>
-      <rect x="7" y="8" width="1.5" height="10"/>
-      <circle cx="15" cy="16" r="2"/>
-      <rect x="17" y="6" width="1.5" height="10"/>
-      <path d="M8.5 8 L17 6 L17 12 L8.5 14 Z" fill="#000000"/>
-      <path d="M10 12l8-8M18 12l-8-8" stroke="#000000" stroke-width="2" opacity="0.7"/>
-    </svg>
-  `;
-
-  const unmutedIcon = `
-    <svg viewBox="0 0 24 24" fill="#000000">
-      <circle cx="5" cy="18" r="2"/>
-      <rect x="7" y="8" width="1.5" height="10"/>
-      <circle cx="15" cy="16" r="2"/>
-      <rect x="17" y="6" width="1.5" height="10"/>
-      <path d="M8.5 8 L17 6 L17 12 L8.5 14 Z" fill="#000000"/>
-    </svg>
-  `;
-
-  // Set initial icon (unmuted since we start playing)
-  musicToggle.innerHTML = unmutedIcon;
-  musicToggle.classList.add("playing");
-
-  // Add click event listener
-  musicToggle.addEventListener("click", toggleMusic);
-
-  // Add to container
-  container.appendChild(musicToggle);
-}
-
-function toggleMusic() {
-  const musicToggle = document.getElementById("musicToggle");
-
-  if (isMusicMuted) {
-    // Unmute and play
-    if (backgroundMusic) {
-      backgroundMusic.play().catch((e) => {
-        console.warn("Could not play background music:", e);
-      });
-    }
-    isMusicMuted = false;
-
-    // Update icon to unmuted
-    musicToggle.innerHTML = unmutedIcon;
-    musicToggle.classList.add("playing");
-  } else {
-    // Mute and pause
-    if (backgroundMusic) {
-      backgroundMusic.pause();
-    }
-    isMusicMuted = true;
-
-    // Update icon to muted
-    musicToggle.innerHTML = mutedIcon;
-    musicToggle.classList.remove("playing");
-  }
-}
-
-// Setup user interaction detection for autoplay
-function setupUserInteractionDetection() {
-  function handleFirstInteraction() {
-    userHasInteracted = true;
-
-    // Try to start music if it's ready and not muted
-    if (musicReady && !isMusicMuted && backgroundMusic) {
-      backgroundMusic.play().catch((e) => {
-        console.log("Music will start when toggle is clicked");
-      });
-    }
-
-    // Remove listeners after first interaction
-    document.removeEventListener("click", handleFirstInteraction);
-    document.removeEventListener("keydown", handleFirstInteraction);
-    document.removeEventListener("touchstart", handleFirstInteraction);
-  }
-
-  // Listen for any user interaction
-  document.addEventListener("click", handleFirstInteraction);
-  document.addEventListener("keydown", handleFirstInteraction);
-  document.addEventListener("touchstart", handleFirstInteraction);
-}
-
-// Function to handle user interaction and start music
-function handleUserInteractionForMusic() {
-  userHasInteracted = true;
-
-  if (backgroundMusic && !isMusicMuted && musicReady) {
-    backgroundMusic
-      .play()
-      .then(() => {
-        console.log("Background music started successfully!");
-      })
-      .catch((e) => {
-        console.warn(
-          "Could not start background music after user interaction:",
-          e,
-        );
-      });
-  }
-}
 
 // Update speech bubble line position on window resize
 window.addEventListener('resize', () => {
@@ -1189,8 +1212,8 @@ function initializePanorama() {
       }
     );
     
-    // Create material without setting format initially - start with a color so we can see the sphere
-    const material = new THREE.MeshBasicMaterial({ 
+    // Create material that responds to lighting
+    const material = new THREE.MeshLambertMaterial({ 
       color: 0x0066cc, // Blue color as temporary placeholder
       side: THREE.BackSide // Inside-out sphere
     });
@@ -1198,6 +1221,28 @@ function initializePanorama() {
     // Create sphere mesh
     panoramaSphere = new THREE.Mesh(geometry, material);
     panoramaScene.add(panoramaSphere);
+    
+    // Create sun for sunset effect
+    const sunGeometry = new THREE.SphereGeometry(20, 32, 32);
+    const sunMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0xffd700, // Golden yellow
+      emissive: 0xffa500, // Orange glow
+      transparent: true,
+      opacity: 0.8
+    });
+    panoramaSun = new THREE.Mesh(sunGeometry, sunMaterial);
+    // Position sun based on current contrast mode
+    const isCurrentlyDarkMode = document.body.classList.contains('high-contrast');
+    const initialSunY = isCurrentlyDarkMode ? -100 : 150;
+    const initialSunOpacity = isCurrentlyDarkMode ? 0.3 : 0.8;
+    panoramaSun.position.set(-200, initialSunY, -300);
+    panoramaSun.material.opacity = initialSunOpacity;
+    panoramaScene.add(panoramaSun);
+    
+    // Add ambient lighting that changes with sun position
+    const initialLightIntensity = document.body.classList.contains('high-contrast') ? 0.8 : 1.2;
+    panoramaAmbientLight = new THREE.AmbientLight(0xffffff, initialLightIntensity);
+    panoramaScene.add(panoramaAmbientLight);
     
     // Set initial camera position
     panoramaCamera.position.set(0, 0, 0.1);
@@ -1220,6 +1265,84 @@ function initializePanorama() {
   } catch (error) {
     console.error('Error initializing panorama:', error);
   }
+}
+
+// Animate sun setting/rising for dark mode transition
+function animateSunPosition(isDarkMode) {
+  if (!panoramaSun || !panoramaAmbientLight) return;
+  
+  const startY = isDarkMode ? 150 : -100; // Starting position
+  const endY = isDarkMode ? -100 : 150;   // Ending position
+  const startOpacity = isDarkMode ? 0.8 : 0.3;
+  const endOpacity = isDarkMode ? 0.3 : 0.8;
+  const startLightIntensity = isDarkMode ? 1.2 : 0.8; // Bright day to dim night
+  const endLightIntensity = isDarkMode ? 0.8 : 1.2;   // Dim night to bright day
+  
+  const duration = 2000; // 2 seconds
+  const startTime = Date.now();
+  
+  function animateFrame() {
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    
+    // Use easing function for smooth animation
+    const easeProgress = 1 - Math.pow(1 - progress, 3); // Cubic ease-out
+    
+    // Interpolate position, opacity, and lighting
+    const currentY = startY + (endY - startY) * easeProgress;
+    const currentOpacity = startOpacity + (endOpacity - startOpacity) * easeProgress;
+    const currentLightIntensity = startLightIntensity + (endLightIntensity - startLightIntensity) * easeProgress;
+    
+    panoramaSun.position.y = currentY;
+    panoramaSun.material.opacity = currentOpacity;
+    panoramaAmbientLight.intensity = currentLightIntensity;
+    
+    // Continue animation if not finished
+    if (progress < 1) {
+      requestAnimationFrame(animateFrame);
+    }
+  }
+  
+  animateFrame();
+}
+
+// Load different 360° image for each location
+function loadPanoramaImage(point) {
+  if (!panoramaSphere || !panoramaSphere.material) return;
+  
+  // Only Energy has a 360° image for now
+  const imagePath = 'assets/360-energy.jpg'; // Only Energy has a 360° image
+  
+  console.log(`Loading 360° image for ${point.title}: ${imagePath}`);
+  
+  const textureLoader = new THREE.TextureLoader();
+  textureLoader.load(
+    imagePath,
+    function (texture) {
+      console.log('360° image loaded successfully for:', point.title);
+      texture.minFilter = THREE.LinearFilter;
+      texture.magFilter = THREE.LinearFilter;
+      texture.flipY = false;
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      
+      // Update the sphere material with the new texture
+      panoramaSphere.material.map = texture;
+      panoramaSphere.material.color.setHex(0xffffff); // Ensure no color tint
+      panoramaSphere.material.needsUpdate = true;
+      
+      // Re-render the scene
+      if (panoramaRenderer && panoramaScene && panoramaCamera) {
+        panoramaRenderer.render(panoramaScene, panoramaCamera);
+      }
+    },
+    function (progress) {
+      console.log('Loading progress for', point.title, ':', progress);
+    },
+    function (error) {
+      console.error('Error loading 360° image for', point.title, ':', error);
+    }
+  );
 }
 
 // Setup panorama mouse/touch controls
@@ -1261,6 +1384,9 @@ function setupPanoramaControls() {
       
       // Limit vertical rotation
       lat = Math.max(-85, Math.min(85, lat));
+      
+      // Update panorama point positions when camera moves
+      updatePanoramaPointPositions();
     }
   }
   
@@ -1295,6 +1421,9 @@ function setupPanoramaControls() {
       
       // Limit vertical rotation
       lat = Math.max(-85, Math.min(85, lat));
+      
+      // Update panorama point positions when camera moves
+      updatePanoramaPointPositions();
     }
   }
   
@@ -1348,96 +1477,76 @@ function onPanoramaWindowResize() {
   }
 }
 
-// Setup view toggle functionality
-function setupViewToggle() {
-  viewToggle.addEventListener('click', toggleView);
-}
-
-// Toggle between map view and 360° photo view
-function toggleView() {
-  console.log('Toggling view, current isMapView:', isMapView);
-  isMapView = !isMapView;
-  
-  if (isMapView) {
-    // Switch to map view
-    panoramaContainer.style.display = 'none';
-    backgroundContainer.style.display = 'block';
-    interactivePoints.style.display = 'block';
-    
-    // Update icon to show 360° view option
-    viewToggle.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 13L21 19V17H23V9H21ZM1 9V17H3V19L9 13L3 7V9H1ZM8 12C8 15.87 11.13 19 15 19C15.28 19 15.56 18.98 15.83 18.95C14.94 18.63 14.12 18.16 13.41 17.55C12.32 16.5 11.64 15.07 11.64 13.5C11.64 11.93 12.32 10.5 13.41 9.45C14.12 8.84 14.94 8.37 15.83 8.05C15.56 8.02 15.28 8 15 8C11.13 8 8 11.13 8 15C8 15.34 8.04 15.67 8.09 16H8C8 14 8 13 8 12Z"/>
-      </svg>
-    `;
-    console.log('Switched to map view');
-  } else {
-    // Switch to 360° photo view
-    panoramaContainer.style.display = 'block';
-    backgroundContainer.style.display = 'none';
-    interactivePoints.style.display = 'none';
-    
-    // Hide dialogue if open
-    if (dialoguePanel.classList.contains('visible')) {
-      hideDialogue();
-    }
-    
-    // Update icon to show map view option
-    viewToggle.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="currentColor">
-        <path d="M20.5 3L20.34 3.03L15 5.1L9 3L3.36 4.9C3.15 4.97 3 5.15 3 5.38V20.5C3 20.78 3.22 21 3.5 21L3.66 20.97L9 18.9L15 21L20.64 19.1C20.85 19.03 21 18.85 21 18.62V3.5C21 3.22 20.78 3 20.5 3ZM15 19L9 17V5L15 7V19Z"/>
-      </svg>
-    `;
-    
-    // Resize renderer in case window was resized while in map view
-    onPanoramaWindowResize();
-    
-    // Start rendering the panorama
-    if (panoramaRenderer && panoramaScene && panoramaCamera) {
-      panoramaRenderer.render(panoramaScene, panoramaCamera);
-      console.log('Rendered initial frame');
-    } else {
-      console.warn('Panorama components not initialized:', {
-        renderer: !!panoramaRenderer,
-        scene: !!panoramaScene,
-        camera: !!panoramaCamera
-      });
-    }
-    
-    console.log('Switched to panorama view');
-  }
-}
-
 // Create HTML overlay points for panorama view
 function createPanoramaStoryPoints() {
   // Clear existing panorama points
   panoramaOverlay.innerHTML = '';
   panoramaPoints = [];
   
-  // Create HTML overlay points for each story point
-  storyPoints.forEach((point, index) => {
+  // For Energy 360° view, create 3 specific clickable points based on Energy story options
+  const energyPoint = storyPoints.find(point => point.title === "Energy");
+  if (!energyPoint) return;
+  
+  // Define 3 specific locations on the 360° image with their story content
+  const energyPoints = [
+    {
+      title: "Energy Cooperatives",
+      key: "cooperatives",
+      x: 25, // Left side - solar panels area
+      y: 35,
+      longitude: -120, // Map to specific view angles
+      latitude: 10,
+      content: energyPoint.options.find(opt => opt.key === "cooperatives")
+    },
+    {
+      title: "Fair Distribution", 
+      key: "distribution",
+      x: 75, // Right side - residential buildings
+      y: 45,
+      longitude: 60,
+      latitude: 5,
+      content: energyPoint.options.find(opt => opt.key === "distribution")
+    },
+    {
+      title: "Community Response",
+      key: "community_response", 
+      x: 50, // Center - community space
+      y: 60,
+      longitude: 0,
+      latitude: -20,
+      content: energyPoint.options.find(opt => opt.key === "community_response")
+    }
+  ];
+  
+  // Create HTML overlay points for each energy-specific point
+  energyPoints.forEach((energySubPoint, index) => {
     // Create HTML element for the point
     const pointElement = document.createElement('div');
-    pointElement.className = 'panorama-point';
+    pointElement.className = 'panorama-point energy-point';
     pointElement.dataset.index = index;
+    pointElement.dataset.key = energySubPoint.key;
     
-    // Position the point based on story data
-    // Map story point coordinates to screen position
-    pointElement.style.left = `${point.x}%`;
-    pointElement.style.top = `${point.y}%`;
+    // Position based on 360° image coordinates
+    pointElement.style.left = `${energySubPoint.x}%`;
+    pointElement.style.top = `${energySubPoint.y}%`;
+    
+    // Store original position for camera movement calculations
+    pointElement.dataset.longitude = energySubPoint.longitude;
+    pointElement.dataset.latitude = energySubPoint.latitude;
+    pointElement.dataset.originalX = energySubPoint.x;
+    pointElement.dataset.originalY = energySubPoint.y;
     
     // Add click handler
     pointElement.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      console.log('Panorama point clicked:', point.title);
+      console.log('Energy panorama point clicked:', energySubPoint.title);
       
       // Remove selected and deselecting classes from all points
       document.querySelectorAll('.panorama-point').forEach(p => {
         if (p.classList.contains('selected')) {
           p.classList.remove('selected');
           p.classList.add('deselecting');
-          // Remove deselecting class after animation
           setTimeout(() => {
             p.classList.remove('deselecting');
           }, 300);
@@ -1450,9 +1559,8 @@ function createPanoramaStoryPoints() {
       // Center the panorama view on the selected point
       centerPanoramaOnPoint(pointElement);
       
-      // Show dialogue
-      const originalPointElement = pointElements[index];
-      showDialogue(point, originalPointElement);
+      // Show dialogue with the energy sub-content
+      showEnergySubContent(energySubPoint);
     });
     
     // Add to overlay
@@ -1461,12 +1569,156 @@ function createPanoramaStoryPoints() {
     // Store in array
     panoramaPoints.push({
       element: pointElement,
-      storyPoint: point,
+      energySubPoint: energySubPoint,
       index: index
     });
   });
   
-  console.log(`Created ${panoramaPoints.length} HTML panorama story points`);
+  // Add a special "back to street view" point in the center
+  const backToStreetPoint = document.createElement('div');
+  backToStreetPoint.className = 'panorama-point back-to-street';
+  backToStreetPoint.style.left = '50%';
+  backToStreetPoint.style.top = '20%'; // Position it in upper middle area
+  
+  // Add back arrow icon and text
+  backToStreetPoint.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px;">
+      <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+    </svg>
+    STREET VIEW
+  `;
+  
+  // Add click handler to return to street view
+  backToStreetPoint.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Back to street view clicked');
+    returnToStreetView();
+  });
+  
+  // Add to overlay
+  panoramaOverlay.appendChild(backToStreetPoint);
+  
+  // Initial positioning of points based on current camera rotation
+  updatePanoramaPointPositions();
+  
+  console.log(`Created ${panoramaPoints.length} HTML panorama story points + 1 back button`);
+}
+
+// Show energy sub-content dialogue
+function showEnergySubContent(energySubPoint) {
+  if (!energySubPoint.content) return;
+  
+  currentStoryPoint = { 
+    title: energySubPoint.title,
+    mainText: energySubPoint.content
+  };
+  
+  locationTitle.textContent = energySubPoint.title;
+  locationSubtitle.textContent = "";
+  
+  // Clear dialogue content
+  dialogueTextContainer.innerHTML = '';
+  
+  // Create dialogue entry
+  const dialogueEntry = document.createElement('div');
+  dialogueEntry.className = 'dialogue-entry';
+  
+  // Add speaker if exists
+  if (energySubPoint.content.speaker) {
+    const speakerElement = document.createElement('div');
+    speakerElement.className = 'dialogue-speaker';
+    speakerElement.textContent = energySubPoint.content.speaker;
+    dialogueEntry.appendChild(speakerElement);
+  }
+  
+  // Add text content
+  const textElement = document.createElement('div');
+  textElement.className = 'section-text';
+  textElement.textContent = energySubPoint.content.text;
+  dialogueEntry.appendChild(textElement);
+  
+  // Add back to main option
+  const backElement = document.createElement('div');
+  backElement.className = 'section-text';
+  backElement.style.marginTop = '20px';
+  backElement.innerHTML = '[Back to Energy overview](close)';
+  dialogueEntry.appendChild(backElement);
+  
+  dialogueTextContainer.appendChild(dialogueEntry);
+  
+  // Show dialogue panel
+  dialoguePanel.classList.add('visible');
+  
+  console.log('Showing energy sub-content:', energySubPoint.title);
+}
+
+// Update panorama point positions based on camera rotation
+function updatePanoramaPointPositions() {
+  if (!panoramaPoints || panoramaPoints.length === 0) return;
+  
+  panoramaPoints.forEach(pointData => {
+    const pointElement = pointData.element;
+    if (!pointElement || pointElement.classList.contains('back-to-street')) return;
+    
+    // Get stored 3D coordinates
+    const pointLon = parseFloat(pointElement.dataset.longitude) || 0;
+    const pointLat = parseFloat(pointElement.dataset.latitude) || 0;
+    
+    // Calculate relative position based on current camera rotation
+    let relativeLon = pointLon - lon;
+    let relativeLat = pointLat - lat;
+    
+    // Normalize longitude to -180 to 180 range
+    while (relativeLon > 180) relativeLon -= 360;
+    while (relativeLon < -180) relativeLon += 360;
+    
+    // Check if point is visible (within 180 degree field of view)
+    const isVisible = Math.abs(relativeLon) <= 90 && Math.abs(relativeLat) <= 45;
+    
+    if (isVisible) {
+      // Convert 3D coordinates to 2D screen position
+      // Map longitude (-90 to 90) to x position (0% to 100%)
+      const screenX = 50 + (relativeLon / 90) * 50; // Center around 50%
+      // Map latitude (-45 to 45) to y position (25% to 75%)  
+      const screenY = 50 + (relativeLat / 45) * 25; // Center around 50%
+      
+      // Update point position
+      pointElement.style.left = `${Math.max(5, Math.min(95, screenX))}%`;
+      pointElement.style.top = `${Math.max(10, Math.min(90, screenY))}%`;
+      pointElement.style.opacity = '1';
+      pointElement.style.pointerEvents = 'auto';
+    } else {
+      // Hide points that are behind the camera
+      pointElement.style.opacity = '0';
+      pointElement.style.pointerEvents = 'none';
+    }
+  });
+}
+
+// Return to street view from 360° panorama
+function returnToStreetView() {
+  console.log('Returning to street view...');
+  
+  // Fade out panorama view
+  panoramaContainer.style.opacity = '0';
+  
+  setTimeout(() => {
+    // Switch back to map view
+    isMapView = true;
+    panoramaContainer.style.display = 'none';
+    backgroundContainer.style.display = 'block';
+    interactivePoints.style.display = 'block';
+    backgroundContainer.style.opacity = '1';
+    interactivePoints.style.opacity = '1';
+    
+    // Hide any open dialogue
+    if (dialoguePanel.classList.contains('visible')) {
+      hideDialogue();
+    }
+    
+    console.log('Returned to street view');
+  }, 250); // Wait for fade out
 }
 
 // Center panorama camera on selected point
@@ -1509,6 +1761,32 @@ function centerPanoramaOnPoint(pointElement) {
   }
   
   animateCamera();
+}
+
+// Initialize background music
+function initializeMusic() {
+  backgroundMusic = new Audio("assets/sound/06-julian.mp3");
+  backgroundMusic.loop = true;
+  backgroundMusic.volume = 0.3; // Set to a comfortable level
+
+  // Handle audio loading errors gracefully
+  backgroundMusic.addEventListener("error", function (e) {
+    console.warn("Background music failed to load:", e);
+  });
+
+  // Start music when loaded, after user interaction
+  backgroundMusic.addEventListener("canplaythrough", function () {
+    console.log("Background music loaded and ready to play");
+  });
+}
+
+// Start music after user interaction (clicking "Got it")
+function startMusicAfterUserInteraction() {
+  if (backgroundMusic) {
+    backgroundMusic.play().catch((e) => {
+      console.warn("Could not start background music:", e);
+    });
+  }
 }
 
 // Note: Panorama click handling now done via HTML overlay elements directly

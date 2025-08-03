@@ -37,7 +37,7 @@ body {
     height: 120%;
     top: -10%;
     left: -10%;
-    transition: transform 0.3s ease-out;
+    transition: transform 0.15s ease-out, opacity 0.5s ease-in-out;
 }
 .background-image {
     width: 100%;
@@ -53,6 +53,7 @@ body {
     width: 100%;
     height: 100%;
     pointer-events: none;
+    transition: opacity 0.5s ease-in-out;
 }
 
 /* Connection lines between points */
@@ -113,6 +114,15 @@ body {
         opacity: 0.9;
     }
 }
+
+@keyframes gentlePulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
 .point {
     position: fixed;
     width: 100px;
@@ -134,6 +144,7 @@ body {
         0 4px 12px rgba(0, 0, 0, 0.3),
         0 0 0 1px rgba(255, 255, 255, 0.1);
     transform: scale(1);
+    animation: gentlePulse 4s ease-in-out infinite;
 }
 
 .point:hover {
@@ -167,6 +178,30 @@ body {
 .point.deselecting {
     animation: shrinkCircle 0.3s ease-out;
     transform: scale(1);
+}
+
+.point.zooming {
+    z-index: 1000;
+    animation: pulseZoom 0.8s ease-out;
+}
+
+@keyframes pulseZoom {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(249, 193, 206, 0.4);
+    }
+    30% {
+        transform: scale(1.1);
+        box-shadow: 0 0 0 15px rgba(249, 193, 206, 0.3);
+    }
+    60% {
+        transform: scale(1.15);
+        box-shadow: 0 0 0 25px rgba(249, 193, 206, 0.2);
+    }
+    100% {
+        transform: scale(1.2);
+        box-shadow: 0 0 0 35px rgba(249, 193, 206, 0);
+    }
 }
 
 @keyframes rotateBorder {
@@ -311,7 +346,6 @@ body {
 
 .dialogue-header {
     padding: 15px 25px 10px 25px;
-    border-bottom: 2px solid rgba(249, 193, 206, 0.4);
     border-top: 1.5px solid rgba(153, 170, 187, 0.5);
     /* background: rgba(5, 8, 5, 0.7); */
 }
@@ -331,32 +365,91 @@ body {
     position: relative;
     overflow: hidden;
 }
+
+/* Text fade masks for scroll areas */
 .dialogue-text-container {
     height: 100%;
     overflow-y: auto;
     padding: 25px;
     padding-bottom: 80px;
+    -webkit-mask-image: linear-gradient(
+        to bottom,
+        transparent 0px,
+        black 30px,
+        black calc(100% - 30px),
+        transparent 100%
+    );
+    mask-image: linear-gradient(
+        to bottom,
+        transparent 0px,
+        black 30px,
+        black calc(100% - 30px),
+        transparent 100%
+    );
 }
 
-/* Enhanced scrollbar */
+/* Custom scrollbar styling to match toggle colors */
 .dialogue-text-container::-webkit-scrollbar {
     width: 8px;
 }
+
 .dialogue-text-container::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(249, 193, 206, 0.1);
     border-radius: 4px;
 }
+
 .dialogue-text-container::-webkit-scrollbar-thumb {
-    background: rgba(249, 193, 206, 0.7);
+    background: rgba(249, 193, 206, 0.4);
     border-radius: 4px;
+    border: 1px solid rgba(249, 193, 206, 0.2);
 }
+
 .dialogue-text-container::-webkit-scrollbar-thumb:hover {
-    background: rgba(249, 193, 206, 0.9);
+    background: rgba(249, 193, 206, 0.6);
+    border-color: rgba(249, 193, 206, 0.4);
 }
+
+.dialogue-text-container::-webkit-scrollbar-thumb:active {
+    background: rgba(249, 193, 206, 0.8);
+}
+
+/* Firefox scrollbar styling */
+.dialogue-text-container {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(249, 193, 206, 0.4) rgba(249, 193, 206, 0.1);
+}
+
 
 .dialogue-entry {
     margin-bottom: 25px;
     line-height: 1.7;
+}
+
+/* Improved text legibility across all text */
+.section-text, .dialogue-speaker, .location-title, .location-subtitle, .help-item {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 0 6px rgba(0, 0, 0, 0.25);
+    font-weight: 400;
+}
+
+.dialogue-speaker {
+    font-weight: 500; /* Slightly bolder for speakers */
+}
+
+.location-title {
+    font-weight: 600; /* Bolder for titles */
+}
+
+/* Enhance text contrast */
+.section-text {
+    color: #f0f0f0; /* Slightly brighter than default */
+}
+
+.dialogue-speaker {
+    color: #ffffff; /* Pure white for speakers */
+}
+
+.location-title, .location-subtitle {
+    color: #ffffff; /* Pure white for location info */
 }
 .dialogue-speaker {
     color: #f9c1ce;
@@ -381,6 +474,11 @@ body {
     color: #f9c1ce;
     /* font-weight: bold; */
     text-decoration: underline dotted;
+    transition: color 0.2s ease;
+}
+
+.highlight-text:hover {
+    color: #ffffff;
 }
 
 .dialogue-text-container.typing {
@@ -430,6 +528,7 @@ body {
 
 .back-button:hover {
     opacity: 1;
+    color: #ffffff;
     background: rgba(249, 193, 206, 0.2);
     transform: translateY(-1px);
 }
@@ -508,6 +607,7 @@ body {
     align-items: center;
     color: #ece1e0;
     font-size: 1.1em;
+    margin-bottom: 16px;
 }
 
 .help-icon {
@@ -515,6 +615,24 @@ body {
     height: 28px;
     margin-right: 16px;
     flex-shrink: 0;
+}
+
+.speed-toggle-icon {
+    width: 28px;
+    height: 28px;
+    margin-right: 16px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(249, 193, 206, 0.2);
+    border: 1px solid rgba(249, 193, 206, 0.5);
+    border-radius: 4px;
+    color: #f9c1ce;
+    font-size: 0.4em;
+    font-weight: 500;
+    padding: 1px 2px;
+    text-align: center;
 }
 
 .help-icon.clickpoint-style {
@@ -537,15 +655,76 @@ body {
 
 /* Mobile responsive */
 @media (max-width: 480px) {
-    .dialogue-panel {
+    /* Fix viewport stretching */
+    body, html {
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        position: fixed;
+    }
+    
+    .visual-novel-container {
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    /* Mobile background - full height with draggable width */
+    .background-container {
+        width: 350%; /* Much wider for full image draggability */
+        height: 100vh; /* Full viewport height */
+        top: 0; /* Start from top */
+        left: -125%; /* Center the much wider container */
+        overflow: visible; /* Allow dragging beyond bounds */
+    }
+    
+    .background-image {
         width: 100%;
-        height: 60%;
-        top: 20%;
-        border-left: none;
+        height: 100vh; /* Stretch to full screen height */
+        object-fit: cover; /* Cover entire area */
+        background-size: cover; /* Cover the container */
+        background-position: center center;
+        background-repeat: no-repeat;
+        transform: scale(1.4); /* 1.4x scale as requested */
+        transform-origin: center center;
+        min-height: 100vh; /* Ensure full height */
+    }
+    
+    .dialogue-panel {
+        width: calc(100% - 30px); /* Offset left and right */
+        height: 50vh; /* 1/4 smaller than previous 66.67vh */
+        max-height: 50vh; /* Prevent stretching beyond this */
+        bottom: 15px; /* Offset from bottom */
+        left: 15px; /* Offset from left */
+        top: auto;
+        border-left: 2px solid rgba(249, 193, 206, 0.4);
+        border-top: 2px solid rgba(249, 193, 206, 0.4);
+        border-right: 2px solid rgba(249, 193, 206, 0.4);
+        border-bottom: 2px solid rgba(249, 193, 206, 0.4);
+        border-radius: 8px;
+        overflow: hidden; /* Prevent content from stretching panel */
+        box-sizing: border-box; /* Include borders in size calculation */
     }
     .help-overlay {
         min-width: 90%;
         padding: 20px;
+    }
+    
+    .help-item {
+        font-size: 1.3em;
+    }
+    
+    .help-icon {
+        width: 58px; /* Scaled up proportionally from 28px */
+        height: 58px;
+        margin-right: 32px; /* Scaled up proportionally from 16px */
+    }
+    
+    .help-close {
+        font-size: 1.3em; /* Scale up text */
+        min-width: 105px; /* Scale up min-width proportionally */
+        margin-top: 16px; /* Scale up margin */
     }
 
     .ui-overlay {
@@ -555,22 +734,58 @@ body {
         padding: 12px;
     }
     .point {
-        width: 35px;
-        height: 35px;
-        border-width: 4px;
+        width: 100px;
+        height: 100px;
+        border-width: 2px;
+    }
+    
+    .point.active,
+    .point:hover {
+        width: 140px;
+        height: 140px;
     }
     .dialogue-text-container {
         padding: 0px 26px 0 10px;
+        max-height: calc(50vh - 80px); /* Ensure it fits within dialogue panel */
+        overflow-y: auto; /* Allow scrolling if content is too long */
+        box-sizing: border-box;
     }
     .dialogue-header {
-        padding: 2px 0 0 20px;
+        padding: 15px 0 15px 20px; /* More balanced padding for center alignment */
+        display: flex;
+        align-items: center; /* Vertically center the content */
+        min-height: 50px; /* Ensure enough height for proper centering */
     }
+    .text-speed-control {
+        font-size: 0.55em;
+        padding: 1px 4px;
+        border-width: 1px;
+        border-radius: 2px;
+        margin-right: 8px;
+    }
+    
     .dialogue-header-controls {
-        top: -2.5px !important;
+        padding-right: 10px;
     }
 
     .section-text {
-        font-size: 1.1em;
+        font-size: 1.3em;
+        line-height: 1.5;
+        margin-top: 20px; /* More spacing before section text */
+    }
+    
+    .dialogue-speaker {
+        font-size: 0.9em;
+        margin-top: 14px; /* More spacing above speaker */
+        margin-bottom: -7px; /* More spacing after speaker */
+    }
+    
+    .location-title {
+        font-size: 1.3em;
+    }
+    
+    .location-subtitle {
+        font-size: 1.2em;
     }
     .spiral-logo {
         width: 40px;
@@ -582,6 +797,10 @@ body {
 
 /* Tablet responsive */
 @media (min-width: 481px) and (max-width: 768px) {
+    .background-image {
+        background-size: 115%; /* Moderate zoom - closer but visible */
+    }
+    
     .dialogue-panel {
         width: 320px;
         height: 60%;
@@ -592,10 +811,33 @@ body {
         min-width: 85%;
         padding: 25px;
     }
+    
+    .help-item {
+        font-size: 2.1em;
+    }
+    
+    .help-icon {
+        width: 58px; /* Scaled up proportionally from 28px */
+        height: 58px;
+        margin-right: 32px; /* Scaled up proportionally from 16px */
+    }
+    
+    .help-close {
+        font-size: 2.1em; /* Scale up text */
+        padding: 31px 63px; /* Scale up padding proportionally */
+        min-width: 252px; /* Scale up min-width proportionally */
+        margin-top: 16px; /* Scale up margin */
+    }
     .point {
-        width: 60px;
-        height: 60px;
-        border-width: 6px;
+        width: 100px;
+        height: 100px;
+        border-width: 2px;
+    }
+    
+    .point.active,
+    .point:hover {
+        width: 140px;
+        height: 140px;
     }
     .dialogue-text-container {
         padding: 15px 20px 0 15px;
@@ -603,9 +845,32 @@ body {
     .dialogue-header {
         padding: 15px 0 10px 20px;
     }
+    .dialogue-header-controls {
+        top: 15px !important; /* Center align with locationTitle */
+    }
+    .text-speed-control {
+      font-size: 0.6em;
+      padding: 2px 6px;
+    }
 
     .section-text {
-        font-size: 1.15em;
+        font-size: 1.3em;
+        line-height: 1.5;
+        margin-top: 20px; /* More spacing before section text */
+    }
+    
+    .dialogue-speaker {
+        font-size: 1.4em;
+        margin-top: 25px; /* More spacing above speaker */
+        margin-bottom: 15px; /* More spacing after speaker */
+    }
+    
+    .location-title {
+        font-size: 1.3em;
+    }
+    
+    .location-subtitle {
+        font-size: 1.2em;
     }
     .spiral-logo {
         width: 80px;
@@ -644,6 +909,50 @@ body {
     }
 }
 
+/* Day/Night toggle at top center */
+.day-night-toggle {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 85px;
+    height: 85px;
+    background: radial-gradient(
+        circle at 30% 30%,
+        rgba(255, 255, 255, 0.4),
+        rgba(0, 0, 0, 0.2)
+    );
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2);
+}
+
+.day-night-toggle:hover {
+    /* background: rgba(255, 255, 255, 1); */
+    border-color: #db8fa6;
+    transform: translateX(-50%) scale(1.1);
+    box-shadow: 0 5px 16px rgba(0, 0, 0, 0.25);
+}
+
+.day-night-toggle svg {
+    width: 40px;
+    height: 40px;
+    fill: #ece1e0;
+    stroke: #ece1e0;
+    transition: all 0.4s ease;
+}
+
+.day-night-toggle:hover svg {
+    fill: #db8fa6;
+    stroke: #db8fa6;
+}
+
 /* Dialogue Header Controls */
 .dialogue-header {
     position: relative;
@@ -675,6 +984,11 @@ body {
     background: rgba(249, 193, 206, 0.2);
 }
 
+.header-control:hover svg {
+    color: #ffffff;
+    stroke: #ffffff;
+}
+
 .header-control svg {
     width: 20px;
     height: 20px;
@@ -689,6 +1003,12 @@ body {
     color: #f9c1ce;
     padding: 4px 8px;
     font-size: 0.9em;
+}
+
+.text-speed-control:hover {
+    color: #ffffff;
+    border-color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .text-speed-control.speed-changed {
@@ -756,8 +1076,64 @@ body.high-contrast .header-control svg {
     stroke: #ffffff;
 }
 
+/* Moon icon turns pink on hover in dark mode, including border */
+body.high-contrast .header-control:hover svg {
+    fill: #f9c1ce;
+    stroke: #f9c1ce;
+}
+
+body.high-contrast .header-control:hover {
+    border-color: #f9c1ce;
+}
+
+/* Sun icon center goes white on hover */
+.header-control:hover svg circle {
+    fill: #ffffff;
+}
+
+/* Sun icon paths (rays) also go white on hover */
+.header-control:hover svg path {
+    stroke: #ffffff;
+}
+
 body.high-contrast .text-speed-control {
     color: #ffffff;
+    border-color: #ffffff;
+    background: transparent;
+}
+
+body.high-contrast .text-speed-control:hover {
+    color: #f9c1ce;
+    border-color: #f9c1ce;
+    background: rgba(249, 193, 206, 0.1);
+}
+
+/* Day/Night toggle in high contrast mode */
+body.high-contrast .day-night-toggle {
+    border-color: #db8fa6;
+}
+
+body.high-contrast .day-night-toggle svg {
+    fill: #db8fa6;
+    stroke: #db8fa6;
+}
+
+/* Point circles in high contrast mode */
+body.high-contrast .point {
+    border-color: #f9c1ce;
+}
+
+body.high-contrast .point:hover {
+    border-color: #ffffff;
+}
+
+/* Panorama point circles in high contrast mode */
+body.high-contrast .panorama-point {
+    border-color: #f9c1ce;
+}
+
+body.high-contrast .panorama-point:hover {
+    border-color: #ffffff;
 }
 .spiral-logo {
     position: fixed;
@@ -780,36 +1156,11 @@ body.high-contrast .text-speed-control {
     opacity: 1;
 }
 
-/* View toggle button */
-.view-toggle {
-    position: fixed;
-    bottom: 70px;
-    left: 20px;
-    background: rgba(249, 193, 206, 0.8);
-    border: none;
-    cursor: pointer;
-    z-index: 2000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
-    padding: 12px;
-    border-radius: 50%;
-    color: #000000;
-    width: 52px;
-    height: 52px;
+/* Pink spiral logo in dark mode */
+body.high-contrast .spiral-logo svg {
+    fill: #f9c1ce;
 }
 
-.view-toggle:hover {
-    background: rgba(249, 193, 206, 1);
-    transform: scale(1.05);
-}
-
-.view-toggle svg {
-    width: 28px;
-    height: 28px;
-    transition: transform 0.3s ease;
-}
 
 /* Panorama container */
 .panorama-container {
@@ -819,6 +1170,7 @@ body.high-contrast .text-speed-control {
     width: 100vw;
     height: 100vh;
     z-index: 1;
+    transition: opacity 0.5s ease-in-out;
 }
 
 .panorama-container canvas {
@@ -887,7 +1239,7 @@ body.high-contrast .text-speed-control {
         0 0 20px rgba(249, 193, 206, 0.5),
         inset 2px 2px 8px rgba(255, 255, 255, 0.4),
         inset -2px -2px 8px rgba(0, 0, 0, 0.4);
-    transform: translate(-50%, -50%) scale(2.5);
+    transform: translate(-50%, -50%) scale(6);
 }
 
 .panorama-point.deselecting {
@@ -899,7 +1251,7 @@ body.high-contrast .text-speed-control {
 @keyframes panoramaRotateBorder {
     0% {
         border-color: #f9c1ce;
-        transform: translate(-50%, -50%) scale(2.5) rotate(0deg);
+        transform: translate(-50%, -50%) scale(6) rotate(0deg);
     }
     25% {
         border-color: rgba(249, 193, 206, 0.8);
@@ -912,7 +1264,7 @@ body.high-contrast .text-speed-control {
     }
     100% {
         border-color: #f9c1ce;
-        transform: translate(-50%, -50%) scale(2.5) rotate(360deg);
+        transform: translate(-50%, -50%) scale(6) rotate(360deg);
     }
 }
 
@@ -921,17 +1273,53 @@ body.high-contrast .text-speed-control {
         transform: translate(-50%, -50%) scale(1);
     }
     100% {
-        transform: translate(-50%, -50%) scale(2.5);
+        transform: translate(-50%, -50%) scale(6);
     }
 }
 
 @keyframes panoramaShrinkCircle {
     0% {
-        transform: translate(-50%, -50%) scale(2.5);
+        transform: translate(-50%, -50%) scale(6);
     }
     100% {
         transform: translate(-50%, -50%) scale(1);
     }
+}
+
+/* Back to street view button in panorama - styled like dialogue panel toggles */
+.panorama-point.back-to-street {
+    background: rgba(249, 193, 206, 0.2);
+    border: 1px solid rgba(249, 193, 206, 0.5);
+    border-radius: 4px;
+    color: #f9c1ce;
+    cursor: pointer;
+    padding: 8px 12px;
+    font-size: 0.9em;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.panorama-point.back-to-street:hover {
+    color: #ffffff;
+    border-color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
+    transform: translate(-50%, -50%);
+}
+
+.panorama-point.back-to-street svg {
+    width: 20px;
+    height: 20px;
+    fill: #f9c1ce;
+    stroke: #f9c1ce;
+}
+
+.panorama-point.back-to-street:hover svg {
+    fill: #ffffff;
+    stroke: #ffffff;
 }
 
 @keyframes panoramaSelectedPulse {
@@ -958,130 +1346,63 @@ body.high-contrast .text-speed-control {
     }
 }
 
-/* Music toggle button */
-.music-toggle {
-    position: fixed;
-    bottom: 20px;
-    left: 20px;
-    background: rgba(249, 193, 206, 0.8);
-    border: none;
-    cursor: pointer;
-    z-index: 2000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
-    padding: 12px;
-    border-radius: 50%;
-    width: 52px;
-    height: 52px;
-}
 
-.music-toggle:hover {
-    background: rgba(249, 193, 206, 1);
-    transform: scale(1.05);
-}
-
-.music-toggle svg {
-    width: 28px;
-    height: 28px;
-    transition: transform 0.3s ease;
-}
-
-.music-toggle.playing svg {
-    transform: scale(1.05);
-}
 
 /* Mobile responsive for toggles */
 @media (max-width: 480px) {
-    .view-toggle {
-        bottom: 65px;
-        left: 15px;
-        padding: 10px;
-        width: 44px;
-        height: 44px;
-    }
 
-    .view-toggle svg {
-        width: 24px;
-        height: 24px;
+    
+    .day-night-toggle {
+        width: 75px;
+        height: 75px;
+        top: 15px;
     }
-
-    .music-toggle {
-        bottom: 15px;
-        left: 15px;
-        padding: 10px;
-        width: 44px;
-        height: 44px;
+    
+    .day-night-toggle svg {
+        width: 32px;
+        height: 32px;
     }
-
-    .music-toggle svg {
-        width: 24px;
-        height: 24px;
+    
+    
+    /* Make text speed and day/night toggles take up more header width */
+    .dialogue-header-controls {
+        top: 50%; /* Center vertically in header */
+        transform: translateY(-50%); /* Perfect vertical centering */
+        right: 5px; /* Closer to right edge */
+        left: 50%; /* Start from middle of header */
+        gap: 8px; /* Reasonable gap between controls */
+        display: flex;
+        justify-content: flex-end;
+        width: calc(50% - 10px); /* Take up half the header width */
+    }
+    
+    .text-speed-control {
+        font-size: 0.7em; /* Larger than before but still compact */
+        padding: 6px 4px; /* Much narrower horizontal padding */
+        border-width: 1px;
+        border-radius: 3px;
+        margin-right: 0; /* Remove extra margin */
+        flex: 0 0 auto; /* Don't grow, just fit content */
+        min-width: auto; /* Let it size naturally */
+        white-space: nowrap; /* Prevent text wrapping */
+    }
+    
+    .header-control {
+        padding: 6px; /* More substantial padding */
+        flex-shrink: 0; /* Don't shrink the icon button */
+    }
+    
+    .header-control svg {
+        width: 20px; /* Larger icon */
+        height: 20px; /* Larger icon */
     }
 }
 
-/* Tablet responsive for music toggle */
-@media (min-width: 481px) and (max-width: 768px) {
-    .music-toggle {
-        bottom: 18px;
-        left: 18px;
-        padding: 7px;
-    }
 
-    .music-toggle svg {
-        width: 26px;
-        height: 26px;
-    }
-}
 
-/* High contrast mode for music toggle */
-body.high-contrast .music-toggle {
-    background: rgba(0, 0, 0, 0.8);
-}
-
-body.high-contrast .music-toggle:hover {
-    background: rgba(0, 0, 0, 0.9);
-}
-
-body.high-contrast .music-toggle svg {
-    color: #ffffff;
-}
-
-body.high-contrast .music-toggle.playing svg {
+/* Click to skip text should be pink in day/night mode */
+body.high-contrast .dialogue-text-container.typing::before {
     color: #f9c1ce;
 }
 
-/* Music activation hint */
-.music-toggle::after {
-    content: "🎵";
-    position: absolute;
-    top: -8px;
-    right: -8px;
-    background: rgba(249, 193, 206, 0.9);
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    animation: musicPulse 2s infinite ease-in-out;
-    transition: opacity 0.3s ease;
-}
 
-.music-toggle.user-interacted::after {
-    opacity: 0;
-    pointer-events: none;
-}
-
-@keyframes musicPulse {
-    0%, 100% {
-        transform: scale(1);
-        opacity: 0.8;
-    }
-    50% {
-        transform: scale(1.1);
-        opacity: 1;
-    }
-}

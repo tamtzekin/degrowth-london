@@ -69,19 +69,6 @@
                             >
                                 RELAXED
                             </button>
-                            <button class="header-control" id="contrastToggle">
-                                <svg
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                >
-                                    <circle cx="12" cy="12" r="5" />
-                                    <path
-                                        d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
-                                    />
-                                </svg>
-                            </button>
                         </div>
                     </div>
                     <div class="dialogue-scroll-area">
@@ -115,6 +102,21 @@
                 </div>
             </div>
 
+            <!-- Day/Night toggle positioned at top center -->
+            <button class="day-night-toggle" id="contrastToggle">
+                <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                >
+                    <circle cx="12" cy="12" r="5" />
+                    <path
+                        d="M12 0.5v3M12 20.5v3M3.5 3.5l2.12 2.12M17.88 17.88l2.12 2.12M0.5 12h3M20.5 12h3M3.5 20.5l2.12-2.12M17.88 6.12l2.12-2.12"
+                    />
+                </svg>
+            </button>
+
             <!-- Help overlay with SVG icons -->
             <div class="help-overlay" id="helpOverlay">
                 <div class="help-item">
@@ -137,41 +139,24 @@
                     </svg>
                     <span>TAP to look at what's happening</span>
                 </div>
+                
                 <div class="help-item">
-                    <svg class="help-icon" viewBox="0 0 24 24" fill="none">
-                        <rect
-                            x="6"
-                            y="2"
-                            width="12"
-                            height="20"
-                            rx="3"
-                            ry="3"
-                            stroke="#b18988"
-                            stroke-width="2"
-                            fill="rgba(217, 195, 194, 0.3)"
-                        />
-                        <rect
-                            x="9"
-                            y="5"
-                            width="6"
-                            height="10"
-                            rx="1"
-                            fill="rgba(236, 225, 224, 0.2)"
-                        />
-                    </svg>
-                    <span>Works on your phone, too</span>
+                    <div class="help-icon speed-toggle-icon">ZEN</div>
+                    <span>TAP to change reading speed</span>
                 </div>
 
-                <button class="help-close" id="helpClose">Got it</button>
+                <div class="help-item">
+                  <svg class="help-icon" viewBox="0 0 24 24" fill="none" stroke="#ece1e0" stroke-width="2">
+                      <circle cx="12" cy="12" r="5"/>
+                      <path d="M12 0.5v3M12 20.5v3M3.5 3.5l2.12 2.12M17.88 17.88l2.12 2.12M0.5 12h3M20.5 12h3M3.5 20.5l2.12-2.12M17.88 6.12l2.12-2.12"/>
+                  </svg>
+                  <span>TAP to switch from day to night</span>
+              </div>
+
+                <button class="help-close" id="helpClose">OK</button>
             </div>
         </div>
 
-        <!-- View Toggle Button -->
-        <div class="view-toggle" id="viewToggle">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 13L21 19V17H23V9H21ZM1 9V17H3V19L9 13L3 7V9H1ZM8 12C8 15.87 11.13 19 15 19C15.28 19 15.56 18.98 15.83 18.95C14.94 18.63 14.12 18.16 13.41 17.55C12.32 16.5 11.64 15.07 11.64 13.5C11.64 11.93 12.32 10.5 13.41 9.45C14.12 8.84 14.94 8.37 15.83 8.05C15.56 8.02 15.28 8 15 8C11.13 8 8 11.13 8 15C8 15.34 8.04 15.67 8.09 16H8C8 14 8 13 8 12Z"/>
-            </svg>
-        </div>
 
         <script src="assets/three.global.js"></script>
         <script src="assets/app.js"></script>
