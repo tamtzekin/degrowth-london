@@ -13,6 +13,7 @@ let currentTypingTimeout = null;
 let skipToNextSentence = false;
 let hasUsedSkip = false;
 let navigationHistory = []; // Track navigation history for back button
+let visitedContent = new Set(); // Track which dialogue content has been visited
 
 // View toggle variables
 let isMapView = true;
@@ -429,6 +430,12 @@ function handleCircleClick(point, pointElement, index) {
 function showDialogue(point, pointElement) {
   currentStoryPoint = point;
   locationTitle.textContent = point.title;
+
+  // Mark this point as visited
+  visitedContent.add(point.title);
+  
+  // Remove pulse animation from this point since it's been visited
+  pointElement.classList.add('visited');
 
   // Reset navigation history when opening new dialogue
   navigationHistory = [];
@@ -917,24 +924,38 @@ function positionSpeechBubbleLine(pointElement) {
   const pointRect = pointElement.getBoundingClientRect();
   const dialogueRect = dialoguePanel.getBoundingClientRect();
   
-  // Calculate the connection point on the circle (right edge center)
-  const circleX = pointRect.left + pointRect.width;
-  const circleY = pointRect.top + pointRect.height / 2;
+  // Use base circle size (100px) instead of current transformed size
+  const baseCircleSize = 100;
+  const baseRadius = baseCircleSize / 2;
+  
+  // Calculate the center of the circle using visual center
+  const circleCenterX = pointRect.left + pointRect.width / 2;
+  const circleCenterY = pointRect.top + pointRect.height / 2;
   
   // Calculate the connection point on the dialogue panel (left edge center)
   const panelX = dialogueRect.left;
   const panelY = dialogueRect.top + dialogueRect.height / 2;
   
-  // Calculate distance and angle
-  const deltaX = panelX - circleX;
-  const deltaY = panelY - circleY;
-  const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-  const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
+  // Calculate angle from circle center to panel
+  const deltaX = panelX - circleCenterX;
+  const deltaY = panelY - circleCenterY;
+  const angle = Math.atan2(deltaY, deltaX);
+  
+  // Calculate the point on the circle rim using base radius
+  // This ensures consistency regardless of transform scale
+  const circleX = circleCenterX + Math.cos(angle) * baseRadius;
+  const circleY = circleCenterY + Math.sin(angle) * baseRadius;
+  
+  // Calculate distance and angle for the line
+  const finalDeltaX = panelX - circleX;
+  const finalDeltaY = panelY - circleY;
+  const distance = Math.sqrt(finalDeltaX * finalDeltaX + finalDeltaY * finalDeltaY);
+  const lineAngle = Math.atan2(finalDeltaY, finalDeltaX) * (180 / Math.PI);
   
   // Update the speech bubble line
   const line = dialoguePanel;
   line.style.setProperty('--line-length', `${distance}px`);
-  line.style.setProperty('--line-angle', `${angle}deg`);
+  line.style.setProperty('--line-angle', `${lineAngle}deg`);
   line.style.setProperty('--line-top', `${circleY - dialogueRect.top}px`);
 }
 
@@ -1526,15 +1547,13 @@ function createPanoramaStoryPoints() {
     pointElement.dataset.index = index;
     pointElement.dataset.key = energySubPoint.key;
     
-    // Position based on 360° image coordinates
-    pointElement.style.left = `${energySubPoint.x}%`;
-    pointElement.style.top = `${energySubPoint.y}%`;
-    
-    // Store original position for camera movement calculations
+    // Store 3D coordinates for panorama positioning
     pointElement.dataset.longitude = energySubPoint.longitude;
     pointElement.dataset.latitude = energySubPoint.latitude;
-    pointElement.dataset.originalX = energySubPoint.x;
-    pointElement.dataset.originalY = energySubPoint.y;
+    
+    // Initial position will be updated by panorama positioning
+    pointElement.style.left = `${energySubPoint.x}%`;
+    pointElement.style.top = `${energySubPoint.y}%`;
     
     // Add click handler
     pointElement.addEventListener('click', (e) => {
@@ -1555,6 +1574,9 @@ function createPanoramaStoryPoints() {
       
       // Add selected class to clicked point
       pointElement.classList.add('selected');
+      
+      // Mark this panorama point as visited by adding visited class
+      pointElement.classList.add('visited');
       
       // Center the panorama view on the selected point
       centerPanoramaOnPoint(pointElement);
@@ -1580,12 +1602,11 @@ function createPanoramaStoryPoints() {
   backToStreetPoint.style.left = '50%';
   backToStreetPoint.style.top = '20%'; // Position it in upper middle area
   
-  // Add back arrow icon and text
+  // Add EXIT icon
   backToStreetPoint.innerHTML = `
-    <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px;">
-      <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+    <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" style="width: 24px; height: 24px;">
+      <path d="M18 6L6 18M6 6l12 12"/>
     </svg>
-    STREET VIEW
   `;
   
   // Add click handler to return to street view
@@ -1599,15 +1620,67 @@ function createPanoramaStoryPoints() {
   // Add to overlay
   panoramaOverlay.appendChild(backToStreetPoint);
   
-  // Initial positioning of points based on current camera rotation
+  // Initial positioning of points
   updatePanoramaPointPositions();
   
   console.log(`Created ${panoramaPoints.length} HTML panorama story points + 1 back button`);
 }
 
+// Update panorama point positions based on camera rotation
+function updatePanoramaPointPositions() {
+  if (!panoramaPoints || panoramaPoints.length === 0 || !panoramaCamera) return;
+  
+  panoramaPoints.forEach(pointData => {
+    const pointElement = pointData.element;
+    if (!pointElement) return;
+    
+    // Skip the back-to-street button - it should stay fixed on screen
+    if (pointElement.classList.contains('back-to-street')) return;
+    
+    // Get stored 3D coordinates from element dataset
+    const pointLon = parseFloat(pointElement.dataset.longitude);
+    const pointLat = parseFloat(pointElement.dataset.latitude);
+    
+    // Skip points without valid coordinates
+    if (isNaN(pointLon) || isNaN(pointLat)) {
+      return;
+    }
+    
+    // Convert spherical coordinates to 3D position on the panorama sphere
+    const phi = THREE.MathUtils.degToRad(90 - pointLat);
+    const theta = THREE.MathUtils.degToRad(pointLon);
+    
+    // Position on sphere (same radius as panorama sphere)
+    const sphereRadius = 490; // Slightly inside the panorama sphere (500)
+    const worldPosition = new THREE.Vector3(
+      sphereRadius * Math.sin(phi) * Math.cos(theta),
+      sphereRadius * Math.cos(phi),
+      sphereRadius * Math.sin(phi) * Math.sin(theta)
+    );
+    
+    // Project 3D world position to 2D screen coordinates
+    const screenPosition = worldPosition.clone().project(panoramaCamera);
+    
+    // Convert normalized device coordinates to screen percentages
+    const screenX = (screenPosition.x + 1) * 50;
+    const screenY = (1 - screenPosition.y) * 50;
+    
+    // Update point position smoothly - no constraints or limits
+    pointElement.style.left = `${screenX}%`;
+    pointElement.style.top = `${screenY}%`;
+    
+    // Always keep points visible and interactive
+    pointElement.style.opacity = '1';
+    pointElement.style.pointerEvents = 'auto';
+  });
+}
+
 // Show energy sub-content dialogue
 function showEnergySubContent(energySubPoint) {
   if (!energySubPoint.content) return;
+  
+  // Mark this panorama point as visited
+  visitedContent.add(energySubPoint.title);
   
   currentStoryPoint = { 
     title: energySubPoint.title,
@@ -1653,48 +1726,6 @@ function showEnergySubContent(energySubPoint) {
   console.log('Showing energy sub-content:', energySubPoint.title);
 }
 
-// Update panorama point positions based on camera rotation
-function updatePanoramaPointPositions() {
-  if (!panoramaPoints || panoramaPoints.length === 0) return;
-  
-  panoramaPoints.forEach(pointData => {
-    const pointElement = pointData.element;
-    if (!pointElement || pointElement.classList.contains('back-to-street')) return;
-    
-    // Get stored 3D coordinates
-    const pointLon = parseFloat(pointElement.dataset.longitude) || 0;
-    const pointLat = parseFloat(pointElement.dataset.latitude) || 0;
-    
-    // Calculate relative position based on current camera rotation
-    let relativeLon = pointLon - lon;
-    let relativeLat = pointLat - lat;
-    
-    // Normalize longitude to -180 to 180 range
-    while (relativeLon > 180) relativeLon -= 360;
-    while (relativeLon < -180) relativeLon += 360;
-    
-    // Check if point is visible (within 180 degree field of view)
-    const isVisible = Math.abs(relativeLon) <= 90 && Math.abs(relativeLat) <= 45;
-    
-    if (isVisible) {
-      // Convert 3D coordinates to 2D screen position
-      // Map longitude (-90 to 90) to x position (0% to 100%)
-      const screenX = 50 + (relativeLon / 90) * 50; // Center around 50%
-      // Map latitude (-45 to 45) to y position (25% to 75%)  
-      const screenY = 50 + (relativeLat / 45) * 25; // Center around 50%
-      
-      // Update point position
-      pointElement.style.left = `${Math.max(5, Math.min(95, screenX))}%`;
-      pointElement.style.top = `${Math.max(10, Math.min(90, screenY))}%`;
-      pointElement.style.opacity = '1';
-      pointElement.style.pointerEvents = 'auto';
-    } else {
-      // Hide points that are behind the camera
-      pointElement.style.opacity = '0';
-      pointElement.style.pointerEvents = 'none';
-    }
-  });
-}
 
 // Return to street view from 360° panorama
 function returnToStreetView() {

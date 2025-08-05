@@ -118,9 +118,11 @@ body {
 @keyframes gentlePulse {
     0%, 100% {
         transform: scale(1);
+        opacity: 0.9;
     }
     50% {
-        transform: scale(1.05);
+        transform: scale(1.08);
+        opacity: 1;
     }
 }
 .point {
@@ -144,7 +146,17 @@ body {
         0 4px 12px rgba(0, 0, 0, 0.3),
         0 0 0 1px rgba(255, 255, 255, 0.1);
     transform: scale(1);
-    animation: gentlePulse 4s ease-in-out infinite;
+    animation: gentlePulse 3s ease-in-out infinite;
+}
+
+/* Disable pulse animation for visited points */
+.point.visited {
+    animation: none;
+}
+
+/* Ensure visited points don't pulse even when deselecting */
+.point.visited.deselecting {
+    animation: shrinkCircle 0.3s ease-out;
 }
 
 .point:hover {
@@ -307,6 +319,9 @@ body {
     background: rgba(153, 111, 105, 0.8);
     backdrop-filter: blur(20px);
     border-left: 2px solid rgba(249, 193, 206, 0.4);
+    border-top: 2px solid rgba(249, 193, 206, 0.4);
+    border-bottom: 2px solid rgba(249, 193, 206, 0.4);
+    border-right: 2px solid rgba(249, 193, 206, 0.4);
     border-radius: 16px;
     opacity: 0;
     transform: translateX(100%);
@@ -498,6 +513,7 @@ body {
     font-size: 0.8em;
     z-index: 5;
     pointer-events: none;
+    transition: color 4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .interactive-text {
@@ -562,7 +578,7 @@ body {
     border-radius: 16px;
     padding: 30px;
     z-index: 1001;
-    transition: all 0.4s ease;
+    transition: all 0.4s ease, background-color 4s cubic-bezier(0.4, 0, 0.2, 1), border-color 4s cubic-bezier(0.4, 0, 0.2, 1);
     border: 2px solid rgba(217, 195, 194, 0.5);
     min-width: 600px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
@@ -797,15 +813,57 @@ body {
 
 /* Tablet responsive */
 @media (min-width: 481px) and (max-width: 768px) {
+    /* Fix viewport stretching for tablet */
+    body, html {
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        position: fixed;
+    }
+    
+    .visual-novel-container {
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    /* Tablet background - similar to mobile but less extreme */
+    .background-container {
+        width: 300%; /* Wide enough for good draggability */
+        height: 100vh; /* Full viewport height */
+        top: 0; /* Start from top */
+        left: -100%; /* Center the wider container */
+        overflow: visible; /* Allow dragging beyond bounds */
+    }
+    
     .background-image {
-        background-size: 115%; /* Moderate zoom - closer but visible */
+        width: 100%;
+        height: 100vh; /* Stretch to full screen height */
+        object-fit: cover; /* Cover entire area */
+        background-size: cover; /* Cover the container */
+        background-position: center center;
+        background-repeat: no-repeat;
+        transform: scale(1.2); /* Moderate zoom for tablet */
+        transform-origin: center center;
+        min-height: 100vh; /* Ensure full height */
     }
     
     .dialogue-panel {
-        width: 320px;
-        height: 60%;
-        top: 20%;
+        width: calc(100% - 40px); /* Similar to mobile with margins */
+        height: 45vh; /* Reasonable height for tablet */
+        max-height: 45vh;
+        bottom: 20px; /* Position from bottom like mobile */
+        left: 20px; /* Margin from left */
+        top: auto; /* Override top positioning */
+        right: auto; /* Override right positioning */
         border-left: 2px solid rgba(249, 193, 206, 0.4);
+        border-top: 2px solid rgba(249, 193, 206, 0.4);
+        border-bottom: 2px solid rgba(249, 193, 206, 0.4);
+        border-right: 2px solid rgba(249, 193, 206, 0.4);
+        border-radius: 8px;
+        overflow: hidden;
+        box-sizing: border-box;
     }
     .help-overlay {
         min-width: 85%;
@@ -840,7 +898,10 @@ body {
         height: 140px;
     }
     .dialogue-text-container {
-        padding: 15px 20px 0 15px;
+        padding: 20px 25px 0 20px;
+        max-height: calc(45vh - 100px); /* Ensure it fits within dialogue panel */
+        overflow-y: auto; /* Allow scrolling if content is too long */
+        box-sizing: border-box;
     }
     .dialogue-header {
         padding: 15px 0 10px 20px;
@@ -925,7 +986,7 @@ body {
     border: 2px solid rgba(255, 255, 255, 0.6);
     cursor: pointer;
     border-radius: 50%;
-    transition: all 0.2s ease;
+    transition: all 0.2s ease, border-color 4s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -945,7 +1006,7 @@ body {
     height: 40px;
     fill: #ece1e0;
     stroke: #ece1e0;
-    transition: all 0.4s ease;
+    transition: all 0.4s ease, fill 4s cubic-bezier(0.4, 0, 0.2, 1), stroke 4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .day-night-toggle:hover svg {
@@ -1022,6 +1083,15 @@ body.high-contrast {
     /* filter: contrast(150%) brightness(120%); */
 }
 
+/* Add smooth transitions to all elements that change color in high contrast mode */
+.dialogue-panel {
+    transition: background-color 4s cubic-bezier(0.4, 0, 0.2, 1), border-color 4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.interactive-text, .back-button, .location-title, .section-text, .help-item, .header-control svg, .text-speed-control, .speed-toggle-icon, .help-close, .point, .panorama-point {
+    transition: color 4s cubic-bezier(0.4, 0, 0.2, 1), fill 4s cubic-bezier(0.4, 0, 0.2, 1), stroke 4s cubic-bezier(0.4, 0, 0.2, 1), border-color 4s cubic-bezier(0.4, 0, 0.2, 1), background-color 4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .background-image {
     transition: filter 4s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -1076,14 +1146,14 @@ body.high-contrast .header-control svg {
     stroke: #ffffff;
 }
 
-/* Moon icon turns pink on hover in dark mode, including border */
+/* Moon icon turns white on hover in dark mode */
 body.high-contrast .header-control:hover svg {
-    fill: #f9c1ce;
-    stroke: #f9c1ce;
+    fill: #ffffff;
+    stroke: #ffffff;
 }
 
 body.high-contrast .header-control:hover {
-    border-color: #f9c1ce;
+    border-color: #ffffff;
 }
 
 /* Sun icon center goes white on hover */
@@ -1108,14 +1178,38 @@ body.high-contrast .text-speed-control:hover {
     background: rgba(249, 193, 206, 0.1);
 }
 
-/* Day/Night toggle in high contrast mode */
-body.high-contrast .day-night-toggle {
-    border-color: #db8fa6;
+/* Style ZEN text in help overlay to match text speed toggle in dark mode */
+body.high-contrast .speed-toggle-icon {
+    color: #ffffff;
+    border-color: #ffffff;
+    background: transparent;
 }
 
-body.high-contrast .day-night-toggle svg {
-    fill: #db8fa6;
-    stroke: #db8fa6;
+/* Style OK button in help panel white, pink on hover in dark mode */
+body.high-contrast .help-close {
+    color: #ffffff;
+    border-color: #ffffff;
+    background: transparent;
+}
+
+body.high-contrast .help-close:hover {
+    color: #f9c1ce;
+    border-color: #f9c1ce;
+    background: rgba(249, 193, 206, 0.4);
+}
+
+/* Day/Night toggle in high contrast mode */
+body.high-contrast .day-night-toggle {
+    border-color: #f9c1ce;
+}
+
+body.high-contrast .day-night-toggle::hover {
+  border-color: #e8e8e8;
+}
+
+body.high-contrast .day-night-toggle::hover svg {
+    fill: #e8e8e8;
+    stroke: #e8e8e8;
 }
 
 /* Point circles in high contrast mode */
@@ -1150,6 +1244,7 @@ body.high-contrast .panorama-point:hover {
 .spiral-logo svg {
     width: 100%;
     height: 100%;
+    transition: fill 4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .spiral-logo:hover {
@@ -1193,6 +1288,112 @@ body.high-contrast .spiral-logo svg {
 /* Panorama overlay points */
 .panorama-point {
     position: absolute;
+    width: 150px;
+    height: 150px;
+    background: radial-gradient(
+        circle at 30% 30%,
+        rgba(255, 255, 255, 0.2),
+        rgba(0, 0, 0, 0.1)
+    );
+    border: 7px dashed #e8e8e8;
+    border-radius: 50%;
+    cursor: crosshair;
+    pointer-events: auto;
+    z-index: 11;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translate(-50%, -50%) scale(1);
+    box-shadow:
+        inset 5px 5px 15px rgba(255, 255, 255, 0.3),
+        inset -5px -5px 15px rgba(0, 0, 0, 0.4),
+        0 10px 30px rgba(0, 0, 0, 0.3),
+        0 0 0 2px rgba(255, 255, 255, 0.1);
+    animation: gentlePulse 3s ease-in-out infinite;
+}
+
+.panorama-point:hover {
+    border-color: #f9c1ce;
+    background: linear-gradient(
+        145deg,
+        rgba(249, 193, 206, 0.2),
+        rgba(157, 110, 109, 0.3)
+    );
+    box-shadow:
+        inset 5px 5px 20px rgba(255, 255, 255, 0.4),
+        inset -5px -5px 20px rgba(0, 0, 0, 0.5),
+        0 15px 50px rgba(249, 193, 206, 0.4),
+        0 0 60px rgba(249, 193, 206, 0.3),
+        0 0 0 5px rgba(249, 193, 206, 0.2);
+    transform: translate(-50%, -50%) scale(1.3);
+}
+
+.panorama-point.selected {
+    background: rgba(157, 110, 109, 0.3);
+    border-color: #f9c1ce;
+    animation: panoramaSelectedPulse 2s infinite ease-in-out, panoramaRotateBorder 90s linear infinite, panoramaGrowCircle 0.3s ease-out;
+    box-shadow:
+        0 0 0 0 rgba(249, 193, 206, 0.7),
+        0 0 50px rgba(249, 193, 206, 0.5),
+        inset 5px 5px 20px rgba(255, 255, 255, 0.4),
+        inset -5px -5px 20px rgba(0, 0, 0, 0.4);
+    transform: translate(-50%, -50%) scale(2);
+}
+
+/* Ensure visited points don't pulse even when deselecting */
+.panorama-point.visited.deselecting {
+    animation: panoramaShrinkCircle 0.3s ease-out;
+}
+
+.panorama-point.deselecting {
+    animation: panoramaShrinkCircle 0.3s ease-out;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+/* Panorama point animations */
+@keyframes panoramaRotateBorder {
+    0% {
+        border-color: #f9c1ce;
+        transform: translate(-50%, -50%) scale(2) rotate(0deg);
+    }
+    25% {
+        border-color: rgba(249, 193, 206, 0.8);
+    }
+    50% {
+        border-color: rgba(249, 193, 206, 0.6);
+    }
+    75% {
+        border-color: rgba(249, 193, 206, 0.9);
+    }
+    100% {
+        border-color: #f9c1ce;
+        transform: translate(-50%, -50%) scale(2) rotate(360deg);
+    }
+}
+
+@keyframes panoramaGrowCircle {
+    0% {
+        transform: translate(-50%, -50%) scale(1);
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(2);
+    }
+}
+
+@keyframes panoramaShrinkCircle {
+    0% {
+        transform: translate(-50%, -50%) scale(2);
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+/* Disable pulse animation for visited panorama points */
+.panorama-point.visited {
+    animation: none;
+}
+
+/* Back to street view button in panorama - styled as dashed circle like other points */
+.panorama-point.back-to-street {
     width: 60px;
     height: 60px;
     background: radial-gradient(
@@ -1203,18 +1404,19 @@ body.high-contrast .spiral-logo svg {
     border: 3px dashed #e8e8e8;
     border-radius: 50%;
     cursor: crosshair;
-    pointer-events: auto;
-    z-index: 11;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    transform: translate(-50%, -50%) scale(1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     box-shadow:
         inset 2px 2px 6px rgba(255, 255, 255, 0.3),
         inset -2px -2px 6px rgba(0, 0, 0, 0.4),
         0 4px 12px rgba(0, 0, 0, 0.3),
         0 0 0 1px rgba(255, 255, 255, 0.1);
+    animation: gentlePulse 3s ease-in-out infinite;
 }
 
-.panorama-point:hover {
+.panorama-point.back-to-street:hover {
     border-color: #f9c1ce;
     background: linear-gradient(
         145deg,
@@ -1230,96 +1432,16 @@ body.high-contrast .spiral-logo svg {
     transform: translate(-50%, -50%) scale(1.3);
 }
 
-.panorama-point.selected {
-    background: rgba(157, 110, 109, 0.3);
-    border-color: #f9c1ce;
-    animation: panoramaSelectedPulse 2s infinite ease-in-out, panoramaRotateBorder 90s linear infinite, panoramaGrowCircle 0.3s ease-out;
-    box-shadow:
-        0 0 0 0 rgba(249, 193, 206, 0.7),
-        0 0 20px rgba(249, 193, 206, 0.5),
-        inset 2px 2px 8px rgba(255, 255, 255, 0.4),
-        inset -2px -2px 8px rgba(0, 0, 0, 0.4);
-    transform: translate(-50%, -50%) scale(6);
-}
-
-.panorama-point.deselecting {
-    animation: panoramaShrinkCircle 0.3s ease-out;
-    transform: translate(-50%, -50%) scale(1);
-}
-
-/* Panorama point animations */
-@keyframes panoramaRotateBorder {
-    0% {
-        border-color: #f9c1ce;
-        transform: translate(-50%, -50%) scale(6) rotate(0deg);
-    }
-    25% {
-        border-color: rgba(249, 193, 206, 0.8);
-    }
-    50% {
-        border-color: rgba(249, 193, 206, 0.6);
-    }
-    75% {
-        border-color: rgba(249, 193, 206, 0.9);
-    }
-    100% {
-        border-color: #f9c1ce;
-        transform: translate(-50%, -50%) scale(6) rotate(360deg);
-    }
-}
-
-@keyframes panoramaGrowCircle {
-    0% {
-        transform: translate(-50%, -50%) scale(1);
-    }
-    100% {
-        transform: translate(-50%, -50%) scale(6);
-    }
-}
-
-@keyframes panoramaShrinkCircle {
-    0% {
-        transform: translate(-50%, -50%) scale(6);
-    }
-    100% {
-        transform: translate(-50%, -50%) scale(1);
-    }
-}
-
-/* Back to street view button in panorama - styled like dialogue panel toggles */
-.panorama-point.back-to-street {
-    background: rgba(249, 193, 206, 0.2);
-    border: 1px solid rgba(249, 193, 206, 0.5);
-    border-radius: 4px;
-    color: #f9c1ce;
-    cursor: pointer;
-    padding: 8px 12px;
-    font-size: 0.9em;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    white-space: nowrap;
-}
-
-.panorama-point.back-to-street:hover {
-    color: #ffffff;
-    border-color: #ffffff;
-    background: rgba(255, 255, 255, 0.1);
-    transform: translate(-50%, -50%);
-}
-
 .panorama-point.back-to-street svg {
-    width: 20px;
-    height: 20px;
-    fill: #f9c1ce;
-    stroke: #f9c1ce;
+    width: 24px;
+    height: 24px;
+    fill: #e8e8e8;
+    stroke: #e8e8e8;
 }
 
 .panorama-point.back-to-street:hover svg {
-    fill: #ffffff;
-    stroke: #ffffff;
+    fill: #f9c1ce;
+    stroke: #f9c1ce;
 }
 
 @keyframes panoramaSelectedPulse {
