@@ -121,8 +121,38 @@ body {
         opacity: 0.9;
     }
     50% {
-        transform: scale(1.08);
+        transform: scale(1.05);
         opacity: 1;
+    }
+}
+
+@keyframes hoverGrow {
+    0% {
+        transform: scale(1);
+    }
+    100% {
+        transform: scale(1.3);
+    }
+}
+
+@keyframes hoverPulse {
+    0%, 100% {
+        transform: scale(1.3);
+        box-shadow:
+            inset 2px 2px 8px rgba(255, 255, 255, 0.4),
+            inset -2px -2px 8px rgba(0, 0, 0, 0.5),
+            0 6px 20px rgba(249, 193, 206, 0.4),
+            0 0 25px rgba(249, 193, 206, 0.3),
+            0 0 0 2px rgba(249, 193, 206, 0.2);
+    }
+    50% {
+        transform: scale(1.35);
+        box-shadow:
+            inset 2px 2px 8px rgba(255, 255, 255, 0.5),
+            inset -2px -2px 8px rgba(0, 0, 0, 0.6),
+            0 8px 25px rgba(249, 193, 206, 0.5),
+            0 0 35px rgba(249, 193, 206, 0.4),
+            0 0 0 3px rgba(249, 193, 206, 0.3);
     }
 }
 .point {
@@ -146,7 +176,7 @@ body {
         0 4px 12px rgba(0, 0, 0, 0.3),
         0 0 0 1px rgba(255, 255, 255, 0.1);
     transform: scale(1);
-    animation: gentlePulse 3s ease-in-out infinite;
+    animation: gentlePulse 6s ease-in-out infinite;
 }
 
 /* Disable pulse animation for visited points */
@@ -172,7 +202,7 @@ body {
         0 6px 20px rgba(249, 193, 206, 0.4),
         0 0 25px rgba(249, 193, 206, 0.3),
         0 0 0 2px rgba(249, 193, 206, 0.2);
-    transform: scale(1.3);
+    animation: hoverGrow 0.4s ease-out forwards, hoverPulse 3s ease-in-out infinite 0.4s;
 }
 
 .point.selected {
@@ -531,21 +561,63 @@ body {
     transform: translateY(-1px);
 }
 
-.back-button {
-    display: inline-block;
-    margin-left: 8px;
+/* Text styling classes - non-clickable text effects */
+.text-bold {
+    font-weight: 600;
+    color: #e8e8e8;
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.1);
+}
+
+
+/* Hover title for circle points */
+.hover-title {
+    position: fixed;
+    background: rgba(26, 26, 26, 0.95);
     color: #f9c1ce;
-    opacity: 0.7;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 28px;
+    font-weight: bold;
+    text-shadow: 0 0 10px rgba(249, 193, 206, 0.5);
+    border: 2px solid rgba(249, 193, 206, 0.3);
+    box-shadow: 
+        0 4px 20px rgba(0, 0, 0, 0.4),
+        0 0 15px rgba(249, 193, 206, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    z-index: 9999;
+    pointer-events: none;
+    white-space: nowrap;
+    opacity: 0;
+    transform: scale(0.8) translateY(10px);
+    transition: all 0.2s ease-out;
+}
+
+.hover-title.visible {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+}
+
+.back-button {
+    display: block;
+    margin-top: 15px;
+    margin-bottom: 5px;
+    color: #f9c1ce;
+    opacity: 0.9;
     cursor: pointer;
     transition: all 0.2s ease;
-    padding: 0px 5px 0px 5px;
-    border-radius: 3px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: rgba(249, 193, 206, 0.1);
+    border: 1px solid rgba(249, 193, 206, 0.3);
+    font-size: 14px;
+    width: fit-content;
 }
 
 .back-button:hover {
     opacity: 1;
     color: #ffffff;
-    background: rgba(249, 193, 206, 0.2);
+    background: rgba(249, 193, 206, 0.25);
+    border-color: rgba(249, 193, 206, 0.5);
     transform: translateY(-1px);
 }
 
@@ -897,17 +969,67 @@ body {
         width: 140px;
         height: 140px;
     }
+    
+    /* Use medium size (scale 3) instead of largest size (scale 4) for selected circles on tablet */
+    .point.selected {
+        transform: scale(3);
+        animation: selectedPulse 2s infinite ease-in-out, tabletRotateBorder 90s linear infinite, tabletGrowCircle 0.3s ease-out;
+    }
+    
+    .point.deselecting {
+        animation: tabletShrinkCircle 0.3s ease-out;
+        transform: scale(1);
+    }
+    
+    /* Tablet-specific animations with scale 3 */
+    @keyframes tabletRotateBorder {
+        0% {
+            border-color: #f9c1ce;
+            transform: scale(3) rotate(0deg);
+        }
+        25% {
+            border-color: rgba(249, 193, 206, 0.8);
+        }
+        50% {
+            border-color: rgba(249, 193, 206, 0.6);
+        }
+        75% {
+            border-color: rgba(249, 193, 206, 0.9);
+        }
+        100% {
+            border-color: #f9c1ce;
+            transform: scale(3) rotate(360deg);
+        }
+    }
+    
+    @keyframes tabletGrowCircle {
+        0% {
+            transform: scale(1);
+        }
+        100% {
+            transform: scale(3);
+        }
+    }
+    
+    @keyframes tabletShrinkCircle {
+        0% {
+            transform: scale(3);
+        }
+        100% {
+            transform: scale(1);
+        }
+    }
     .dialogue-text-container {
-        padding: 20px 25px 0 20px;
-        max-height: calc(45vh - 100px); /* Ensure it fits within dialogue panel */
+        padding: 10px 25px 0 20px; /* Reduced from 20px to 10px top padding */
+        max-height: calc(45vh - 80px); /* Reduced max-height to give more space */
         overflow-y: auto; /* Allow scrolling if content is too long */
         box-sizing: border-box;
     }
     .dialogue-header {
-        padding: 15px 0 10px 20px;
+        padding: 10px 0 5px 20px; /* Reduced from 15px/10px to 10px/5px */
     }
     .dialogue-header-controls {
-        top: 15px !important; /* Center align with locationTitle */
+        top: 10px !important; /* Center align with locationTitle - adjusted for new header padding */
     }
     .text-speed-control {
       font-size: 0.6em;
@@ -996,7 +1118,7 @@ body {
 
 .day-night-toggle:hover {
     /* background: rgba(255, 255, 255, 1); */
-    border-color: #db8fa6;
+    border-color: #f9c1ce; /* Pink border on hover in day mode */
     transform: translateX(-50%) scale(1.1);
     box-shadow: 0 5px 16px rgba(0, 0, 0, 0.25);
 }
@@ -1010,9 +1132,10 @@ body {
 }
 
 .day-night-toggle:hover svg {
-    fill: #db8fa6;
-    stroke: #db8fa6;
+    fill: #f9c1ce; /* Pink icon on hover in day mode */
+    stroke: #f9c1ce;
 }
+
 
 /* Dialogue Header Controls */
 .dialogue-header {
@@ -1203,13 +1326,13 @@ body.high-contrast .day-night-toggle {
     border-color: #f9c1ce;
 }
 
-body.high-contrast .day-night-toggle::hover {
-  border-color: #e8e8e8;
+body.high-contrast .day-night-toggle:hover {
+    border-color: #ffffff; /* White border on hover in night mode */
 }
 
-body.high-contrast .day-night-toggle::hover svg {
-    fill: #e8e8e8;
-    stroke: #e8e8e8;
+body.high-contrast .day-night-toggle:hover svg {
+    fill: #ffffff; /* White icon on hover in night mode */
+    stroke: #ffffff;
 }
 
 /* Point circles in high contrast mode */

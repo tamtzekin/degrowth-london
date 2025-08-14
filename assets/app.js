@@ -74,12 +74,79 @@ function createInteractivePoints() {
     pointElement.style.left = `${point.x}%`;
     pointElement.style.top = `${point.y}%`;
     pointElement.dataset.index = index;
+    pointElement.dataset.title = point.title;
+    
     pointElement.addEventListener("click", () =>
       handleCircleClick(point, pointElement, index),
     );
+    
+    // Add hover event listeners for title display
+    pointElement.addEventListener("mouseenter", (e) => showHoverTitle(e, point.title));
+    pointElement.addEventListener("mouseleave", hideHoverTitle);
+    
     interactivePoints.appendChild(pointElement);
     pointElements.push(pointElement);
   });
+}
+
+let hoverTitleElement = null;
+
+function showHoverTitle(event, title) {
+  // Don't show title if the circle is already selected
+  const pointElement = event.target;
+  if (pointElement.classList.contains('selected')) {
+    return;
+  }
+  
+  // Remove existing hover title if any
+  hideHoverTitle();
+  
+  // Create hover title element
+  hoverTitleElement = document.createElement("div");
+  hoverTitleElement.className = "hover-title";
+  hoverTitleElement.textContent = title;
+  
+  // Position it next to the circle
+  const pointRect = pointElement.getBoundingClientRect();
+  
+  // Add to body first to get dimensions
+  document.body.appendChild(hoverTitleElement);
+  const titleRect = hoverTitleElement.getBoundingClientRect();
+  
+  // Calculate position (to the right of the circle, vertically centered)
+  let left = pointRect.right + 20;
+  let top = pointRect.top + (pointRect.height / 2) - (titleRect.height / 2);
+  
+  // Keep within viewport bounds
+  if (left + titleRect.width > window.innerWidth) {
+    left = pointRect.left - titleRect.width - 20; // Show to the left instead
+  }
+  if (top < 0) top = 10;
+  if (top + titleRect.height > window.innerHeight) {
+    top = window.innerHeight - titleRect.height - 10;
+  }
+  
+  hoverTitleElement.style.left = `${left}px`;
+  hoverTitleElement.style.top = `${top}px`;
+  
+  // Trigger animation
+  setTimeout(() => {
+    if (hoverTitleElement) {
+      hoverTitleElement.classList.add("visible");
+    }
+  }, 10);
+}
+
+function hideHoverTitle() {
+  if (hoverTitleElement) {
+    hoverTitleElement.classList.remove("visible");
+    setTimeout(() => {
+      if (hoverTitleElement && hoverTitleElement.parentNode) {
+        hoverTitleElement.parentNode.removeChild(hoverTitleElement);
+      }
+      hoverTitleElement = null;
+    }, 200);
+  }
 }
 
 function setupEventListeners() {
@@ -437,8 +504,10 @@ function showDialogue(point, pointElement) {
   // Remove pulse animation from this point since it's been visited
   pointElement.classList.add('visited');
 
-  // Reset navigation history when opening new dialogue
+  // Reset navigation history when opening new dialogue and add main state
   navigationHistory = [];
+  // Add the main dialogue state to history so we can navigate back to it
+  addToHistory(point, "main");
 
   // Reset skip-related state variables
   skipToNextSentence = false;
@@ -619,85 +688,185 @@ function addToHistory(point, optionKey) {
 }
 
 function addBackButton(textContainer, point, currentKey) {
-  if (navigationHistory.length === 0 && currentKey !== "main") {
-    // If no history but not on main, can go back to main
-    const backButton = createBackButton(() => showMainText(point));
-    textContainer.appendChild(backButton);
-  } else if (navigationHistory.length > 0) {
-    // Can go back to previous section
+  if (navigationHistory.length > 1) {
+    // Can go back to previous section (need at least main + current)
     const backButton = createBackButton(() => goBack());
     textContainer.appendChild(backButton);
   }
+  // Note: Removed the fallback case since we always want to use goBack() when there's history
 }
 
 function createBackButton(clickHandler) {
   const backButton = document.createElement("span");
   backButton.className = "back-button";
   backButton.innerHTML = `
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="cursor: pointer; opacity: 0.7;">
+    <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" style="cursor: pointer; margin-right: 6px;">
       <path d="M8 1l-1.5 1.5L11 7H1v2h10l-4.5 4.5L8 15l7-7z" transform="rotate(180 8 8)"/>
     </svg>
+    Back
   `;
   backButton.style.cursor = "pointer";
-  backButton.addEventListener("click", clickHandler);
+  backButton.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation(); // Prevent the skip system from interfering
+    clickHandler();
+  });
   return backButton;
 }
 
 function goBack() {
-  if (navigationHistory.length === 0) return;
+  if (navigationHistory.length <= 1) return; // Need at least 2 items (main + current)
 
   // Remove current state from history
   navigationHistory.pop();
+  
+  // Get the previous state (what we want to go back to)
+  const previousState = navigationHistory[navigationHistory.length - 1];
+  
+  if (previousState.optionKey === "main") {
+    // Going back to main dialogue - clear and rebuild text without adding to history again
+    // Reset skip state variables for new main text
+    skipToNextSentence = false;
+    hasUsedSkip = false;
+    isTyping = false;
 
-  if (navigationHistory.length === 0) {
-    // Go back to main text
-    showMainText(currentStoryPoint);
+    // Clear any existing typing timeout
+    if (currentTypingTimeout) {
+      clearTimeout(currentTypingTimeout);
+      currentTypingTimeout = null;
+    }
+
+    // Clear container and any existing timeouts
+    dialogueTextContainer.innerHTML = "";
+
+    // Create dialogue entry
+    const dialogueEntry = document.createElement("div");
+    dialogueEntry.className = "dialogue-entry";
+
+    const speaker = document.createElement("div");
+    speaker.className = "dialogue-speaker";
+    speaker.textContent = previousState.point.mainText.speaker;
+    dialogueEntry.appendChild(speaker);
+
+    // Create text container for letter-by-letter animation
+    const text = document.createElement("div");
+    text.className = "section-text";
+    dialogueEntry.appendChild(text);
+
+    // Add container first
+    dialogueTextContainer.appendChild(dialogueEntry);
+
+    // Animate text typing letter by letter with inline link parsing
+    typeWriterWithLinks(text, previousState.point.mainText.text, 0, previousState.point, () => {
+      addBackButton(text, previousState.point, "main");
+    });
+
+    dialoguePanel.classList.add("visible");
+    dialogueTextContainer.scrollTop = 0;
   } else {
-    // Go back to previous section
-    const previousState = navigationHistory[navigationHistory.length - 1];
-    navigationHistory.pop(); // Remove it so showSection doesn't add it again
-    showSection(previousState.point, previousState.optionKey);
+    // Going back to previous sub-dialogue - rebuild without adding to history
+    const option = previousState.point.options.find((opt) => opt.key === previousState.optionKey);
+    if (!option || !option.content) return;
+
+    // Reset skip state variables for new section
+    skipToNextSentence = false;
+    hasUsedSkip = false;
+    isTyping = false;
+
+    // Clear any existing typing timeout
+    if (currentTypingTimeout) {
+      clearTimeout(currentTypingTimeout);
+      currentTypingTimeout = null;
+    }
+
+    // Clear container and any existing timeouts
+    dialogueTextContainer.innerHTML = "";
+
+    // Create dialogue entry
+    const dialogueEntry = document.createElement("div");
+    dialogueEntry.className = "dialogue-entry";
+
+    const speaker = document.createElement("div");
+    speaker.className = "dialogue-speaker";
+    speaker.textContent = option.content.speaker;
+    dialogueEntry.appendChild(speaker);
+
+    // Create text container for letter-by-letter animation
+    const text = document.createElement("div");
+    text.className = "section-text";
+    dialogueEntry.appendChild(text);
+
+    // Add container first
+    dialogueTextContainer.appendChild(dialogueEntry);
+
+    // Animate text typing letter by letter with inline link parsing
+    typeWriterWithLinks(text, option.content.text, 0, previousState.point, () => {
+      addBackButton(text, previousState.point, previousState.optionKey);
+    });
+
+    dialoguePanel.classList.add("visible");
+    dialogueTextContainer.scrollTop = 0;
   }
 }
 
-function parseTextWithLinks(text, point) {
-  // Parse text for inline links using syntax: [link text](key) or [link text](close)
-  const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+function parseTextWithLinksAndStyling(text, point) {
+  // Parse text for inline links and styling
+  // Links: [link text](key) or [link text](close)
+  // Styling: *bold*
+  // Line breaks: \\n or <br>
   const parts = [];
-  let lastIndex = 0;
+  let currentText = text;
+  let currentIndex = 0;
+
+  // First convert line break markers to actual line breaks
+  text = text.replace(/\\n|<br>/g, '\n');
+
+  // Combined regex to match all formatting types including line breaks
+  const formatRegex = /(\[([^\]]+)\]\(([^)]+)\))|(\*([^*]+)\*)|\n/g;
   let match;
 
-  while ((match = linkRegex.exec(text)) !== null) {
-    // Add text before the link
-    if (match.index > lastIndex) {
+  while ((match = formatRegex.exec(text)) !== null) {
+    // Add text before this match
+    if (match.index > currentIndex) {
       parts.push({
         type: "text",
-        content: text.substring(lastIndex, match.index),
+        content: text.substring(currentIndex, match.index),
       });
     }
 
-    // Add the link
-    const linkText = match[1];
-    const linkTarget = match[2];
+    if (match[1]) {
+      // Link: [text](target)
+      parts.push({
+        type: "link",
+        content: match[2],
+        target: match[3],
+      });
+    } else if (match[4]) {
+      // Bold: *text*
+      parts.push({
+        type: "styled",
+        content: match[5],
+        styleClass: "text-bold",
+      });
+    } else if (match[0] === '\n') {
+      // Line break
+      parts.push({
+        type: "linebreak",
+      });
+    }
 
-    parts.push({
-      type: "link",
-      content: linkText,
-      target: linkTarget,
-    });
-
-    lastIndex = match.index + match[0].length;
+    currentIndex = match.index + match[0].length;
   }
 
-  // Add remaining text after last link
-  if (lastIndex < text.length) {
+  // Add remaining text after last match
+  if (currentIndex < text.length) {
     parts.push({
       type: "text",
-      content: text.substring(lastIndex),
+      content: text.substring(currentIndex),
     });
   }
 
-  // If no links found, treat as plain text
+  // If no matches found, treat as plain text
   if (parts.length === 0) {
     parts.push({
       type: "text",
@@ -709,7 +878,7 @@ function parseTextWithLinks(text, point) {
 }
 
 function typeWriterWithLinks(element, text, charIndex, point, onComplete) {
-  const textParts = parseTextWithLinks(text, point);
+  const textParts = parseTextWithLinksAndStyling(text, point);
 
   if (textSpeed === 0) {
     // FAST mode: show all text instantly
@@ -841,6 +1010,20 @@ function typeWriterParts(
     element.appendChild(linkSpan);
     // Move to next part immediately
     typeWriterParts(element, parts, partIndex + 1, 0, point, onComplete);
+  } else if (currentPart.type === "styled") {
+    // Create styled text element instantly
+    const styledSpan = document.createElement("span");
+    styledSpan.className = currentPart.styleClass;
+    styledSpan.textContent = currentPart.content;
+
+    element.appendChild(styledSpan);
+    // Move to next part immediately
+    typeWriterParts(element, parts, partIndex + 1, 0, point, onComplete);
+  } else if (currentPart.type === "linebreak") {
+    // Create line break element instantly
+    element.appendChild(document.createElement("br"));
+    // Move to next part immediately
+    typeWriterParts(element, parts, partIndex + 1, 0, point, onComplete);
   }
 }
 
@@ -871,6 +1054,13 @@ function renderParsedText(element, parts, point) {
       }
 
       element.appendChild(linkSpan);
+    } else if (part.type === "styled") {
+      const styledSpan = document.createElement("span");
+      styledSpan.className = part.styleClass;
+      styledSpan.textContent = part.content;
+      element.appendChild(styledSpan);
+    } else if (part.type === "linebreak") {
+      element.appendChild(document.createElement("br"));
     }
   });
 }
@@ -989,8 +1179,8 @@ function setupDialogueSkipListener() {
       e.target.classList.contains("interactive-text"),
     );
 
-    // Only skip if we're typing and not clicking on interactive text
-    if (isTyping && !e.target.classList.contains("interactive-text")) {
+    // Only skip if we're typing and not clicking on interactive text or back button
+    if (isTyping && !e.target.classList.contains("interactive-text") && !e.target.closest(".back-button")) {
       console.log("Executing skip to next sentence");
 
       // Play gentle click sound
@@ -1155,7 +1345,7 @@ function showWelcomeMessage() {
     const fakePoint = { options: [] };
     renderParsedText(
       welcomeTextElement,
-      parseTextWithLinks(welcomeText, fakePoint),
+      parseTextWithLinksAndStyling(welcomeText, fakePoint),
       fakePoint,
       0,
     );
@@ -1602,10 +1792,16 @@ function createPanoramaStoryPoints() {
   backToStreetPoint.style.left = '50%';
   backToStreetPoint.style.top = '20%'; // Position it in upper middle area
   
-  // Add EXIT icon
+  // Add arrow back to street icon
   backToStreetPoint.innerHTML = `
-    <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" style="width: 24px; height: 24px;">
-      <path d="M18 6L6 18M6 6l12 12"/>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 28px; height: 28px;">
+      <!-- Arrow pointing back to street -->
+      <path d="M19 12H5"/>
+      <path d="M12 19L5 12L12 5"/>
+      <!-- Street/building silhouette -->
+      <rect x="2" y="16" width="2" height="6" fill="currentColor" opacity="0.6"/>
+      <rect x="5" y="14" width="2" height="8" fill="currentColor" opacity="0.4"/>
+      <rect x="8" y="15" width="2" height="7" fill="currentColor" opacity="0.5"/>
     </svg>
   `;
   
