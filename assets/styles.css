@@ -573,16 +573,16 @@ body {
 .hover-title {
     position: fixed;
     background: rgba(26, 26, 26, 0.95);
-    color: #f9c1ce;
+    color: rgba(249, 193, 206, 0.7);
     padding: 12px 20px;
     border-radius: 8px;
     font-size: 28px;
     font-weight: bold;
-    text-shadow: 0 0 10px rgba(249, 193, 206, 0.5);
-    border: 2px solid rgba(249, 193, 206, 0.3);
+    text-shadow: 0 0 10px rgba(249, 193, 206, 0.3);
+    border: 2px solid rgba(249, 193, 206, 0.2);
     box-shadow: 
         0 4px 20px rgba(0, 0, 0, 0.4),
-        0 0 15px rgba(249, 193, 206, 0.2),
+        0 0 15px rgba(249, 193, 206, 0.15),
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
     z-index: 9999;
     pointer-events: none;
@@ -685,8 +685,9 @@ body {
 }
 
 .help-close:hover {
-    background: rgba(249, 193, 206, 0.5);
-    border: 2px solid rgba(249, 193, 206, 0.9);
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid #ffffff;
+    color: #ffffff;
     transform: translateY(-2px);
 }
 
@@ -705,6 +706,12 @@ body {
     flex-shrink: 0;
 }
 
+.help-icon svg {
+    fill: #ece1e0;
+    stroke: #ece1e0;
+    transition: all 0.4s ease, fill 4s cubic-bezier(0.4, 0, 0.2, 1), stroke 4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .speed-toggle-icon {
     width: 28px;
     height: 28px;
@@ -717,7 +724,7 @@ body {
     border: 1px solid rgba(249, 193, 206, 0.5);
     border-radius: 4px;
     color: #f9c1ce;
-    font-size: 0.4em;
+    font-size: 0.5em;
     font-weight: 500;
     padding: 1px 2px;
     text-align: center;
@@ -800,7 +807,8 @@ body {
     }
     
     .help-item {
-        font-size: 1.3em;
+        font-size: 1.1em;
+        margin-bottom: 12px;
     }
     
     .help-icon {
@@ -857,7 +865,7 @@ body {
     }
 
     .section-text {
-        font-size: 1.3em;
+        font-size: 1.1em;
         line-height: 1.5;
         margin-top: 20px; /* More spacing before section text */
     }
@@ -1264,6 +1272,11 @@ body.high-contrast .help-item {
     color: #ffffff;
 }
 
+body.high-contrast .help-icon svg {
+    fill: #ece1e0;
+    stroke: #ece1e0;
+}
+
 body.high-contrast .header-control svg {
     fill: #ffffff;
     stroke: #ffffff;
@@ -1600,7 +1613,7 @@ body.high-contrast .spiral-logo svg {
     .day-night-toggle {
         width: 75px;
         height: 75px;
-        top: 15px;
+        top: 80px;
     }
     
     .day-night-toggle svg {
