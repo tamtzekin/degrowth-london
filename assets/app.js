@@ -501,6 +501,10 @@ function handleEdgeScrolling(e) {
   // Disable map dragging when a circle is selected (dialogue is open)
   if (isMapView && dialoguePanel.classList.contains('visible')) return;
   
+  // Disable map dragging when help overlay is open
+  const helpOverlay = document.getElementById('helpOverlay');
+  if (helpOverlay && !helpOverlay.classList.contains('hidden')) return;
+  
   const mouseX = e.clientX;
   const mouseY = e.clientY;
   const windowWidth = window.innerWidth;
@@ -581,13 +585,13 @@ function startEdgeScrolling() {
       
       updateBackgroundPosition();
     } else {
-      // Panorama scrolling
-      if (window.panoramaCamera) {
-        window.panoramaCamera.rotation.y += currentScrollVelocityX * 0.01;
-        window.panoramaCamera.rotation.x += currentScrollVelocityY * 0.01;
+      // Panorama scrolling - update lon/lat for smoother control (horizontal inverted, vertical natural)
+      if (!isMapView && panoramaCamera) {
+        lon -= currentScrollVelocityX * 0.1; // Horizontal rotation (gentler and reversed)
+        lat += currentScrollVelocityY * 0.1; // Vertical rotation (gentler, natural direction)
         
         // Clamp vertical rotation
-        window.panoramaCamera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, window.panoramaCamera.rotation.x));
+        lat = Math.max(-85, Math.min(85, lat));
       }
     }
     
@@ -613,7 +617,7 @@ function handleCircleClick(point, pointElement, index) {
   console.log('Circle clicked:', point.title);
   
   // Check if this point has a 360° image
-  const has360Image = point.title === "Education"; // Only Education goes directly to 360°
+  const has360Image = point.title === "Education" || point.title === "Food"; // Both Education and Food go directly to 360°
   
   // Store has360Image on the point for later use
   point._has360Image = has360Image;
@@ -633,7 +637,7 @@ function handleCircleClick(point, pointElement, index) {
   // Set the current story point for panorama creation
   currentStoryPoint = point;
   
-  // Wait for centering animation to complete before starting zoom
+  // Start transition immediately for faster 360° access
   setTimeout(() => {
     // Get the circle's position for zoom target (after centering)
     const rect = pointElement.getBoundingClientRect();
@@ -734,8 +738,8 @@ function handleCircleClick(point, pointElement, index) {
       }
     }, 100);
     
-  }, 500); // Wait for cross-fade to complete (400ms zoom + 100ms extra)
-  }, 650); // Wait for centering animation to complete (600ms) before starting zoom
+  }, 150); // Fast transition (reduced from 500ms)
+  }, 100); // Start immediately (reduced from 650ms)
 }
 
 function showDialogue(point, pointElement) {
@@ -924,18 +928,6 @@ function showMainText(point) {
 }
 
 function showSection(point, optionKey) {
-  // Handle special case for Food 360° view
-  if (optionKey === 'food_360' && point.title === 'Food') {
-    console.log('Triggering Food 360° view');
-    // Hide dialogue and transition to 360° view
-    hideDialogue();
-    // Transition to Food 360° view directly
-    setTimeout(() => {
-      enterFoodPanoramaView(point);
-    }, 300);
-    return;
-  }
-  
   // Find the option with the matching key
   console.log('showSection called with:', optionKey, 'point:', point.title);
   console.log('Available options:', point.options.map(opt => opt.key));
@@ -1907,6 +1899,9 @@ function loadFoodPanoramaImages(point) {
 function loadSinglePanoramaImage(point) {
   let imagePath;
   switch (point.title) {
+    case 'Education':
+      imagePath = 'assets/images/360-energy.jpg';
+      break;
     case 'Energy':
       imagePath = 'assets/images/360-energy.jpg';
       break;
@@ -2309,40 +2304,6 @@ function showPanoramaDialogue(point) {
   showMainText(point);
 }
 
-// Enter Food panorama view directly (used when clicking "Visit the local market" link)
-function enterFoodPanoramaView(point) {
-  console.log('Entering Food panorama view directly');
-  
-  // Set current story point and mark as having 360° image
-  currentStoryPoint = point;
-  point._has360Image = true;
-  
-  // Hide street view elements and show panorama
-  const backgroundContainer = document.getElementById('backgroundContainer');
-  const interactivePoints = document.getElementById('interactivePoints');
-  
-  backgroundContainer.style.opacity = '0';
-  interactivePoints.style.opacity = '0';
-  
-  setTimeout(() => {
-    // Hide street view
-    backgroundContainer.style.display = 'none';
-    interactivePoints.style.display = 'none';
-    
-    // Show panorama
-    panoramaContainer.style.display = 'block';
-    panoramaContainer.style.opacity = '0';
-    
-    // Initialize panorama
-    isMapView = false;
-    loadPanoramaImage(point);
-    
-    setTimeout(() => {
-      panoramaContainer.style.opacity = '1';
-      createFoodPanoramaPoints();
-    }, 100);
-  }, 300);
-}
 
 // Create Food-specific 360° points for market scenes
 function createFoodPanoramaPoints() {
