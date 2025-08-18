@@ -1,6 +1,6 @@
 [
   {
-    "x": 50,
+    "x": 32,
     "y": 62,
     "title": "Transport",
     "subtitle": "",
@@ -41,42 +41,8 @@
   },
   
   {
-    "x": 85,
-    "y": 25,
-    "title": "Energy",
-    "subtitle": "",
-    "mainText": {
-      "speaker": "Clean Energy for All",
-      "text": "Rooftops, schools, car parks and even bus shelters are lined with [solar panels](energy_coops).\n\nHomes once cold and leaky are now warm and dry, fitted with heat pumps and high—performance insulation.\n\nEnergy bills have [dropped](fair_share). Mould is gone. People feel [safe](living_system) in their homes again."
-    },
-    "options": [
-      {
-        "key": "energy_coops",
-        "content": {
-          "speaker": "Community energy",
-          "text": "Everyone is a member of their *local energy cooperative*, benefiting from the energy we collectively generate and use.\n\nEveryone has access to affordable, renewable energy and we understand it as a collective responsibility: a resource cared for like the water we drink or the air we breathe.\n\nWhen energy prices spiked, people came together. Campaigners demanding affordable energy linked arms with those fighting to leave fossil fuels behind.\n\nThey made the case: no one should choose between heating and eating. Their movement grew strong enough to bring in the Mayor of London, and from there, a *citizens’ assembly* was formed."
-        }
-      },
-      {
-        "key": "fair_share",
-        "content": {
-          "speaker": "Fair share",
-          "text": "The assembly agreed on an *equitable energy allowance*. The wealthiest in London who used the most energy, would reduce their consumption or be charged a premium for the extra energy they used.\n\nThe funds from this premium would be used to retrofit and insulate London's leakiest homes, improving living standards and wellbeing at the same time.\n\nLocal authorities stepped up, changing planning rules to make way for *neighbourhood—owned energy networks*.\n\nThese flexible systems put power back in the hands of communities. People vote on decisions, share the benefits, and reinvest profits locally."
-        }
-      },
-      {
-        "key": "living_system",
-        "content": {
-          "speaker": "A living system",
-          "text": "Building new energy systems hasn't been easy. The old grid creaks under the pressure, and demand from AI and data centres keeps rising.\n\nBut change is underway. Solar panels are being sourced from ethical supply chains.\n\nWorkers across Europe are shaping a *just energy transition*, one that doesn't rely on exploitation or environmental harm.\n\nAnd still, the movement grows. Warm homes, cleaner air, and democratic control over local energy are no longer just ideas — they're the new normal."
-        }
-      }
-    ]
-  },
-
-  {
-    "x": 70,
-    "y": 80,
+    "x": 68,
+    "y": -4,
     "title": "Education",
     "subtitle": "",
     "mainText": {
@@ -109,13 +75,47 @@
   },
 
   {
-    "x": 18,
-    "y": 55,
+    "x": 34,
+    "y": 14,
+    "title": "Energy",
+    "subtitle": "",
+    "mainText": {
+      "speaker": "Clean Energy for All",
+      "text": "Rooftops, schools, car parks and even bus shelters are lined with [solar panels](energy_coops).\n\nHomes once cold and leaky are now warm and dry, fitted with heat pumps and high—performance insulation.\n\nEnergy bills have [dropped](fair_share). Mould is gone. People feel [safe](living_system) in their homes again."
+    },
+    "options": [
+      {
+        "key": "energy_coops",
+        "content": {
+          "speaker": "Community energy",
+          "text": "Everyone is a member of their *local energy cooperative*, benefiting from the energy we collectively generate and use.\n\nEveryone has access to affordable, renewable energy and we understand it as a collective responsibility: a resource cared for like the water we drink or the air we breathe.\n\nWhen energy prices spiked, people came together. Campaigners demanding affordable energy linked arms with those fighting to leave fossil fuels behind.\n\nThey made the case: no one should choose between heating and eating. Their movement grew strong enough to bring in the Mayor of London, and from there, a *citizens' assembly* was formed."
+        }
+      },
+      {
+        "key": "fair_share",
+        "content": {
+          "speaker": "Fair share",
+          "text": "The assembly agreed on an *equitable energy allowance*. The wealthiest in London who used the most energy, would reduce their consumption or be charged a premium for the extra energy they used.\n\nThe funds from this premium would be used to retrofit and insulate London's leakiest homes, improving living standards and wellbeing at the same time.\n\nLocal authorities stepped up, changing planning rules to make way for *neighbourhood—owned energy networks*.\n\nThese flexible systems put power back in the hands of communities. People vote on decisions, share the benefits, and reinvest profits locally."
+        }
+      },
+      {
+        "key": "living_system",
+        "content": {
+          "speaker": "A living system",
+          "text": "Building new energy systems hasn't been easy. The old grid creaks under the pressure, and demand from AI and data centres keeps rising.\n\nBut change is underway. Solar panels are being sourced from ethical supply chains.\n\nWorkers across Europe are shaping a *just energy transition*, one that doesn't rely on exploitation or environmental harm.\n\nAnd still, the movement grows. Warm homes, cleaner air, and democratic control over local energy are no longer just ideas — they're the new normal."
+        }
+      }
+    ]
+  },
+
+  {
+    "x": -2,
+    "y": 62,
     "title": "Food",
     "subtitle": "",
     "mainText": {
       "speaker": "",
-      "text": "London is greener now. Every [rooftop](farmers_markets) grows something (herbs, tomatoes, strawberries). Windowsills spill with basil, spring onions, or wild rocket.\n\nGardens [bloom](fair_design) between buildings, and quiet streets make space for pollinators, workshops, and shared growing spaces.\n\nCommunity gardens are meeting points, learning hubs, and homes for [soil](waste), stories, and seeds. Here, children dig, compost, plant, and [taste](slow_food) what they’ve grown.\n\nAdults learn how to save seeds, cook with the seasons, and work with the land."
+      "text": "London is greener now. Every [rooftop](farmers_markets) grows something (herbs, tomatoes, strawberries). Windowsills spill with basil, spring onions, or wild rocket.\n\nGardens [bloom](fair_design) between buildings, and quiet streets make space for pollinators, workshops, and shared growing spaces.\n\nCommunity gardens are meeting points, learning hubs, and homes for [soil](waste), stories, and seeds. Here, children dig, compost, plant, and [taste](slow_food) what they've grown.\n\nAdults learn how to save seeds, cook with the seasons, and work with the land.\n\n[Visit the local market →](food_360)"
     },
     "options": [
       {
@@ -150,8 +150,8 @@
   },
   
   {
-    "x": 45,
-    "y": 45,
+    "x": 14,
+    "y": 15,
     "title": "Governance",
     "subtitle": "",
     "mainText": {
@@ -191,7 +191,7 @@
   },
   
   {
-    "x": 78,
+    "x": 60,
     "y": 40,
     "title": "Housing",
     "subtitle": "",

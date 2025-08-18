@@ -32,6 +32,9 @@
 
             <div class="interactive-points" id="interactivePoints"></div>
 
+            <!-- Dimming overlay for circle selection -->
+            <div class="dimming-overlay" id="dimmingOverlay"></div>
+
             <!-- Spiral Logo in top left -->
             <div class="spiral-logo">
                 <svg
@@ -132,17 +135,17 @@
                             stroke-width="1"
                         />
                     </svg>
-                    <span>DRAG to look around</span>
+                    <span>DRAG or MOVE YOUR MOUSE to look around</span>
                 </div>
                 <div class="help-item">
                     <svg class="help-icon clickpoint-style" viewBox="0 0 24 24" fill="none">
                     </svg>
-                    <span>TAP to look at what's happening</span>
+                    <span>CLICK to look at what's happening</span>
                 </div>
                 
                 <div class="help-item">
                     <div class="help-icon speed-toggle-icon">ZEN</div>
-                    <span>TAP to change reading speed</span>
+                    <span>CLICK to change reading speed</span>
                 </div>
 
                 <div class="help-item">
@@ -150,7 +153,7 @@
                       <circle cx="12" cy="12" r="5" fill="#ece1e0"/>
                       <path d="M12 0.5v3M12 20.5v3M3.5 3.5l2.12 2.12M17.88 17.88l2.12 2.12M0.5 12h3M20.5 12h3M3.5 20.5l2.12-2.12M17.88 6.12l2.12-2.12"/>
                   </svg>
-                  <span>TAP to switch from day to night</span>
+                  <span>CLICK to switch from day to night (high contrast mode)</span>
               </div>
 
                 <button class="help-close" id="helpClose">OK</button>

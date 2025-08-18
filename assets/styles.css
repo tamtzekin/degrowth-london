@@ -140,7 +140,7 @@ body {
 }
 
 @keyframes gentlePulse {
-    0%, 100% {
+    0%, 15% {
         transform: scale(1);
         opacity: 0.8;
         box-shadow: 0 0 0 0 rgba(249, 193, 206, 0.3);
@@ -148,7 +148,12 @@ body {
     50% {
         transform: scale(1.15);
         opacity: 1;
-        box-shadow: 0 0 0 8px rgba(249, 193, 206, 0.2);
+        box-shadow: 0 0 0 16px rgba(249, 193, 206, 0.2);
+    }
+    85%, 100% {
+        transform: scale(1);
+        opacity: 0.8;
+        box-shadow: 0 0 0 0 rgba(249, 193, 206, 0.3);
     }
 }
 
@@ -157,57 +162,79 @@ body {
         transform: scale(1);
     }
     100% {
-        transform: scale(1.3);
+        transform: scale(1.25);
     }
 }
 
 @keyframes hoverPulse {
     0%, 100% {
-        transform: scale(1.3);
+        transform: scale(1.25);
         box-shadow:
-            inset 2px 2px 8px rgba(255, 255, 255, 0.4),
-            inset -2px -2px 8px rgba(0, 0, 0, 0.5),
-            0 6px 20px rgba(249, 193, 206, 0.4),
-            0 0 25px rgba(249, 193, 206, 0.3),
-            0 0 0 2px rgba(249, 193, 206, 0.2);
+            inset 4px 4px 16px rgba(255, 255, 255, 0.4),
+            inset -4px -4px 16px rgba(0, 0, 0, 0.5),
+            0 12px 40px rgba(249, 193, 206, 0.4),
+            0 0 50px rgba(249, 193, 206, 0.3),
+            0 0 0 4px rgba(249, 193, 206, 0.2);
     }
     50% {
-        transform: scale(1.35);
+        transform: scale(1.3);
         box-shadow:
-            inset 2px 2px 8px rgba(255, 255, 255, 0.5),
-            inset -2px -2px 8px rgba(0, 0, 0, 0.6),
-            0 8px 25px rgba(249, 193, 206, 0.5),
-            0 0 35px rgba(249, 193, 206, 0.4),
-            0 0 0 3px rgba(249, 193, 206, 0.3);
+            inset 4px 4px 16px rgba(255, 255, 255, 0.5),
+            inset -4px -4px 16px rgba(0, 0, 0, 0.6),
+            0 16px 50px rgba(249, 193, 206, 0.5),
+            0 0 70px rgba(249, 193, 206, 0.4),
+            0 0 0 6px rgba(249, 193, 206, 0.3);
     }
 }
 .point {
     position: fixed;
-    width: 100px;
-    height: 100px;
-    background: radial-gradient(
-        circle at 30% 30%,
-        rgba(255, 255, 255, 0.2),
-        rgba(0, 0, 0, 0.1)
-    );
-    border: 3px dashed #e8e8e8;
+    width: 130px;
+    height: 130px;
+    background: rgba(157, 110, 109, 0.4);
+    border: 3px dashed #9d6e6d;
     border-radius: 50%;
     cursor: crosshair;
     pointer-events: all;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 10;
     box-shadow:
-        inset 2px 2px 6px rgba(255, 255, 255, 0.3),
-        inset -2px -2px 6px rgba(0, 0, 0, 0.4),
-        0 4px 12px rgba(0, 0, 0, 0.3),
-        0 0 0 1px rgba(255, 255, 255, 0.1);
+        inset 2px 2px 8px rgba(255, 255, 255, 0.6),
+        inset -2px -2px 8px rgba(157, 110, 109, 0.4),
+        0 0 0 2px rgba(157, 110, 109, 0.8),
+        0 0 0 4px rgba(255, 255, 255, 0.3),
+        0 6px 16px rgba(0, 0, 0, 0.4),
+        0 12px 32px rgba(0, 0, 0, 0.3);
     transform: scale(1);
-    animation: gentlePulse 3s ease-in-out infinite;
+    animation: gentlePulse 6s ease-in-out infinite;
 }
 
 /* Disable pulse animation for visited points */
 .point.visited {
     animation: none;
+}
+
+/* Create overlay to dim everything except selected circle */
+.dimming-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.5s ease-out;
+    z-index: 9;
+}
+
+.dimming-overlay.active {
+    opacity: 1;
+}
+
+/* Reset background brightness when no circle is selected */
+.background-container {
+    filter: brightness(1) contrast(1);
+    transition: filter 0.5s ease-out;
 }
 
 /* Ensure visited points don't pulse even when deselecting */
@@ -241,6 +268,7 @@ body {
         inset 2px 2px 8px rgba(255, 255, 255, 0.4),
         inset -2px -2px 8px rgba(0, 0, 0, 0.4);
     transform: scale(4);
+    backdrop-filter: brightness(1.0) contrast(1.0) saturate(1.0);
 }
 
 .point.deselecting {
@@ -260,15 +288,15 @@ body {
     }
     30% {
         transform: scale(1.1);
-        box-shadow: 0 0 0 15px rgba(249, 193, 206, 0.3);
+        box-shadow: 0 0 0 30px rgba(249, 193, 206, 0.3);
     }
     60% {
         transform: scale(1.15);
-        box-shadow: 0 0 0 25px rgba(249, 193, 206, 0.2);
+        box-shadow: 0 0 0 50px rgba(249, 193, 206, 0.2);
     }
     100% {
         transform: scale(1.2);
-        box-shadow: 0 0 0 35px rgba(249, 193, 206, 0);
+        box-shadow: 0 0 0 70px rgba(249, 193, 206, 0);
     }
 }
 
@@ -856,15 +884,15 @@ body {
         padding: 12px;
     }
     .point {
-        width: 100px;
-        height: 100px;
-        border-width: 2px;
+        width: 130px;
+        height: 130px;
+        border-width: 3px;
     }
     
     .point.active,
     .point:hover {
-        width: 140px;
-        height: 140px;
+        width: 182px;
+        height: 182px;
     }
     .dialogue-text-container {
         padding: 0px 26px 0 10px;
@@ -993,15 +1021,15 @@ body {
         margin-top: 16px; /* Scale up margin */
     }
     .point {
-        width: 100px;
-        height: 100px;
-        border-width: 2px;
+        width: 130px;
+        height: 130px;
+        border-width: 3px;
     }
     
     .point.active,
     .point:hover {
-        width: 140px;
-        height: 140px;
+        width: 182px;
+        height: 182px;
     }
     
     /* Use medium size (scale 3) instead of largest size (scale 4) for selected circles on tablet */
@@ -1103,8 +1131,8 @@ body {
         width: 400px;
     }
     .point {
-        width: 80px;
-        height: 80px;
+        width: 104px;
+        height: 104px;
     }
     .spiral-logo {
         width: 100px;
@@ -1117,8 +1145,8 @@ body {
         width: 450px;
     }
     .point {
-        width: 100px;
-        height: 100px;
+        width: 130px;
+        height: 130px;
     }
     .spiral-logo {
         width: 120px;
@@ -1469,7 +1497,7 @@ body.high-contrast .spiral-logo svg {
         inset -5px -5px 15px rgba(0, 0, 0, 0.4),
         0 10px 30px rgba(0, 0, 0, 0.3),
         0 0 0 2px rgba(255, 255, 255, 0.1);
-    animation: gentlePulse 3s ease-in-out infinite;
+    animation: gentlePulse 6s ease-in-out infinite;
 }
 
 .panorama-point:hover {
@@ -1485,7 +1513,7 @@ body.high-contrast .spiral-logo svg {
         0 15px 50px rgba(249, 193, 206, 0.4),
         0 0 60px rgba(249, 193, 206, 0.3),
         0 0 0 5px rgba(249, 193, 206, 0.2);
-    transform: translate(-50%, -50%) scale(1.3);
+    transform: translate(-50%, -50%) scale(1.33);
 }
 
 .panorama-point.selected {
@@ -1556,54 +1584,47 @@ body.high-contrast .spiral-logo svg {
 
 /* Back to street view button in panorama - styled as dashed circle like other points */
 .panorama-point.back-to-street {
-    width: 60px;
-    height: 60px;
-    background: radial-gradient(
-        circle at 30% 30%,
-        rgba(255, 255, 255, 0.2),
-        rgba(0, 0, 0, 0.1)
-    );
-    border: 3px dashed #e8e8e8;
+    width: 70px;
+    height: 70px;
+    background: rgba(249, 193, 206, 0.8);
+    border: 3px solid #f9c1ce;
     border-radius: 50%;
-    cursor: crosshair;
+    cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     align-items: center;
     justify-content: center;
     box-shadow:
-        inset 2px 2px 6px rgba(255, 255, 255, 0.3),
-        inset -2px -2px 6px rgba(0, 0, 0, 0.4),
-        0 4px 12px rgba(0, 0, 0, 0.3),
-        0 0 0 1px rgba(255, 255, 255, 0.1);
-    animation: gentlePulse 3s ease-in-out infinite;
+        inset 2px 2px 8px rgba(255, 255, 255, 0.6),
+        inset -2px -2px 8px rgba(157, 110, 109, 0.4),
+        0 0 0 2px rgba(249, 193, 206, 0.3),
+        0 6px 16px rgba(0, 0, 0, 0.4),
+        0 12px 32px rgba(0, 0, 0, 0.2);
+    animation: gentlePulse 6s ease-in-out infinite;
 }
 
 .panorama-point.back-to-street:hover {
-    border-color: #f9c1ce;
-    background: linear-gradient(
-        145deg,
-        rgba(249, 193, 206, 0.2),
-        rgba(157, 110, 109, 0.3)
-    );
+    border-color: #ffffff;
+    background: rgba(249, 193, 206, 1.0);
     box-shadow:
-        inset 2px 2px 8px rgba(255, 255, 255, 0.4),
-        inset -2px -2px 8px rgba(0, 0, 0, 0.5),
-        0 6px 20px rgba(249, 193, 206, 0.4),
-        0 0 25px rgba(249, 193, 206, 0.3),
-        0 0 0 2px rgba(249, 193, 206, 0.2);
-    transform: translate(-50%, -50%) scale(1.3);
+        inset 2px 2px 8px rgba(255, 255, 255, 0.8),
+        inset -2px -2px 8px rgba(157, 110, 109, 0.6),
+        0 0 0 3px rgba(255, 255, 255, 0.4),
+        0 8px 20px rgba(0, 0, 0, 0.5),
+        0 15px 40px rgba(0, 0, 0, 0.3);
+    transform: translate(-50%, -50%) scale(1.15);
 }
 
 .panorama-point.back-to-street svg {
-    width: 24px;
-    height: 24px;
-    fill: #e8e8e8;
-    stroke: #e8e8e8;
+    width: 32px;
+    height: 32px;
+    fill: #ffffff;
+    stroke: #ffffff;
 }
 
 .panorama-point.back-to-street:hover svg {
-    fill: #f9c1ce;
-    stroke: #f9c1ce;
+    fill: #ffffff;
+    stroke: #ffffff;
 }
 
 @keyframes panoramaSelectedPulse {

@@ -171,6 +171,9 @@ function setupEventListeners() {
   container.addEventListener("mousemove", drag);
   container.addEventListener("mouseup", endDrag);
   container.addEventListener("mouseleave", endDrag);
+  
+  // Add edge scrolling functionality
+  document.addEventListener("mousemove", handleEdgeScrolling);
   container.addEventListener("touchstart", startDragTouch, { passive: false });
   container.addEventListener("touchmove", dragTouch, { passive: false });
   container.addEventListener("touchend", endDrag);
@@ -231,6 +234,9 @@ function setupEventListeners() {
     startMusicAfterUserInteraction();
     // Skip welcome message - go straight to dialogue
   });
+  
+  // Update help text for touchscreen devices
+  updateHelpTextForDevice();
   container.addEventListener("contextmenu", (e) => e.preventDefault());
 
   // Update connection lines on window resize
@@ -393,18 +399,221 @@ function updateBackgroundPosition() {
 
   // Move points with the background using the same transform
   interactivePoints.style.transform = `translate(${currentX}px, ${currentY}px)`;
+  
+  // Update spotlight position when map moves to keep it attached to the selected circle
+  const dimmingOverlay = document.getElementById('dimmingOverlay');
+  if (dimmingOverlay && dimmingOverlay.classList.contains('active')) {
+    const selectedPoint = document.querySelector('.point.selected');
+    if (selectedPoint) {
+      updateSpotlightPosition(selectedPoint);
+    }
+  }
 }
 
 function updatePointPositions() {
   // Points now move with background via CSS transform, no individual positioning needed
 }
 
-// Handle circle click - zoom and switch to 360° view only for Energy, otherwise show dialogue normally
+// Update spotlight position to follow the selected circle
+function updateSpotlightPosition(pointElement, animationProgress = 1) {
+  const dimmingOverlay = document.getElementById('dimmingOverlay');
+  if (!dimmingOverlay || !dimmingOverlay.classList.contains('active')) return;
+  
+  const pointRect = pointElement.getBoundingClientRect();
+  const centerX = pointRect.left + pointRect.width / 2;
+  const centerY = pointRect.top + pointRect.height / 2;
+  
+  // Calculate radius based on circle's current scale or animation progress
+  const isSelected = pointElement.classList.contains('selected');
+  const isDeselecting = pointElement.classList.contains('deselecting');
+  const baseRadius = 130 / 2; // Base circle radius
+  
+  let currentScale = 1;
+  
+  if (animationProgress < 1) {
+    // During animation, interpolate between 1 and 4 based on progress
+    currentScale = 1 + (3 * animationProgress); // 1 -> 4
+  } else if (isSelected) {
+    currentScale = 4; // Fully scaled
+  } else if (isDeselecting) {
+    // During deselection, the scale is animating from 4 to 1
+    // We'll use the transform to get the current scale
+    const transform = window.getComputedStyle(pointElement).transform;
+    if (transform && transform !== 'none') {
+      const matrix = transform.match(/matrix\(([^)]+)\)/);
+      if (matrix) {
+        const values = matrix[1].split(',');
+        currentScale = parseFloat(values[0]); // scaleX value
+      }
+    }
+  }
+  
+  const radius = baseRadius * currentScale;
+  
+  // Use mask with soft gradient for smoother edge
+  dimmingOverlay.style.mask = `radial-gradient(circle at ${centerX}px ${centerY}px, transparent ${radius - 15}px, rgba(0,0,0,0.1) ${radius - 5}px, black ${radius + 5}px)`;
+  dimmingOverlay.style.webkitMask = `radial-gradient(circle at ${centerX}px ${centerY}px, transparent ${radius - 15}px, rgba(0,0,0,0.1) ${radius - 5}px, black ${radius + 5}px)`;
+}
+
+// Update help overlay text for touchscreen devices
+function updateHelpTextForDevice() {
+  // Detect touchscreen capability
+  const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
+  
+  if (isTouchDevice) {
+    // Update help text for touchscreen devices
+    const helpItems = document.querySelectorAll('.help-item span');
+    
+    helpItems.forEach(span => {
+      let text = span.textContent;
+      
+      // Replace specific text patterns
+      if (text.includes('DRAG or MOVE YOUR MOUSE to look around')) {
+        span.textContent = 'SLIDE to look around';
+      } else if (text.includes('CLICK to look at what\'s happening')) {
+        span.textContent = 'TAP to look at what\'s happening';
+      } else if (text.includes('CLICK to change reading speed')) {
+        span.textContent = 'TAP to change reading speed';
+      } else if (text.includes('CLICK to switch from day to night')) {
+        span.textContent = 'TAP to switch from day to night (high contrast mode)';
+      }
+      // Replace any remaining instances of CLICK with TAP
+      else if (text.includes('CLICK')) {
+        span.textContent = text.replace(/CLICK/g, 'TAP');
+      }
+    });
+  }
+}
+
+// Center-based scrolling functionality
+let scrollDeadZone = 0.2; // 20% of screen from center has no effect (increased for more gradual)
+let scrollActiveZone = 0.45; // 45% of screen from center has full effect (increased for more gradual)
+let edgeScrollAnimationId = null;
+let currentScrollVelocityX = 0;
+let currentScrollVelocityY = 0;
+let targetScrollVelocityX = 0;
+let targetScrollVelocityY = 0;
+
+function handleEdgeScrolling(e) {
+  // Enable edge scrolling for both map and panorama modes, but not while dragging or when a circle is selected
+  if (isDragging) return;
+  
+  // Disable map dragging when a circle is selected (dialogue is open)
+  if (isMapView && dialoguePanel.classList.contains('visible')) return;
+  
+  const mouseX = e.clientX;
+  const mouseY = e.clientY;
+  const windowWidth = window.innerWidth;
+  const windowHeight = window.innerHeight;
+  
+  // Calculate position relative to center (0,0 = center, -1,1 = corners)
+  const centerX = windowWidth / 2;
+  const centerY = windowHeight / 2;
+  const relativeX = (mouseX - centerX) / (windowWidth / 2);
+  const relativeY = (mouseY - centerY) / (windowHeight / 2);
+  
+  // Calculate distance from center
+  const distanceFromCenter = Math.sqrt(relativeX * relativeX + relativeY * relativeY);
+  
+  // Only activate if outside dead zone
+  if (distanceFromCenter > scrollDeadZone) {
+    // Calculate scroll factor (0 at dead zone boundary, 1 at active zone boundary)
+    const scrollFactor = Math.min(1, (distanceFromCenter - scrollDeadZone) / (scrollActiveZone - scrollDeadZone));
+    
+    // Apply exponential curve for more natural feel (increased for more gradual)
+    const smoothFactor = Math.pow(scrollFactor, 2.2);
+    
+    // Calculate velocity based on direction and smooth factor (reversed for intuitive movement)
+    const maxSpeed = 2.8; // Further reduced for more gradual movement
+    targetScrollVelocityX = -relativeX * smoothFactor * maxSpeed;
+    targetScrollVelocityY = -relativeY * smoothFactor * maxSpeed;
+  } else {
+    targetScrollVelocityX = 0;
+    targetScrollVelocityY = 0;
+  }
+  
+  if (targetScrollVelocityX !== 0 || targetScrollVelocityY !== 0 || 
+      currentScrollVelocityX !== 0 || currentScrollVelocityY !== 0) {
+    startEdgeScrolling();
+  } else {
+    stopEdgeScrolling();
+  }
+}
+
+function startEdgeScrolling() {
+  if (edgeScrollAnimationId) return; // Already scrolling
+  
+  function scroll() {
+    // Smooth acceleration/deceleration with bounce effect
+    const acceleration = 0.08; // Much slower for more gradual movement
+    const bounceMultiplier = 1.02; // Tiny bounce effect when starting
+    
+    const deltaX = targetScrollVelocityX - currentScrollVelocityX;
+    const deltaY = targetScrollVelocityY - currentScrollVelocityY;
+    
+    currentScrollVelocityX += deltaX * acceleration * bounceMultiplier;
+    currentScrollVelocityY += deltaY * acceleration * bounceMultiplier;
+    
+    // Stop if velocity is very small
+    if (Math.abs(currentScrollVelocityX) < 0.01 && Math.abs(currentScrollVelocityY) < 0.01 &&
+        targetScrollVelocityX === 0 && targetScrollVelocityY === 0) {
+      stopEdgeScrolling();
+      return;
+    }
+    
+    if (isMapView) {
+      // Map scrolling
+      currentX += currentScrollVelocityX;
+      currentY += currentScrollVelocityY;
+      
+      // Apply the same bounds as regular dragging
+      let maxX, maxY;
+      if (window.innerWidth <= 768) {
+        maxX = window.innerWidth * 0.8;
+        maxY = window.innerHeight * 0.3;
+      } else {
+        maxX = window.innerWidth * 0.1;
+        maxY = window.innerHeight * 0.1;
+      }
+      
+      currentX = Math.max(-maxX, Math.min(maxX, currentX));
+      currentY = Math.max(-maxY, Math.min(maxY, currentY));
+      
+      updateBackgroundPosition();
+    } else {
+      // Panorama scrolling
+      if (window.panoramaCamera) {
+        window.panoramaCamera.rotation.y += currentScrollVelocityX * 0.01;
+        window.panoramaCamera.rotation.x += currentScrollVelocityY * 0.01;
+        
+        // Clamp vertical rotation
+        window.panoramaCamera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, window.panoramaCamera.rotation.x));
+      }
+    }
+    
+    edgeScrollAnimationId = requestAnimationFrame(scroll);
+  }
+  
+  scroll();
+}
+
+function stopEdgeScrolling() {
+  if (edgeScrollAnimationId) {
+    cancelAnimationFrame(edgeScrollAnimationId);
+    edgeScrollAnimationId = null;
+  }
+  currentScrollVelocityX = 0;
+  currentScrollVelocityY = 0;
+  targetScrollVelocityX = 0;
+  targetScrollVelocityY = 0;
+}
+
+// Handle circle click - zoom and switch to 360° view only for Education and Food, otherwise show dialogue normally
 function handleCircleClick(point, pointElement, index) {
   console.log('Circle clicked:', point.title);
   
   // Check if this point has a 360° image
-  const has360Image = point.title === "Energy" || point.title === "Food";
+  const has360Image = point.title === "Education"; // Only Education goes directly to 360°
   
   // Store has360Image on the point for later use
   point._has360Image = has360Image;
@@ -416,34 +625,39 @@ function handleCircleClick(point, pointElement, index) {
     return;
   }
   
+  // For 360° images, center the circle first before starting zoom transition
+  centerPointOnScreen(pointElement);
+  
   console.log('Has 360° image - starting zoom effect');
   
   // Set the current story point for panorama creation
   currentStoryPoint = point;
   
-  // Get the circle's position for zoom target
-  const rect = pointElement.getBoundingClientRect();
-  const centerX = rect.left + rect.width / 2;
-  const centerY = rect.top + rect.height / 2;
-  
-  // Calculate the required translation to center the circle in viewport
-  const viewportCenterX = window.innerWidth / 2;
-  const viewportCenterY = window.innerHeight / 2;
-  const targetX = viewportCenterX - centerX;
-  const targetY = viewportCenterY - centerY;
-  
-  // Add zoom class to circle for visual feedback
-  pointElement.classList.add('zooming');
-  
-  // Apply zoom transform to background and points
-  backgroundContainer.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-  interactivePoints.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-  
-  const zoomScale = 1.5; // Zoom level (reduced from 2 to 1.5 for gentler effect)
-  const newTransform = `translate(${currentX + targetX}px, ${currentY + targetY}px) scale(${zoomScale})`;
-  
-  backgroundContainer.style.transform = newTransform;
-  interactivePoints.style.transform = newTransform;
+  // Wait for centering animation to complete before starting zoom
+  setTimeout(() => {
+    // Get the circle's position for zoom target (after centering)
+    const rect = pointElement.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    // Calculate the required translation to center the circle in viewport
+    const viewportCenterX = window.innerWidth / 2;
+    const viewportCenterY = window.innerHeight / 2;
+    const targetX = viewportCenterX - centerX;
+    const targetY = viewportCenterY - centerY;
+    
+    // Add zoom class to circle for visual feedback
+    pointElement.classList.add('zooming');
+    
+    // Apply zoom transform to background and points
+    backgroundContainer.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    interactivePoints.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    
+    const zoomScale = 1.5; // Zoom level (reduced from 2 to 1.5 for gentler effect)
+    const newTransform = `translate(${currentX + targetX}px, ${currentY + targetY}px) scale(${zoomScale})`;
+    
+    backgroundContainer.style.transform = newTransform;
+    interactivePoints.style.transform = newTransform;
   
   // Start preparing 360° view early while zoom is happening
   setTimeout(() => {
@@ -521,6 +735,7 @@ function handleCircleClick(point, pointElement, index) {
     }, 100);
     
   }, 500); // Wait for cross-fade to complete (400ms zoom + 100ms extra)
+  }, 650); // Wait for centering animation to complete (600ms) before starting zoom
 }
 
 function showDialogue(point, pointElement) {
@@ -553,6 +768,57 @@ function showDialogue(point, pointElement) {
   // Update selected state
   pointElements.forEach((el) => el.classList.remove("selected"));
   pointElement.classList.add("selected");
+  
+  // Add dimming overlay effect when circle is selected
+  const dimmingOverlay = document.getElementById('dimmingOverlay');
+  if (dimmingOverlay) {
+    dimmingOverlay.classList.add('active');
+    
+    // Start spotlight at small size and animate it growing with the circle
+    updateSpotlightPosition(pointElement, 0); // Start at 0 progress (1x scale)
+    
+    const animateSpotlight = () => {
+      let startTime = null;
+      const duration = 300; // Match growCircle animation duration
+      
+      function animate(currentTime) {
+        if (!startTime) startTime = currentTime;
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Apply easing to match CSS animation (ease-out)
+        const easedProgress = 1 - Math.pow(1 - progress, 3);
+        
+        updateSpotlightPosition(pointElement, easedProgress);
+        
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        }
+      }
+      
+      requestAnimationFrame(animate);
+    };
+    
+    // Start spotlight animation immediately when circle starts scaling
+    animateSpotlight();
+    
+    // Also update on window resize or scroll to keep spotlight attached
+    const resizeHandler = () => {
+      setTimeout(updateSpotlight, 50); // Small delay to ensure DOM updates
+    };
+    window.addEventListener('resize', resizeHandler);
+    window.addEventListener('scroll', resizeHandler);
+    
+    // Update spotlight on orientation change (mobile)
+    const orientationHandler = () => {
+      setTimeout(updateSpotlight, 300); // Longer delay for orientation change
+    };
+    window.addEventListener('orientationchange', orientationHandler);
+    
+    // Store handlers for cleanup
+    dimmingOverlay._resizeHandler = resizeHandler;
+    dimmingOverlay._orientationHandler = orientationHandler;
+  }
 
   // Center the selected point on screen
   centerPointOnScreen(pointElement);
@@ -658,6 +924,18 @@ function showMainText(point) {
 }
 
 function showSection(point, optionKey) {
+  // Handle special case for Food 360° view
+  if (optionKey === 'food_360' && point.title === 'Food') {
+    console.log('Triggering Food 360° view');
+    // Hide dialogue and transition to 360° view
+    hideDialogue();
+    // Transition to Food 360° view directly
+    setTimeout(() => {
+      enterFoodPanoramaView(point);
+    }, 300);
+    return;
+  }
+  
   // Find the option with the matching key
   console.log('showSection called with:', optionKey, 'point:', point.title);
   console.log('Available options:', point.options.map(opt => opt.key));
@@ -1097,6 +1375,56 @@ function renderParsedText(element, parts, point) {
 function hideDialogue() {
   dialoguePanel.classList.remove("visible");
   
+  // Animate spotlight scaling down with circle deselection
+  const selectedPoint = document.querySelector('.point.selected');
+  const dimmingOverlay = document.getElementById('dimmingOverlay');
+  
+  if (selectedPoint && dimmingOverlay && dimmingOverlay.classList.contains('active')) {
+    // Animate spotlight scaling down during deselection
+    const animateSpotlightDown = () => {
+      let startTime = null;
+      const duration = 300; // Match shrinkCircle animation duration
+      
+      function animate(currentTime) {
+        if (!startTime) startTime = currentTime;
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Apply easing to match CSS animation (ease-out) and reverse the scale
+        const easedProgress = 1 - Math.pow(1 - progress, 3);
+        const reverseProgress = 1 - easedProgress; // 1 -> 0 over time
+        
+        updateSpotlightPosition(selectedPoint, reverseProgress);
+        
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          // Remove spotlight after animation completes
+          dimmingOverlay.classList.remove('active');
+          dimmingOverlay.style.mask = '';
+          dimmingOverlay.style.webkitMask = '';
+        }
+      }
+      
+      requestAnimationFrame(animate);
+    };
+    
+    animateSpotlightDown();
+  } else if (dimmingOverlay) {
+    // No animation needed, just remove immediately
+    dimmingOverlay.classList.remove('active');
+    dimmingOverlay.style.mask = '';
+    dimmingOverlay.style.webkitMask = '';
+  }
+  
+  // Clean up event listeners
+  if (dimmingOverlay && dimmingOverlay._resizeHandler) {
+    window.removeEventListener('resize', dimmingOverlay._resizeHandler);
+    window.removeEventListener('scroll', dimmingOverlay._resizeHandler);
+    window.removeEventListener('orientationchange', dimmingOverlay._orientationHandler);
+    dimmingOverlay._resizeHandler = null;
+  }
+  
   // Animate de-selection of circles
   pointElements.forEach((el) => {
     if (el.classList.contains("selected")) {
@@ -1149,7 +1477,7 @@ function positionSpeechBubbleLine(pointElement) {
   
   // Calculate actual radius based on current circle scale
   const isSelected = pointElement.classList.contains('selected');
-  const baseCircleSize = 100;
+  const baseCircleSize = 130;
   const scale = isSelected ? 4 : 1; // Selected circles scale to 4x
   const actualRadius = (baseCircleSize / 2) * scale;
   
@@ -1816,70 +2144,70 @@ function createPanoramaStoryPoints() {
   // Create points based on current story point
   if (!currentStoryPoint) return;
   
-  if (currentStoryPoint.title === "Energy") {
-    createEnergyPanoramaPoints();
+  if (currentStoryPoint.title === "Education") {
+    createEducationPanoramaPoints();
   } else if (currentStoryPoint.title === "Food") {
     createFoodPanoramaPoints();
   }
 }
 
-// Create Energy-specific 360° points
-function createEnergyPanoramaPoints() {
-  const energyPoint = storyPoints.find(point => point.title === "Energy");
-  if (!energyPoint) return;
+// Create Education-specific 360° points
+function createEducationPanoramaPoints() {
+  const educationPoint = storyPoints.find(point => point.title === "Education");
+  if (!educationPoint) return;
   
   // Define 3 specific locations on the 360° image with their story content
-  const energyPoints = [
+  const educationPoints = [
     {
-      title: "Community Energy",
-      key: "energy_coops",
-      x: 25, // Left side - solar panels area
+      title: "Learning Together",
+      key: "cooperation_first",
+      x: 25, // Left side - school garden area
       y: 35,
       longitude: -120, // Map to specific view angles
       latitude: 10,
-      content: energyPoint.options.find(opt => opt.key === "energy_coops")
+      content: educationPoint.options.find(opt => opt.key === "cooperation_first")
     },
     {
-      title: "Fair Share", 
-      key: "fair_share",
-      x: 75, // Right side - residential buildings
+      title: "Interdisciplinary Learning", 
+      key: "connected_knowledge",
+      x: 75, // Right side - workshop area
       y: 45,
       longitude: 60,
       latitude: 5,
-      content: energyPoint.options.find(opt => opt.key === "fair_share")
+      content: educationPoint.options.find(opt => opt.key === "connected_knowledge")
     },
     {
-      title: "Living System",
-      key: "living_system", 
-      x: 50, // Center - community space
+      title: "Education for Life",
+      key: "lifelong_education", 
+      x: 50, // Center - community learning space
       y: 60,
       longitude: 0,
       latitude: -20,
-      content: energyPoint.options.find(opt => opt.key === "living_system")
+      content: educationPoint.options.find(opt => opt.key === "lifelong_education")
     }
   ];
   
-  // Create HTML overlay points for each energy-specific point
-  energyPoints.forEach((energySubPoint, index) => {
+  // Create HTML overlay points for each education-specific point
+  educationPoints.forEach((educationSubPoint, index) => {
     // Create HTML element for the point
     const pointElement = document.createElement('div');
-    pointElement.className = 'panorama-point energy-point';
+    pointElement.className = 'panorama-point education-point';
     pointElement.dataset.index = index;
-    pointElement.dataset.key = energySubPoint.key;
+    pointElement.dataset.key = educationSubPoint.key;
     
     // Store 3D coordinates for panorama positioning
-    pointElement.dataset.longitude = energySubPoint.longitude;
-    pointElement.dataset.latitude = energySubPoint.latitude;
+    pointElement.dataset.longitude = educationSubPoint.longitude;
+    pointElement.dataset.latitude = educationSubPoint.latitude;
     
     // Initial position will be updated by panorama positioning
-    pointElement.style.left = `${energySubPoint.x}%`;
-    pointElement.style.top = `${energySubPoint.y}%`;
+    pointElement.style.left = `${educationSubPoint.x}%`;
+    pointElement.style.top = `${educationSubPoint.y}%`;
     
     // Add click handler
     pointElement.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      console.log('Energy panorama point clicked:', energySubPoint.title);
+      console.log('Education panorama point clicked:', educationSubPoint.title);
       
       // Remove selected and deselecting classes from all points
       document.querySelectorAll('.panorama-point').forEach(p => {
@@ -1901,8 +2229,8 @@ function createEnergyPanoramaPoints() {
       // Center the panorama view on the selected point
       centerPanoramaOnPoint(pointElement);
       
-      // Show dialogue with the energy sub-content
-      showEnergySubContent(energySubPoint);
+      // Show dialogue with the education sub-content
+      showEducationSubContent(educationSubPoint);
     });
     
     // Add to overlay
@@ -1911,7 +2239,7 @@ function createEnergyPanoramaPoints() {
     // Store in array
     panoramaPoints.push({
       element: pointElement,
-      energySubPoint: energySubPoint,
+      educationSubPoint: educationSubPoint,
       index: index
     });
   });
@@ -1922,19 +2250,12 @@ function createEnergyPanoramaPoints() {
   backToStreetPoint.style.left = '50%';
   backToStreetPoint.style.top = '20%'; // Position it in upper middle area
   
-  // Add street sign back icon
+  // Add clear back arrow icon
   backToStreetPoint.innerHTML = `
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 28px; height: 28px;">
-      <!-- Street sign post -->
-      <rect x="11" y="8" width="2" height="14" fill="currentColor" opacity="0.8"/>
-      <!-- Street sign background -->
-      <rect x="4" y="6" width="16" height="6" rx="2" fill="currentColor" opacity="0.2" stroke="currentColor"/>
-      <!-- Arrow pointing left -->
-      <path d="M8 9L6 9L6 9"/>
-      <path d="M6 7l-1.5 2 1.5 2"/>
-      <!-- Text lines on sign -->
-      <line x1="10" y1="8" x2="18" y2="8" stroke="currentColor" opacity="0.6"/>
-      <line x1="10" y1="10" x2="16" y2="10" stroke="currentColor" opacity="0.6"/>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 32px; height: 32px;">
+      <!-- Back arrow -->
+      <path d="M19 12H5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
   `;
   
@@ -1954,8 +2275,8 @@ function createEnergyPanoramaPoints() {
   
   console.log(`Created ${panoramaPoints.length} HTML panorama story points + 1 back button`);
   
-  // Show the main Energy dialogue after panorama points are created
-  showPanoramaDialogue(energyPoint);
+  // Show the main Education dialogue after panorama points are created
+  showPanoramaDialogue(educationPoint);
 }
 
 // Show dialogue in panorama view without street view manipulations
@@ -1986,6 +2307,41 @@ function showPanoramaDialogue(point) {
 
   // Show main text (skip street view positioning)
   showMainText(point);
+}
+
+// Enter Food panorama view directly (used when clicking "Visit the local market" link)
+function enterFoodPanoramaView(point) {
+  console.log('Entering Food panorama view directly');
+  
+  // Set current story point and mark as having 360° image
+  currentStoryPoint = point;
+  point._has360Image = true;
+  
+  // Hide street view elements and show panorama
+  const backgroundContainer = document.getElementById('backgroundContainer');
+  const interactivePoints = document.getElementById('interactivePoints');
+  
+  backgroundContainer.style.opacity = '0';
+  interactivePoints.style.opacity = '0';
+  
+  setTimeout(() => {
+    // Hide street view
+    backgroundContainer.style.display = 'none';
+    interactivePoints.style.display = 'none';
+    
+    // Show panorama
+    panoramaContainer.style.display = 'block';
+    panoramaContainer.style.opacity = '0';
+    
+    // Initialize panorama
+    isMapView = false;
+    loadPanoramaImage(point);
+    
+    setTimeout(() => {
+      panoramaContainer.style.opacity = '1';
+      createFoodPanoramaPoints();
+    }, 100);
+  }, 300);
 }
 
 // Create Food-specific 360° points for market scenes
@@ -2096,19 +2452,12 @@ function createFoodPanoramaPoints() {
   backToStreetPoint.style.left = '50%';
   backToStreetPoint.style.top = '20%';
   
-  // Add street sign back icon
+  // Add clear back arrow icon
   backToStreetPoint.innerHTML = `
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 28px; height: 28px;">
-      <!-- Street sign post -->
-      <rect x="11" y="8" width="2" height="14" fill="currentColor" opacity="0.8"/>
-      <!-- Street sign background -->
-      <rect x="4" y="6" width="16" height="6" rx="2" fill="currentColor" opacity="0.2" stroke="currentColor"/>
-      <!-- Arrow pointing left -->
-      <path d="M8 9L6 9L6 9"/>
-      <path d="M6 7l-1.5 2 1.5 2"/>
-      <!-- Text lines on sign -->
-      <line x1="10" y1="8" x2="18" y2="8" stroke="currentColor" opacity="0.6"/>
-      <line x1="10" y1="10" x2="16" y2="10" stroke="currentColor" opacity="0.6"/>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 32px; height: 32px;">
+      <!-- Back arrow -->
+      <path d="M19 12H5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
   `;
   
@@ -2285,6 +2634,56 @@ function showEnergySubContent(energySubPoint) {
   dialoguePanel.classList.add('visible');
   
   console.log('Showing energy sub-content:', energySubPoint.title);
+}
+
+function showEducationSubContent(educationSubPoint) {
+  if (!educationSubPoint.content) return;
+  
+  // Mark this panorama point as visited
+  visitedContent.add(educationSubPoint.title);
+  
+  currentStoryPoint = { 
+    title: educationSubPoint.title,
+    mainText: educationSubPoint.content
+  };
+  
+  locationTitle.textContent = educationSubPoint.title;
+  locationSubtitle.textContent = "";
+  
+  // Clear dialogue content
+  dialogueTextContainer.innerHTML = '';
+  
+  // Create dialogue entry
+  const dialogueEntry = document.createElement('div');
+  dialogueEntry.className = 'dialogue-entry';
+  
+  // Add speaker if exists
+  if (educationSubPoint.content.speaker) {
+    const speakerElement = document.createElement('div');
+    speakerElement.className = 'dialogue-speaker';
+    speakerElement.textContent = educationSubPoint.content.speaker;
+    dialogueEntry.appendChild(speakerElement);
+  }
+  
+  // Add text content
+  const textElement = document.createElement('div');
+  textElement.className = 'section-text';
+  textElement.textContent = educationSubPoint.content.text;
+  dialogueEntry.appendChild(textElement);
+  
+  // Add back to main option
+  const backElement = document.createElement('div');
+  backElement.className = 'section-text';
+  backElement.style.marginTop = '20px';
+  backElement.innerHTML = '[Back to Education overview](close)';
+  dialogueEntry.appendChild(backElement);
+  
+  dialogueTextContainer.appendChild(dialogueEntry);
+  
+  // Show dialogue panel
+  dialoguePanel.classList.add('visible');
+  
+  console.log('Showing education sub-content:', educationSubPoint.title);
 }
 
 
