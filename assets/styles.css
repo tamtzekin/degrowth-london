@@ -91,6 +91,11 @@ body {
     z-index: 5;
 }
 
+/* Hide connection lines in panorama mode */
+.panorama-view .connection-lines {
+    display: none;
+}
+
 .connection-line {
     position: absolute;
     height: 3px;
@@ -613,6 +618,106 @@ body {
     background: rgba(249, 193, 206, 0.2);
     text-decoration: underline solid;
     transform: translateY(-1px);
+}
+
+/* Visited interactive text - appears same as regular text once read */
+.interactive-text.visited {
+    color: rgba(249, 193, 206, 0.6); /* Pale pink - more subtle but still visibly a link */
+    text-decoration: underline solid rgba(249, 193, 206, 0.4); /* Keep underline but paler */
+    opacity: 1.0;
+}
+
+.interactive-text.visited:hover {
+    color: rgba(249, 193, 206, 0.9);
+    background: rgba(249, 193, 206, 0.1);
+    text-decoration: underline solid rgba(249, 193, 206, 0.7);
+    transform: none; /* No lift animation for visited links */
+}
+
+/* Minimized dialogue tab for 360° views - matches dialogue panel styling */
+.minimized-dialogue-tab {
+    position: fixed;
+    right: 0;
+    top: 20%; /* Same top position as dialogue panel */
+    height: 60vh; /* Same height as dialogue panel */
+    width: 60px;
+    background: rgba(153, 111, 105, 0.8); /* Same background as dialogue panel */
+    color: #f9c1ce;
+    padding: 20px 8px;
+    border-left: 2px solid rgba(249, 193, 206, 0.4);
+    border-top: 2px solid rgba(249, 193, 206, 0.4);
+    border-bottom: 2px solid rgba(249, 193, 206, 0.4);
+    border-radius: 16px 0 0 16px; /* Rounded left side, flat right side */
+    cursor: pointer;
+    z-index: 1000;
+    font-size: 16px;
+    font-weight: 600;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(20px); /* Same blur as dialogue panel */
+    box-shadow: -5px 0 15px rgba(0, 0, 0, 0.3);
+    
+    /* Animation properties */
+    transform: translateX(100%);
+    transition: all 0.5s ease-out;
+    animation: glow-pulse 2s ease-in-out infinite;
+}
+
+/* Show animation for the tab */
+.minimized-dialogue-tab.show {
+    transform: translateX(0);
+}
+
+.minimized-dialogue-tab:hover {
+    background: rgba(249, 193, 206, 0.1);
+    transform: translateX(-10px);
+    box-shadow: -8px 0 20px rgba(249, 193, 206, 0.3);
+}
+
+/* Glowing animation to make the tab noticeable */
+@keyframes glow-pulse {
+    0%, 100% {
+        box-shadow: -5px 0 15px rgba(0, 0, 0, 0.3), 0 0 10px rgba(249, 193, 206, 0.3);
+    }
+    50% {
+        box-shadow: -5px 0 15px rgba(0, 0, 0, 0.3), 0 0 20px rgba(249, 193, 206, 0.6);
+    }
+}
+
+/* Back to street view button for 360° views */
+.back-to-street-button {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(153, 111, 105, 0.9);
+    color: #f9c1ce;
+    padding: 12px 20px;
+    border: 2px solid rgba(249, 193, 206, 0.4);
+    border-radius: 25px;
+    cursor: pointer;
+    z-index: 1000;
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+}
+
+.back-to-street-button:hover {
+    background: rgba(249, 193, 206, 0.2);
+    transform: translateX(-50%) translateY(-3px);
+    box-shadow: 0 8px 20px rgba(249, 193, 206, 0.3);
+}
+
+.back-to-street-button svg {
+    flex-shrink: 0;
 }
 
 /* Text styling classes - non-clickable text effects */
@@ -1273,8 +1378,12 @@ body.high-contrast {
     transition: background-color 4s cubic-bezier(0.4, 0, 0.2, 1), border-color 4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.interactive-text, .back-button, .location-title, .section-text, .help-item, .header-control svg, .text-speed-control, .speed-toggle-icon, .help-close, .point, .panorama-point {
+.interactive-text, .back-button, .location-title, .section-text, .help-item, .header-control svg, .text-speed-control, .speed-toggle-icon, .help-close, .point {
     transition: color 0.2s ease, fill 0.2s ease, stroke 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.panorama-point {
+    /* No transitions to prevent bounce-back effect */
 }
 
 body.high-contrast .background-image::after {
@@ -1464,7 +1573,7 @@ body.high-contrast .spiral-logo svg {
     display: block;
 }
 
-/* Panorama overlay for HTML click points */
+/* Panorama overlay for HTML click points - DISABLED: No longer showing circles in 360° views */
 .panorama-overlay {
     position: absolute;
     top: 0;
@@ -1473,6 +1582,7 @@ body.high-contrast .spiral-logo svg {
     height: 100%;
     z-index: 10;
     pointer-events: none; /* Allow drag events to pass through */
+    display: none; /* Hide all panorama circles - showing main dialogue instead */
 }
 
 /* Panorama overlay points */
@@ -1498,6 +1608,23 @@ body.high-contrast .spiral-logo svg {
         0 10px 30px rgba(0, 0, 0, 0.3),
         0 0 0 2px rgba(255, 255, 255, 0.1);
     animation: gentlePulse 6s ease-in-out infinite;
+}
+
+/* Interactive link panorama points - smaller and with different styling */
+.panorama-point.interactive-link {
+    width: 100px;
+    height: 100px;
+    border: 5px dotted #f9c1ce;
+    background: radial-gradient(
+        circle at 30% 30%,
+        rgba(249, 193, 206, 0.3),
+        rgba(157, 110, 109, 0.2)
+    );
+    box-shadow:
+        inset 3px 3px 10px rgba(249, 193, 206, 0.4),
+        inset -3px -3px 10px rgba(0, 0, 0, 0.3),
+        0 8px 20px rgba(249, 193, 206, 0.3),
+        0 0 0 2px rgba(249, 193, 206, 0.2);
 }
 
 .panorama-point:hover {
@@ -1590,7 +1717,7 @@ body.high-contrast .spiral-logo svg {
     border: 3px solid #f9c1ce;
     border-radius: 50%;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    /* No transition to prevent bounce-back effect */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1612,7 +1739,7 @@ body.high-contrast .spiral-logo svg {
         0 0 0 3px rgba(255, 255, 255, 0.4),
         0 8px 20px rgba(0, 0, 0, 0.5),
         0 15px 40px rgba(0, 0, 0, 0.3);
-    transform: translate(-50%, -50%) scale(1.15);
+    transform: translate(-50%, -50%); /* Removed scale to prevent bounce-back */
 }
 
 .panorama-point.back-to-street svg {

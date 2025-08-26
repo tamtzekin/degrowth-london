@@ -1,7 +1,7 @@
 [
   {
-    "x": 32,
-    "y": 62,
+    "x": 36,
+    "y": 46,
     "title": "Transport",
     "subtitle": "",
     "mainText": {
@@ -41,8 +41,8 @@
   },
   
   {
-    "x": 68,
-    "y": -4,
+    "x": 67,
+    "y": -9,
     "title": "Education",
     "subtitle": "",
     "mainText": {
@@ -75,8 +75,8 @@
   },
 
   {
-    "x": 34,
-    "y": 14,
+    "x": 35,
+    "y": 10,
     "title": "Energy",
     "subtitle": "",
     "mainText": {
@@ -109,8 +109,8 @@
   },
 
   {
-    "x": -2,
-    "y": 62,
+    "x": 3,
+    "y": 48,
     "title": "Food",
     "subtitle": "",
     "mainText": {
@@ -150,8 +150,8 @@
   },
   
   {
-    "x": 14,
-    "y": 15,
+    "x": 18,
+    "y": 5,
     "title": "Governance",
     "subtitle": "",
     "mainText": {
@@ -191,8 +191,8 @@
   },
   
   {
-    "x": 60,
-    "y": 40,
+    "x": 80,
+    "y": 24,
     "title": "Housing",
     "subtitle": "",
     "mainText": {

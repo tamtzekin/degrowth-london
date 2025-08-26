@@ -15,11 +15,32 @@ let hasUsedSkip = false;
 let navigationHistory = []; // Track navigation history for back button
 let visitedContent = new Set(); // Track which dialogue content has been visited
 
+// Pause/resume for typing animation with state tracking
+let isTypingPaused = false;
+let pausedTypingState = null; // Store the exact state when paused
+
 // View toggle variables
 let isMapView = true;
 let panoramaScene, panoramaCamera, panoramaRenderer, panoramaSphere, panoramaSphereNight, panoramaAmbientLight;
 let isMouseDown = false;
 let mouseX = 0, mouseY = 0;
+let lastMouseX = 0, lastMouseY = 0;
+let isMouseMoving = false;
+let mouseStopTimeout = null;
+let resizeTimeout = null;
+
+// Debounce function for performance
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
 let targetRotation = { x: 0, y: 0 };
 let currentRotation = { x: 0, y: 0 };
 let panoramaPoints = [];
@@ -82,11 +103,16 @@ function createInteractivePoints() {
     
     // Add hover event listeners for title display
     pointElement.addEventListener("mouseenter", (e) => {
+      // Disable edge scrolling while hovering over circle
+      isHoveringCircle = true;
+      stopEdgeScrolling(); // Stop any current scrolling immediately
       // Add small delay to prevent flickering
       clearTimeout(pointElement.hoverTimeout);
       pointElement.hoverTimeout = setTimeout(() => showHoverTitle(e, point.title), 50);
     });
     pointElement.addEventListener("mouseleave", () => {
+      // Re-enable edge scrolling when leaving circle
+      isHoveringCircle = false;
       // Clear any pending hover timeout
       clearTimeout(pointElement.hoverTimeout);
       hideHoverTitle();
@@ -249,7 +275,7 @@ function setupEventListeners() {
   // Text speed toggle
   const textSpeedToggle = document.getElementById("textSpeedToggle");
   const textSpeeds = ["FAST", "RELAXED", "ZEN"];
-  const speedValues = { FAST: 0, RELAXED: 15, ZEN: 40 };
+  const speedValues = { FAST: 0, RELAXED: 30, ZEN: 50 };
   let currentSpeedIndex = 1; // Start with "Relaxed"
 
   textSpeedToggle.addEventListener("click", () => {
@@ -286,10 +312,10 @@ function setupEventListeners() {
     isHighContrast = !isHighContrast;
     document.body.classList.toggle("high-contrast", isHighContrast);
 
-    // Update Food 360° scene day/night transition
-    if (!isMapView && currentStoryPoint && currentStoryPoint.title === 'Food') {
-      console.log('Day/night toggle triggered, transitioning Food 360° scene. Night mode:', isHighContrast);
-      updateFoodSceneOpacity();
+    // Update 360° scene day/night transition for all locations
+    if (!isMapView && currentStoryPoint) {
+      console.log('Day/night toggle triggered, transitioning 360° scene. Night mode:', isHighContrast);
+      updateSceneOpacity();
     }
 
     // Toggle between sun and moon icons
@@ -364,8 +390,8 @@ function endDrag() {
   container.classList.remove("dragging");
   
   // Re-enable smooth transitions after drag ends for a polished feel
-  backgroundContainer.style.transition = 'transform 0.15s ease-out';
-  interactivePoints.style.transition = 'transform 0.15s ease-out';
+  backgroundContainer.style.transition = 'transform 0.08s ease';
+  interactivePoints.style.transition = 'transform 0.08s ease';
 }
 
 function updateBackgroundPosition() {
@@ -395,14 +421,17 @@ function updateBackgroundPosition() {
     interactivePoints.style.transition = 'none';
   }
   
-  backgroundContainer.style.transform = `translate(${currentX}px, ${currentY}px)`;
+  if (cachedElements.backgroundContainer) {
+    cachedElements.backgroundContainer.style.transform = `translate(${currentX}px, ${currentY}px)`;
+  }
 
   // Move points with the background using the same transform
-  interactivePoints.style.transform = `translate(${currentX}px, ${currentY}px)`;
+  if (cachedElements.interactivePoints) {
+    cachedElements.interactivePoints.style.transform = `translate(${currentX}px, ${currentY}px)`;
+  }
   
   // Update spotlight position when map moves to keep it attached to the selected circle
-  const dimmingOverlay = document.getElementById('dimmingOverlay');
-  if (dimmingOverlay && dimmingOverlay.classList.contains('active')) {
+  if (cachedElements.dimmingOverlay && cachedElements.dimmingOverlay.classList.contains('active')) {
     const selectedPoint = document.querySelector('.point.selected');
     if (selectedPoint) {
       updateSpotlightPosition(selectedPoint);
@@ -489,24 +518,108 @@ function updateHelpTextForDevice() {
 let scrollDeadZone = 0.2; // 20% of screen from center has no effect (increased for more gradual)
 let scrollActiveZone = 0.45; // 45% of screen from center has full effect (increased for more gradual)
 let edgeScrollAnimationId = null;
+
+// Performance optimization variables
+let lastFrameTime = 0;
+const targetFPS = 60;
+const mobileTargetFPS = 30;
+const frameInterval = 1000 / targetFPS;
+const mobileFrameInterval = 1000 / mobileTargetFPS;
+
+// Cache frequently accessed DOM elements
+const cachedElements = {
+  container: null,
+  backgroundContainer: null,
+  interactivePoints: null,
+  dialoguePanel: null,
+  helpOverlay: null,
+  dimmingOverlay: null
+};
+
+function initCachedElements() {
+  cachedElements.container = document.getElementById("container");
+  cachedElements.backgroundContainer = document.getElementById("backgroundContainer");
+  cachedElements.interactivePoints = document.getElementById("interactivePoints");
+  cachedElements.dialoguePanel = document.getElementById("dialoguePanel");
+  cachedElements.helpOverlay = document.getElementById("helpOverlay");
+  cachedElements.dimmingOverlay = document.getElementById("dimmingOverlay");
+}
+
+// Mobile-specific optimizations
+function applyMobileOptimizations() {
+  const isMobile = window.innerWidth <= 768;
+  
+  if (isMobile) {
+    // Reduce scroll sensitivity on mobile
+    scrollDeadZone = 0.3; // Larger dead zone
+    scrollActiveZone = 0.6; // Larger active zone
+    
+    // Disable hover effects that don't work well on mobile
+    document.body.classList.add('mobile-optimized');
+    
+    // Add viewport meta tag if not present for better mobile performance
+    if (!document.querySelector('meta[name="viewport"]')) {
+      const viewport = document.createElement('meta');
+      viewport.name = 'viewport';
+      viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+      document.head.appendChild(viewport);
+    }
+  }
+}
 let currentScrollVelocityX = 0;
 let currentScrollVelocityY = 0;
 let targetScrollVelocityX = 0;
 let targetScrollVelocityY = 0;
+let isHoveringCircle = false;
+let isHoveringDialogue = false; // Track when mouse is over dialogue panel
+let visitedInteractiveLinks = new Set(); // Track visited interactive text links
 
 function handleEdgeScrolling(e) {
   // Enable edge scrolling for both map and panorama modes, but not while dragging or when a circle is selected
   if (isDragging) return;
   
-  // Disable map dragging when a circle is selected (dialogue is open)
-  if (isMapView && dialoguePanel.classList.contains('visible')) return;
+  // Different logic for map view vs 360° view
+  if (isMapView) {
+    // In map view: disable scrolling when dialogue is open (traditional behavior)
+    if (cachedElements.dialoguePanel && cachedElements.dialoguePanel.classList.contains('visible')) return;
+    // Disable scrolling when hovering over circles in map view
+    if (isHoveringCircle) return;
+  } else {
+    // In 360° view: allow scrolling when dialogue is open, but not when hovering over dialogue or circles
+    if (isHoveringDialogue) return;
+    if (isHoveringCircle) return;
+  }
   
-  // Disable map dragging when help overlay is open
-  const helpOverlay = document.getElementById('helpOverlay');
-  if (helpOverlay && !helpOverlay.classList.contains('hidden')) return;
+  // Disable scrolling when help overlay is open
+  if (cachedElements.helpOverlay && !cachedElements.helpOverlay.classList.contains('hidden')) return;
   
   const mouseX = e.clientX;
   const mouseY = e.clientY;
+  
+  // Check if mouse has actually moved
+  const mouseMoved = Math.abs(mouseX - lastMouseX) > 1 || Math.abs(mouseY - lastMouseY) > 1;
+  
+  if (mouseMoved) {
+    isMouseMoving = true;
+    lastMouseX = mouseX;
+    lastMouseY = mouseY;
+    
+    // Clear existing timeout
+    if (mouseStopTimeout) {
+      clearTimeout(mouseStopTimeout);
+    }
+    
+    // Set timeout to detect when mouse stops moving
+    mouseStopTimeout = setTimeout(() => {
+      isMouseMoving = false;
+      // Stop scrolling immediately when mouse stops
+      targetScrollVelocityX = 0;
+      targetScrollVelocityY = 0;
+    }, 100); // delay to detect mouse stop
+  }
+  
+  // Only scroll if mouse is actively moving
+  if (!isMouseMoving) return;
   const windowWidth = window.innerWidth;
   const windowHeight = window.innerHeight;
   
@@ -524,11 +637,11 @@ function handleEdgeScrolling(e) {
     // Calculate scroll factor (0 at dead zone boundary, 1 at active zone boundary)
     const scrollFactor = Math.min(1, (distanceFromCenter - scrollDeadZone) / (scrollActiveZone - scrollDeadZone));
     
-    // Apply exponential curve for more natural feel (increased for more gradual)
-    const smoothFactor = Math.pow(scrollFactor, 2.2);
+    // Apply linear curve for more direct response
+    const smoothFactor = scrollFactor;
     
     // Calculate velocity based on direction and smooth factor (reversed for intuitive movement)
-    const maxSpeed = 2.8; // Further reduced for more gradual movement
+    const maxSpeed = 6.0; // Faster edge scrolling movement
     targetScrollVelocityX = -relativeX * smoothFactor * maxSpeed;
     targetScrollVelocityY = -relativeY * smoothFactor * maxSpeed;
   } else {
@@ -547,10 +660,20 @@ function handleEdgeScrolling(e) {
 function startEdgeScrolling() {
   if (edgeScrollAnimationId) return; // Already scrolling
   
-  function scroll() {
-    // Smooth acceleration/deceleration with bounce effect
-    const acceleration = 0.08; // Much slower for more gradual movement
-    const bounceMultiplier = 1.02; // Tiny bounce effect when starting
+  function scroll(currentTime) {
+    // Frame rate limiting for performance
+    const isMobile = window.innerWidth <= 768;
+    const interval = isMobile ? mobileFrameInterval : frameInterval;
+    
+    if (currentTime - lastFrameTime < interval) {
+      edgeScrollAnimationId = requestAnimationFrame(scroll);
+      return;
+    }
+    lastFrameTime = currentTime;
+    
+    // Faster acceleration for quicker response
+    const acceleration = 0.18; // Faster acceleration for quicker edge scrolling
+    const bounceMultiplier = 1.0; // No bounce effect
     
     const deltaX = targetScrollVelocityX - currentScrollVelocityX;
     const deltaY = targetScrollVelocityY - currentScrollVelocityY;
@@ -587,11 +710,14 @@ function startEdgeScrolling() {
     } else {
       // Panorama scrolling - update lon/lat for smoother control (horizontal inverted, vertical natural)
       if (!isMapView && panoramaCamera) {
-        lon -= currentScrollVelocityX * 0.1; // Horizontal rotation (gentler and reversed)
-        lat += currentScrollVelocityY * 0.1; // Vertical rotation (gentler, natural direction)
+        lon -= currentScrollVelocityX * 0.1; // Horizontal rotation (slower, less dizzying)
+        lat += currentScrollVelocityY * 0.1; // Vertical rotation (slower, less dizzying)
         
         // Clamp vertical rotation
         lat = Math.max(-85, Math.min(85, lat));
+        
+        // Update panorama point positions as camera rotates
+        updatePanoramaPointPositions();
       }
     }
     
@@ -617,7 +743,7 @@ function handleCircleClick(point, pointElement, index) {
   console.log('Circle clicked:', point.title);
   
   // Check if this point has a 360° image
-  const has360Image = point.title === "Education" || point.title === "Food"; // Both Education and Food go directly to 360°
+  const has360Image = point.title === "Education" || point.title === "Food" || point.title === "Energy" || point.title === "Transport"; // These points go directly to 360°
   
   // Store has360Image on the point for later use
   point._has360Image = has360Image;
@@ -721,20 +847,28 @@ function handleCircleClick(point, pointElement, index) {
     
     // Complete the switch (map is already invisible)
     isMapView = false;
+    document.body.classList.add('panorama-view'); // Hide connection lines
     backgroundContainer.style.display = 'none';
     interactivePoints.style.display = 'none';
+    
+    // Disable dimming overlay and spotlight when entering 360° view
+    const dimmingOverlay = document.getElementById('dimmingOverlay');
+    if (dimmingOverlay && dimmingOverlay.classList.contains('active')) {
+      dimmingOverlay.classList.remove('active');
+      dimmingOverlay.style.mask = '';
+      dimmingOverlay.style.webkitMask = '';
+    }
     
     // Reset transforms for next time
     backgroundContainer.style.transform = `translate(${currentX}px, ${currentY}px)`;
     interactivePoints.style.transform = `translate(${currentX}px, ${currentY}px)`;
     
-    // For 360° points, create panorama points instead of showing dialogue
+    // Show dialogue for all points (both regular and 360° views)
     setTimeout(() => {
-      if (point._has360Image) {
-        createPanoramaStoryPoints();
-        console.log('Created panorama story points for 360° view');
-      } else {
-        showDialogue(point, pointElement);
+      showDialogue(point, pointElement);
+      // Add back to street view button for 360° views
+      if (!isMapView) {
+        showBackToStreetButton();
       }
     }, 100);
     
@@ -745,6 +879,9 @@ function handleCircleClick(point, pointElement, index) {
 function showDialogue(point, pointElement) {
   currentStoryPoint = point;
   locationTitle.textContent = point.title;
+
+  // Hide minimized tab when showing dialogue
+  hideMinimizedDialogueTab();
 
   // Mark this point as visited
   visitedContent.add(point.title);
@@ -761,6 +898,8 @@ function showDialogue(point, pointElement) {
   skipToNextSentence = false;
   hasUsedSkip = false;
   isTyping = false;
+  isTypingPaused = false; // Reset pause when starting new dialogue
+  pausedTypingState = null;
   console.log("showDialogue: Reset skip state variables");
 
   // Clear any existing typing timeout
@@ -773,38 +912,41 @@ function showDialogue(point, pointElement) {
   pointElements.forEach((el) => el.classList.remove("selected"));
   pointElement.classList.add("selected");
   
-  // Add dimming overlay effect when circle is selected
+  // Add dimming overlay effect when circle is selected (only in map view, not 360° view)
   const dimmingOverlay = document.getElementById('dimmingOverlay');
-  if (dimmingOverlay) {
+  if (dimmingOverlay && isMapView) {
     dimmingOverlay.classList.add('active');
     
-    // Start spotlight at small size and animate it growing with the circle
-    updateSpotlightPosition(pointElement, 0); // Start at 0 progress (1x scale)
-    
-    const animateSpotlight = () => {
-      let startTime = null;
-      const duration = 300; // Match growCircle animation duration
+    // Wait for map positioning to be established before starting spotlight
+    setTimeout(() => {
+      // Start spotlight at small size and animate it growing with the circle
+      updateSpotlightPosition(pointElement, 0); // Start at 0 progress (1x scale)
       
-      function animate(currentTime) {
-        if (!startTime) startTime = currentTime;
-        const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / duration, 1);
+      const animateSpotlight = () => {
+        let startTime = null;
+        const duration = 300; // Match growCircle animation duration
         
-        // Apply easing to match CSS animation (ease-out)
-        const easedProgress = 1 - Math.pow(1 - progress, 3);
-        
-        updateSpotlightPosition(pointElement, easedProgress);
-        
-        if (progress < 1) {
-          requestAnimationFrame(animate);
+        function animate(currentTime) {
+          if (!startTime) startTime = currentTime;
+          const elapsed = currentTime - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          
+          // Apply easing to match CSS animation (ease-out)
+          const easedProgress = 1 - Math.pow(1 - progress, 3);
+          
+          updateSpotlightPosition(pointElement, easedProgress);
+          
+          if (progress < 1) {
+            requestAnimationFrame(animate);
+          }
         }
-      }
+        
+        requestAnimationFrame(animate);
+      };
       
-      requestAnimationFrame(animate);
-    };
-    
-    // Start spotlight animation immediately when circle starts scaling
-    animateSpotlight();
+      // Start spotlight animation after positioning is established
+      animateSpotlight();
+    }, 50); // Small delay to let map positioning settle
     
     // Also update on window resize or scroll to keep spotlight attached
     const resizeHandler = () => {
@@ -980,6 +1122,10 @@ function showSection(point, optionKey) {
 
   dialoguePanel.classList.add("visible");
   dialogueTextContainer.scrollTop = 0;
+  
+  // Mark interactive text link as visited (since user has clicked and engaged with it)
+  // This is done after content creation so visited class is applied to newly created elements
+  markInteractiveTextAsVisited(optionKey);
 }
 
 function addToHistory(point, optionKey) {
@@ -1195,6 +1341,11 @@ function typeWriterWithLinks(element, text, charIndex, point, onComplete) {
     "Starting typewriter - isTyping set to true, hasUsedSkip:",
     hasUsedSkip,
   );
+  
+  // Reset pause state when starting fresh animation
+  isTypingPaused = false;
+  pausedTypingState = null;
+  
   dialogueTextContainer.classList.add("typing");
   typeWriterParts(element, textParts, 0, 0, point, onComplete);
 }
@@ -1207,6 +1358,16 @@ function typeWriterParts(
   point,
   onComplete,
 ) {
+  // Save state for potential pausing
+  pausedTypingState = {
+    element,
+    parts,
+    partIndex,
+    charIndex,
+    point,
+    onComplete
+  };
+  
   if (partIndex >= parts.length) {
     console.log("Typewriter completed - setting isTyping to false");
     isTyping = false;
@@ -1288,6 +1449,11 @@ function typeWriterParts(
     const linkSpan = document.createElement("span");
     linkSpan.className = "interactive-text";
     linkSpan.textContent = currentPart.content;
+    
+    // Check if this link has been visited before and apply visited class
+    if (visitedInteractiveLinks.has(currentPart.target)) {
+      linkSpan.classList.add('visited');
+    }
 
     // Add click handler based on target
     if (currentPart.target === "close") {
@@ -1298,6 +1464,7 @@ function typeWriterParts(
       });
     } else {
       // Target is now a key, not a section number
+      linkSpan.dataset.targetKey = currentPart.target; // Store the target key for later reference
       linkSpan.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -1334,6 +1501,11 @@ function renderParsedText(element, parts, point) {
       const linkSpan = document.createElement("span");
       linkSpan.className = "interactive-text";
       linkSpan.textContent = part.content;
+      
+      // Check if this link has been visited before and apply visited class
+      if (visitedInteractiveLinks.has(part.target)) {
+        linkSpan.classList.add('visited');
+      }
 
       // Add click handler based on target
       if (part.target === "close") {
@@ -1344,6 +1516,7 @@ function renderParsedText(element, parts, point) {
         });
       } else {
         // Target is now a key, not a section number
+        linkSpan.dataset.targetKey = part.target; // Store the target key for later reference
         linkSpan.addEventListener("click", (e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -1366,6 +1539,23 @@ function renderParsedText(element, parts, point) {
 
 function hideDialogue() {
   dialoguePanel.classList.remove("visible");
+  
+  // Pause typing animation if currently active
+  if (isTyping) {
+    isTypingPaused = true;
+    console.log('Pausing typing animation and clearing timeouts');
+    
+    // Clear current timeout to truly pause
+    if (currentTypingTimeout) {
+      clearTimeout(currentTypingTimeout);
+      currentTypingTimeout = null;
+    }
+  }
+  
+  // In 360° views, show a minimized tab when dialogue is closed
+  if (!isMapView) {
+    showMinimizedDialogueTab();
+  }
   
   // Animate spotlight scaling down with circle deselection
   const selectedPoint = document.querySelector('.point.selected');
@@ -1456,6 +1646,143 @@ function hideDialogue() {
         }, 300);
       }
     });
+  }
+}
+
+// Show minimized dialogue tab in 360° views
+function showMinimizedDialogueTab() {
+  // Remove any existing tab first
+  hideMinimizedDialogueTab();
+  
+  // Create the minimized tab element
+  const minimizedTab = document.createElement('div');
+  minimizedTab.id = 'minimizedDialogueTab';
+  minimizedTab.className = 'minimized-dialogue-tab';
+  
+  // Get the current story point title for the tab
+  const tabTitle = currentStoryPoint ? currentStoryPoint.title : 'Info';
+  minimizedTab.textContent = tabTitle;
+  
+  // Add click handler to reopen dialogue
+  minimizedTab.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Hide the tab immediately when clicked so it gets out of the way
+    hideMinimizedDialogueTab();
+    
+    // Then show the dialogue with a small delay to ensure smooth transition
+    setTimeout(() => {
+      // Simply restore dialogue panel visibility
+      dialoguePanel.classList.add('visible');
+      
+      // Resume typing animation if it was paused
+      if (isTypingPaused && pausedTypingState) {
+        isTypingPaused = false;
+        console.log('Resuming typing animation from saved state');
+        
+        // Restore typing state and features
+        isTyping = true;
+        dialogueTextContainer.classList.add("typing");
+        
+        // Resume from where we left off
+        const state = pausedTypingState;
+        typeWriterParts(
+          state.element,
+          state.parts,
+          state.partIndex,
+          state.charIndex,
+          state.point,
+          state.onComplete
+        );
+      } else if (currentStoryPoint) {
+        // Start fresh dialogue animation if no animation was paused
+        const pointElement = document.querySelector('.point.selected') || null;
+        showDialogue(currentStoryPoint, pointElement);
+      }
+    }, 50);
+  });
+  
+  // Add hover listeners for edge scrolling control
+  minimizedTab.addEventListener("mouseenter", () => {
+    isHoveringDialogue = true;
+  });
+  minimizedTab.addEventListener("mouseleave", () => {
+    isHoveringDialogue = false;
+  });
+  
+  // Add to the panorama container
+  document.body.appendChild(minimizedTab);
+  
+  // Trigger show animation after a brief delay
+  setTimeout(() => {
+    minimizedTab.classList.add('show');
+  }, 50);
+}
+
+// Hide minimized dialogue tab
+function hideMinimizedDialogueTab() {
+  const existingTab = document.getElementById('minimizedDialogueTab');
+  if (existingTab) {
+    // Animate out first
+    existingTab.classList.remove('show');
+    // Remove after animation completes
+    setTimeout(() => {
+      if (existingTab.parentNode) {
+        existingTab.remove();
+      }
+    }, 500);
+  }
+}
+
+// Reopen dialogue from minimized state
+function reopenDialogue() {
+  // This function is now handled directly in the tab click handler
+  // Keeping for backwards compatibility if called elsewhere
+  console.log('reopenDialogue called - functionality moved to tab click handler');
+}
+
+// Show back to street view button for 360° views
+function showBackToStreetButton() {
+  // Remove any existing button first
+  hideBackToStreetButton();
+  
+  // Create the back to street button
+  const backButton = document.createElement('div');
+  backButton.id = 'backToStreetButton';
+  backButton.className = 'back-to-street-button';
+  backButton.innerHTML = `
+    <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
+      <path d="M8 1l-1.5 1.5L11 7H1v2h10l-4.5 4.5L8 15l7-7z" transform="rotate(180 8 8)"/>
+    </svg>
+    Back to Street View
+  `;
+  
+  // Add click handler to return to street view
+  backButton.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    returnToStreetView();
+  });
+  
+  // Add hover listeners for edge scrolling control
+  backButton.addEventListener("mouseenter", () => {
+    isHoveringCircle = true;
+    stopEdgeScrolling();
+  });
+  backButton.addEventListener("mouseleave", () => {
+    isHoveringCircle = false;
+  });
+  
+  // Add to body
+  document.body.appendChild(backButton);
+}
+
+// Hide back to street view button
+function hideBackToStreetButton() {
+  const existingButton = document.getElementById('backToStreetButton');
+  if (existingButton) {
+    existingButton.remove();
   }
 }
 
@@ -1715,6 +2042,48 @@ window.addEventListener('resize', () => {
   }
 });
 
+// Optimize texture setup for performance
+function setupTexture(texture) {
+  const isMobile = window.innerWidth <= 768;
+  
+  // Optimize texture filtering for performance
+  texture.minFilter = isMobile ? THREE.LinearFilter : THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.flipY = false;
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.generateMipmaps = !isMobile;
+  
+  return texture;
+}
+
+// Progressive image loading for better performance
+function loadImageProgressively(imagePath, onLoad, onProgress, onError) {
+  const img = new Image();
+  
+  // Add progressive JPEG hint for browsers that support it
+  img.decoding = 'async';
+  
+  img.onload = () => {
+    if (onLoad) onLoad(img);
+  };
+  
+  img.onprogress = (event) => {
+    if (onProgress && event.lengthComputable) {
+      const progress = (event.loaded / event.total) * 100;
+      onProgress(progress);
+    }
+  };
+  
+  img.onerror = (error) => {
+    console.warn(`Failed to load image: ${imagePath}`, error);
+    if (onError) onError(error);
+  };
+  
+  img.src = imagePath;
+  return img;
+}
+
 // Initialize 360° panorama view
 function initializePanorama() {
   try {
@@ -1727,12 +2096,28 @@ function initializePanorama() {
     panoramaCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     
     // Create renderer
-    panoramaRenderer = new THREE.WebGLRenderer({ canvas: panoramaCanvas, antialias: true });
+    // Optimize renderer for mobile performance
+    const isMobile = window.innerWidth <= 768;
+    panoramaRenderer = new THREE.WebGLRenderer({ 
+      canvas: panoramaCanvas, 
+      antialias: !isMobile, // Disable antialiasing on mobile for better performance
+      alpha: false,
+      powerPreference: isMobile ? "low-power" : "high-performance"
+    });
     panoramaRenderer.setSize(window.innerWidth, window.innerHeight);
     panoramaRenderer.setClearColor(0x000000);
     
-    // Create sphere geometry for 360° photo - higher resolution for better quality
-    const geometry = new THREE.SphereGeometry(500, 60, 40);
+    // Mobile-specific optimizations
+    if (isMobile) {
+      panoramaRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    } else {
+      panoramaRenderer.setPixelRatio(window.devicePixelRatio);
+    }
+    
+    // Create sphere geometry for 360° photo - adaptive quality based on device
+    const sphereSegments = isMobile ? 32 : 60; // Reduce geometry complexity on mobile
+    const sphereRings = isMobile ? 20 : 40;
+    const geometry = new THREE.SphereGeometry(500, sphereSegments, sphereRings);
     
     // Fix UV mapping for correct orientation - flip both U and V
     const uvs = geometry.attributes.uv.array;
@@ -1748,12 +2133,13 @@ function initializePanorama() {
       'assets/images/360-energy.jpg',
       function (texture) {
         console.log('360-energy.jpg loaded successfully');
-        // Texture loaded successfully - don't set format manually
-        texture.minFilter = THREE.LinearFilter;
+        // Optimize texture filtering for performance
+        texture.minFilter = isMobile ? THREE.LinearFilter : THREE.LinearMipmapLinearFilter;
         texture.magFilter = THREE.LinearFilter;
         texture.flipY = false; // Don't flip - we'll handle it with UV mapping
-        texture.wrapS = THREE.RepeatWrapping;
-        texture.wrapT = THREE.RepeatWrapping;
+        texture.wrapS = THREE.ClampToEdgeWrapping; // More efficient than repeat
+        texture.wrapT = THREE.ClampToEdgeWrapping;
+        texture.generateMipmaps = !isMobile; // Skip mipmaps on mobile
         
         // Update the material with the loaded texture
         if (panoramaSphere && panoramaSphere.material) {
@@ -1827,16 +2213,96 @@ function loadPanoramaImage(point) {
   
   console.log('loadPanoramaImage called for:', point.title);
   
-  if (point.title === 'Food') {
-    // For Food scenes, load both day and night textures for smooth fading
-    loadFoodPanoramaImages(point);
-  } else {
-    // For other scenes (like Energy), use single texture
-    loadSinglePanoramaImage(point);
-  }
+  // Use the working Food loading method for all 360° scenes
+  loadPanoramaImages(point);
 }
 
-// Load both day and night textures for Food scenes
+// Load both day and night textures for all 360° scenes
+function loadPanoramaImages(point) {
+  let dayImagePath, nightImagePath;
+  
+  switch (point.title) {
+    case 'Food':
+      dayImagePath = 'assets/images/market-360-day.jpg';
+      nightImagePath = 'assets/images/market-360-night.jpg';
+      break;
+    case 'Education':
+      dayImagePath = 'assets/images/rooftop-day.jpg';
+      nightImagePath = 'assets/images/rooftop-night.jpg';
+      break;
+    case 'Energy':
+      dayImagePath = 'assets/images/energy-360-day.jpg';
+      nightImagePath = 'assets/images/energy-360-night.jpg';
+      break;
+    case 'Transport':
+      dayImagePath = 'assets/images/transport-day.jpg';
+      nightImagePath = 'assets/images/transport-night.jpg';
+      break;
+    default:
+      dayImagePath = 'assets/images/energy-360-day.jpg';
+      nightImagePath = 'assets/images/energy-360-night.jpg';
+      console.log(`No specific 360° image for ${point.title}, using energy scene`);
+      break;
+  }
+  
+  const textureLoader = new THREE.TextureLoader();
+  let dayLoaded = false;
+  let nightLoaded = false;
+  
+  console.log(`Loading ${point.title} panorama day and night images...`);
+  
+  // Load day texture
+  textureLoader.load(
+    dayImagePath,
+    function (dayTexture) {
+      console.log(`${point.title} day 360° image loaded`);
+      setupTexture(dayTexture);
+      
+      // Dispose old texture
+      if (panoramaSphere.material.map) {
+        panoramaSphere.material.map.dispose();
+      }
+      
+      panoramaSphere.material.map = dayTexture;
+      panoramaSphere.material.color.setHex(0xffffff);
+      panoramaSphere.material.needsUpdate = true;
+      
+      dayLoaded = true;
+      if (nightLoaded) updateSceneOpacity();
+    },
+    undefined,
+    function (error) {
+      console.error(`Error loading ${point.title} day image:`, error);
+    }
+  );
+  
+  // Load night texture
+  textureLoader.load(
+    nightImagePath,
+    function (nightTexture) {
+      console.log(`${point.title} night 360° image loaded`);
+      setupTexture(nightTexture);
+      
+      // Dispose old texture
+      if (panoramaSphereNight.material.map) {
+        panoramaSphereNight.material.map.dispose();
+      }
+      
+      panoramaSphereNight.material.map = nightTexture;
+      panoramaSphereNight.material.color.setHex(0xffffff);
+      panoramaSphereNight.material.needsUpdate = true;
+      
+      nightLoaded = true;
+      if (dayLoaded) updateSceneOpacity();
+    },
+    undefined,
+    function (error) {
+      console.error(`Error loading ${point.title} night image:`, error);
+    }
+  );
+}
+
+// Load both day and night textures for Food scenes  
 function loadFoodPanoramaImages(point) {
   const textureLoader = new THREE.TextureLoader();
   let dayLoaded = false;
@@ -1895,52 +2361,89 @@ function loadFoodPanoramaImages(point) {
   );
 }
 
-// Load single texture for non-Food scenes
+// Load day and night textures for non-Food scenes
 function loadSinglePanoramaImage(point) {
-  let imagePath;
+  let dayImagePath, nightImagePath;
+  
   switch (point.title) {
     case 'Education':
-      imagePath = 'assets/images/360-energy.jpg';
+      dayImagePath = 'assets/images/rooftop-day.jpg';
+      nightImagePath = 'assets/images/rooftop-night.jpg';
       break;
     case 'Energy':
-      imagePath = 'assets/images/360-energy.jpg';
+      dayImagePath = 'assets/images/energy-360-day.jpg';
+      nightImagePath = 'assets/images/energy-360-night.jpg';
+      break;
+    case 'Transport':
+      dayImagePath = 'assets/images/transport-day.jpg';
+      nightImagePath = 'assets/images/transport-night.jpg';
       break;
     default:
-      imagePath = 'assets/images/360-energy.jpg';
+      dayImagePath = 'assets/images/energy-360-day.jpg';
+      nightImagePath = 'assets/images/energy-360-night.jpg';
       console.log(`No specific 360° image for ${point.title}, using energy scene`);
       break;
   }
   
-  console.log(`Loading single 360° image: ${imagePath}`);
+  console.log(`Loading day and night 360° images for ${point.title}...`);
   
   const textureLoader = new THREE.TextureLoader();
+  
+  // Load day texture
   textureLoader.load(
-    imagePath,
-    function (texture) {
-      setupTexture(texture);
+    dayImagePath,
+    function (dayTexture) {
+      console.log(`Day texture loaded successfully for ${point.title}:`, dayTexture);
+      console.log('Texture dimensions:', dayTexture.image.width, 'x', dayTexture.image.height);
       
-      // Dispose old textures
+      setupTexture(dayTexture);
+      
+      // Dispose old day texture
       if (panoramaSphere.material.map) {
         panoramaSphere.material.map.dispose();
       }
+      
+      panoramaSphere.material.map = dayTexture;
+      panoramaSphere.material.color.setHex(0xffffff);
+      panoramaSphere.material.opacity = isHighContrast ? 0 : 1;
+      panoramaSphere.material.needsUpdate = true;
+      
+      console.log(`Day 360° image applied to sphere for ${point.title}`);
+    },
+    function (progress) {
+      console.log(`Loading day image for ${point.title}:`, (progress.loaded / progress.total * 100).toFixed(1) + '%');
+    },
+    function (error) {
+      console.error(`Error loading day 360° image for ${point.title} from ${dayImagePath}:`, error);
+    }
+  );
+  
+  // Load night texture
+  textureLoader.load(
+    nightImagePath,
+    function (nightTexture) {
+      console.log(`Night texture loaded successfully for ${point.title}:`, nightTexture);
+      console.log('Night texture dimensions:', nightTexture.image.width, 'x', nightTexture.image.height);
+      
+      setupTexture(nightTexture);
+      
+      // Dispose old night texture
       if (panoramaSphereNight.material.map) {
         panoramaSphereNight.material.map.dispose();
       }
       
-      // Apply to day sphere, hide night sphere
-      panoramaSphere.material.map = texture;
-      panoramaSphere.material.color.setHex(0xffffff);
-      panoramaSphere.material.opacity = 1;
-      panoramaSphere.material.needsUpdate = true;
-      
-      panoramaSphereNight.material.opacity = 0;
+      panoramaSphereNight.material.map = nightTexture;
+      panoramaSphereNight.material.color.setHex(0xffffff);
+      panoramaSphereNight.material.opacity = isHighContrast ? 1 : 0;
       panoramaSphereNight.material.needsUpdate = true;
       
-      console.log('Single panorama texture loaded for:', point.title);
+      console.log(`Night 360° image applied to sphere for ${point.title}`);
     },
-    undefined,
+    function (progress) {
+      console.log(`Loading night image for ${point.title}:`, (progress.loaded / progress.total * 100).toFixed(1) + '%');
+    },
     function (error) {
-      console.error('Error loading 360° image for', point.title, ':', error);
+      console.error(`Error loading night 360° image for ${point.title} from ${nightImagePath}:`, error);
     }
   );
 }
@@ -1952,6 +2455,43 @@ function setupTexture(texture) {
   texture.flipY = false;
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
+}
+
+// Update scene opacity based on day/night mode with smooth transition
+function updateSceneOpacity() {
+  const isNightMode = document.body.classList.contains('high-contrast');
+  console.log('Updating 360° scene opacity, night mode:', isNightMode);
+  
+  const duration = 4000; // 4 second fade to match street scene
+  const startTime = Date.now();
+  
+  const startDayOpacity = panoramaSphere.material.opacity;
+  const startNightOpacity = panoramaSphereNight.material.opacity;
+  
+  const targetDayOpacity = isNightMode ? 0 : 1;
+  const targetNightOpacity = isNightMode ? 1 : 0;
+  
+  function animateFade() {
+    const elapsed = Date.now() - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    
+    // Use cubic ease-out for smooth transition
+    const easeProgress = 1 - Math.pow(1 - progress, 3);
+    
+    panoramaSphere.material.opacity = startDayOpacity + (targetDayOpacity - startDayOpacity) * easeProgress;
+    panoramaSphereNight.material.opacity = startNightOpacity + (targetNightOpacity - startNightOpacity) * easeProgress;
+    
+    panoramaSphere.material.needsUpdate = true;
+    panoramaSphereNight.material.needsUpdate = true;
+    
+    if (progress < 1) {
+      requestAnimationFrame(animateFade);
+    } else {
+      console.log('360° day/night transition completed');
+    }
+  }
+  
+  animateFade();
 }
 
 // Update Food scene opacity based on day/night mode with smooth transition
@@ -1997,8 +2537,34 @@ function setupPanoramaControls() {
   let onMouseDownLon = 0, onMouseDownLat = 0;
   let phi = 0, theta = 0;
   
+  // Function to check if mouse is in back button area
+  function isMouseInBackButtonArea(clientX, clientY) {
+    const canvasRect = panoramaCanvas.getBoundingClientRect();
+    const relativeX = (clientX - canvasRect.left) / canvasRect.width;
+    const relativeY = (clientY - canvasRect.top) / canvasRect.height;
+    
+    // Back button is positioned at 50% left, 20% top
+    // Create a dead zone around it (roughly 150px radius in a typical view)
+    const buttonCenterX = 0.5;
+    const buttonCenterY = 0.2;
+    const deadZoneRadius = 0.12; // 12% of canvas size as radius
+    
+    const distanceToButton = Math.sqrt(
+      Math.pow(relativeX - buttonCenterX, 2) + 
+      Math.pow(relativeY - buttonCenterY, 2)
+    );
+    
+    return distanceToButton < deadZoneRadius;
+  }
+  
   function onMouseDown(event) {
     event.preventDefault();
+    
+    // Check if mouse is in back button area - if so, don't start dragging
+    if (isMouseInBackButtonArea(event.clientX, event.clientY)) {
+      return;
+    }
+    
     isMouseDown = true;
     hasDragged = false;
     dragStartTime = Date.now();
@@ -2024,9 +2590,9 @@ function setupPanoramaControls() {
         hasDragged = true;
       }
       
-      // Handle dragging
-      lon = (onMouseDownMouseX - event.clientX) * 0.1 + onMouseDownLon;
-      lat = (event.clientY - onMouseDownMouseY) * 0.1 + onMouseDownLat;
+      // Handle dragging (increased sensitivity for faster movement)
+      lon = (onMouseDownMouseX - event.clientX) * 0.18 + onMouseDownLon;
+      lat = (event.clientY - onMouseDownMouseY) * 0.18 + onMouseDownLat;
       
       // Limit vertical rotation
       lat = Math.max(-85, Math.min(85, lat));
@@ -2049,6 +2615,12 @@ function setupPanoramaControls() {
   function onTouchStart(event) {
     if (event.touches.length === 1) {
       event.preventDefault();
+      
+      // Check if touch is in back button area - if so, don't start dragging
+      if (isMouseInBackButtonArea(event.touches[0].clientX, event.touches[0].clientY)) {
+        return;
+      }
+      
       isMouseDown = true;
       
       onMouseDownMouseX = event.touches[0].pageX;
@@ -2062,8 +2634,8 @@ function setupPanoramaControls() {
     if (event.touches.length === 1 && isMouseDown) {
       event.preventDefault();
       
-      lon = (onMouseDownMouseX - event.touches[0].pageX) * 0.1 + onMouseDownLon;
-      lat = (event.touches[0].pageY - onMouseDownMouseY) * 0.1 + onMouseDownLat;
+      lon = (onMouseDownMouseX - event.touches[0].pageX) * 0.18 + onMouseDownLon;
+      lat = (event.touches[0].pageY - onMouseDownMouseY) * 0.18 + onMouseDownLat;
       
       // Limit vertical rotation
       lat = Math.max(-85, Math.min(85, lat));
@@ -2106,6 +2678,7 @@ function setupPanoramaControls() {
   panoramaCanvas.addEventListener('mousedown', onMouseDown, false);
   panoramaCanvas.addEventListener('mousemove', onMouseMove, false);
   panoramaCanvas.addEventListener('mouseup', onMouseUp, false);
+  panoramaCanvas.addEventListener('mouseleave', onMouseUp, false); // Stop dragging when mouse leaves canvas
   panoramaCanvas.addEventListener('touchstart', onTouchStart, false);
   panoramaCanvas.addEventListener('touchmove', onTouchMove, false);
   panoramaCanvas.addEventListener('touchend', onTouchEnd, false);
@@ -2123,31 +2696,16 @@ function onPanoramaWindowResize() {
   }
 }
 
-// Create HTML overlay points for panorama view
-function createPanoramaStoryPoints() {
-  // Clear existing panorama points
-  if (!panoramaOverlay) {
-    console.error('panoramaOverlay element not found!');
-    return;
-  }
-  
-  panoramaOverlay.innerHTML = '';
-  panoramaPoints = [];
-  
-  console.log('Creating panorama story points for:', currentStoryPoint ? currentStoryPoint.title : 'no story point');
-  
-  // Create points based on current story point
-  if (!currentStoryPoint) return;
-  
-  if (currentStoryPoint.title === "Education") {
-    createEducationPanoramaPoints();
-  } else if (currentStoryPoint.title === "Food") {
-    createFoodPanoramaPoints();
-  }
-}
 
-// Create Education-specific 360° points
-function createEducationPanoramaPoints() {
+// Removed panorama point creation functions - now showing main dialogue instead
+
+// Removed: createEducationPanoramaPoints() 
+// Removed: createFoodPanoramaPoints()
+// Removed: createEnergyPanoramaPoints()  
+// Removed: createTransportPanoramaPoints()
+// These functions have been removed since 360° views now show main dialogue directly
+
+function PLACEHOLDER_TO_REPLACE() {
   const educationPoint = storyPoints.find(point => point.title === "Education");
   if (!educationPoint) return;
   
@@ -2182,19 +2740,27 @@ function createEducationPanoramaPoints() {
     }
   ];
   
-  // Create HTML overlay points for each education-specific point
-  educationPoints.forEach((educationSubPoint, index) => {
+  // Add interactive links from the main text as additional panorama points
+  const interactiveLinkPoints = createInteractiveLinkPanoramaPoints(educationPoint, educationPoints);
+  const allEducationPoints = [...educationPoints, ...interactiveLinkPoints];
+  
+  // Create HTML overlay points for each education-specific point (including interactive links)
+  allEducationPoints.forEach((educationSubPoint, index) => {
     // Create HTML element for the point
     const pointElement = document.createElement('div');
-    pointElement.className = 'panorama-point education-point';
+    let className = 'panorama-point education-point';
+    if (educationSubPoint.isInteractiveLink) {
+      className += ' interactive-link';
+    }
+    pointElement.className = className;
     pointElement.dataset.index = index;
     pointElement.dataset.key = educationSubPoint.key;
     
-    // Store 3D coordinates for panorama positioning
-    pointElement.dataset.longitude = educationSubPoint.longitude;
-    pointElement.dataset.latitude = educationSubPoint.latitude;
+    // Store original position for simplified panorama positioning system
+    pointElement.dataset.originalX = educationSubPoint.x;
+    pointElement.dataset.originalY = educationSubPoint.y;
     
-    // Initial position will be updated by panorama positioning
+    // Initial position - will be updated by panorama positioning system
     pointElement.style.left = `${educationSubPoint.x}%`;
     pointElement.style.top = `${educationSubPoint.y}%`;
     
@@ -2228,6 +2794,15 @@ function createEducationPanoramaPoints() {
       showEducationSubContent(educationSubPoint);
     });
     
+    // Add hover event listeners to disable edge scrolling
+    pointElement.addEventListener("mouseenter", () => {
+      isHoveringCircle = true;
+      stopEdgeScrolling(); // Stop any current scrolling immediately
+    });
+    pointElement.addEventListener("mouseleave", () => {
+      isHoveringCircle = false;
+    });
+    
     // Add to overlay
     panoramaOverlay.appendChild(pointElement);
     
@@ -2239,11 +2814,13 @@ function createEducationPanoramaPoints() {
     });
   });
   
-  // Add a special "back to street view" point in the center
+  // Add a special "back to street view" point below day/night toggle
   const backToStreetPoint = document.createElement('div');
   backToStreetPoint.className = 'panorama-point back-to-street';
-  backToStreetPoint.style.left = '50%';
-  backToStreetPoint.style.top = '20%'; // Position it in upper middle area
+  backToStreetPoint.style.left = '50%'; // Centered with day/night toggle
+  backToStreetPoint.style.top = '140px'; // Moved down from 120px
+  backToStreetPoint.style.transform = 'translateX(-50%)'; // Keep centered on its position
+  backToStreetPoint.style.position = 'fixed'; // Keep fixed position, don't move with panorama
   
   // Add clear back arrow icon
   backToStreetPoint.innerHTML = `
@@ -2350,19 +2927,27 @@ function createFoodPanoramaPoints() {
     }
   ];
   
-  // Create HTML overlay points for each food-specific point
-  foodPoints.forEach((foodSubPoint, index) => {
+  // Add interactive links from the main text as additional panorama points
+  const interactiveLinkPoints = createInteractiveLinkPanoramaPoints(foodPoint, foodPoints);
+  const allFoodPoints = [...foodPoints, ...interactiveLinkPoints];
+  
+  // Create HTML overlay points for each food-specific point (including interactive links)
+  allFoodPoints.forEach((foodSubPoint, index) => {
     // Create HTML element for the point
     const pointElement = document.createElement('div');
-    pointElement.className = 'panorama-point food-point';
+    let className = 'panorama-point food-point';
+    if (foodSubPoint.isInteractiveLink) {
+      className += ' interactive-link';
+    }
+    pointElement.className = className;
     pointElement.dataset.index = index;
     pointElement.dataset.key = foodSubPoint.key;
     
-    // Store 3D coordinates for panorama positioning
-    pointElement.dataset.longitude = foodSubPoint.longitude;
-    pointElement.dataset.latitude = foodSubPoint.latitude;
+    // Store original position for simplified panorama positioning system
+    pointElement.dataset.originalX = foodSubPoint.x;
+    pointElement.dataset.originalY = foodSubPoint.y;
     
-    // Initial position will be updated by panorama positioning
+    // Initial position - will be updated by panorama positioning system
     pointElement.style.left = `${foodSubPoint.x}%`;
     pointElement.style.top = `${foodSubPoint.y}%`;
     
@@ -2396,6 +2981,15 @@ function createFoodPanoramaPoints() {
       showFoodSubContent(foodSubPoint);
     });
     
+    // Add hover event listeners to disable edge scrolling
+    pointElement.addEventListener("mouseenter", () => {
+      isHoveringCircle = true;
+      stopEdgeScrolling(); // Stop any current scrolling immediately
+    });
+    pointElement.addEventListener("mouseleave", () => {
+      isHoveringCircle = false;
+    });
+    
     // Add to overlay
     panoramaOverlay.appendChild(pointElement);
     
@@ -2407,11 +3001,13 @@ function createFoodPanoramaPoints() {
     });
   });
   
-  // Add a special "back to street view" point in the center
+  // Add a special "back to street view" point below day/night toggle
   const backToStreetPoint = document.createElement('div');
   backToStreetPoint.className = 'panorama-point back-to-street';
-  backToStreetPoint.style.left = '50%';
-  backToStreetPoint.style.top = '20%';
+  backToStreetPoint.style.left = '50%'; // Centered with day/night toggle
+  backToStreetPoint.style.top = '140px'; // Moved down from 120px
+  backToStreetPoint.style.transform = 'translateX(-50%)'; // Keep centered on its position
+  backToStreetPoint.style.position = 'fixed'; // Keep fixed position, don't move with panorama
   
   // Add clear back arrow icon
   backToStreetPoint.innerHTML = `
@@ -2444,12 +3040,15 @@ function createFoodPanoramaPoints() {
 function showFoodSubContent(foodSubPoint) {
   if (!foodSubPoint.content) return;
   
+  // Extract the actual content - handle both regular points and interactive link points
+  const actualContent = foodSubPoint.content.content || foodSubPoint.content;
+  
   // Mark this panorama point as visited
   visitedContent.add(foodSubPoint.title);
   
   currentStoryPoint = { 
     title: foodSubPoint.title,
-    mainText: foodSubPoint.content
+    mainText: actualContent
   };
   
   locationTitle.textContent = foodSubPoint.title;
@@ -2463,17 +3062,17 @@ function showFoodSubContent(foodSubPoint) {
   dialogueEntry.className = 'dialogue-entry';
   
   // Add speaker if available
-  if (foodSubPoint.content.speaker) {
+  if (actualContent.speaker) {
     const speakerDiv = document.createElement('div');
     speakerDiv.className = 'dialogue-speaker';
-    speakerDiv.textContent = foodSubPoint.content.speaker;
+    speakerDiv.textContent = actualContent.speaker;
     dialogueEntry.appendChild(speakerDiv);
   }
   
   // Add main text
   const textDiv = document.createElement('div');
   textDiv.className = 'section-text';
-  textDiv.innerHTML = parseTextWithLinks(foodSubPoint.content.text);
+  textDiv.innerHTML = parseTextWithLinks(actualContent.text);
   dialogueEntry.appendChild(textDiv);
   
   // Add back button
@@ -2497,9 +3096,297 @@ function showFoodSubContent(foodSubPoint) {
   console.log('Food sub-content displayed:', foodSubPoint.title);
 }
 
+// Create Energy-specific 360° points
+function createEnergyPanoramaPoints() {
+  const energyPoint = storyPoints.find(point => point.title === "Energy");
+  if (!energyPoint) return;
+  
+  // Define 3 specific locations on the energy 360° image with their story content
+  const energyPoints = [
+    {
+      title: "Community energy",
+      key: "energy_coops",
+      x: 20, // Left side - solar panels area
+      y: 40,
+      longitude: -90,
+      latitude: 5,
+      content: energyPoint.options.find(opt => opt.key === "energy_coops")
+    },
+    {
+      title: "Fair share", 
+      key: "fair_share",
+      x: 70, // Right side - energy systems
+      y: 35,
+      longitude: 90,
+      latitude: -10,
+      content: energyPoint.options.find(opt => opt.key === "fair_share")
+    },
+    {
+      title: "A living system",
+      key: "living_system",
+      x: 50, // Center - sustainable infrastructure
+      y: 60,
+      longitude: 0,
+      latitude: -15,
+      content: energyPoint.options.find(opt => opt.key === "living_system")
+    }
+  ];
+
+  // Add interactive links from the main text as additional panorama points
+  const interactiveLinkPoints = createInteractiveLinkPanoramaPoints(energyPoint, energyPoints);
+  const allEnergyPoints = [...energyPoints, ...interactiveLinkPoints];
+
+  // Create HTML overlay points (including interactive links)
+  allEnergyPoints.forEach((energySubPoint, index) => {
+    const pointElement = document.createElement('div');
+    let className = 'panorama-point';
+    if (energySubPoint.isInteractiveLink) {
+      className += ' interactive-link';
+    }
+    pointElement.className = className;
+    // Initial position - will be updated by panorama positioning system
+    // Store original position for simplified panorama positioning system
+    pointElement.dataset.originalX = energySubPoint.x;
+    pointElement.dataset.originalY = energySubPoint.y;
+    
+    // Initial position - will be updated by panorama positioning system
+    pointElement.style.left = `${energySubPoint.x}%`;
+    pointElement.style.top = `${energySubPoint.y}%`;
+    
+    // Add click handler
+    pointElement.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('Energy panorama point clicked:', energySubPoint.title);
+      showEnergySubContent(energySubPoint);
+      centerPanoramaOnPoint(pointElement);
+    });
+    
+    // Add hover event listeners to disable edge scrolling
+    pointElement.addEventListener("mouseenter", () => {
+      isHoveringCircle = true;
+      stopEdgeScrolling(); // Stop any current scrolling immediately
+    });
+    pointElement.addEventListener("mouseleave", () => {
+      isHoveringCircle = false;
+    });
+    
+    // Add to overlay
+    panoramaOverlay.appendChild(pointElement);
+    
+    // Store in array
+    panoramaPoints.push({
+      element: pointElement,
+      energySubPoint: energySubPoint,
+      index: index
+    });
+  });
+  
+  // Add back to street view button below day/night toggle
+  const backToStreetPoint = document.createElement('div');
+  backToStreetPoint.className = 'panorama-point back-to-street';
+  backToStreetPoint.style.left = '50%'; // Centered with day/night toggle
+  backToStreetPoint.style.top = '140px'; // Moved down from 120px
+  backToStreetPoint.style.transform = 'translateX(-50%)'; // Keep centered on its position
+  backToStreetPoint.style.position = 'fixed'; // Keep fixed position, don't move with panorama
+  
+  backToStreetPoint.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 32px; height: 32px;">
+      <path d="M19 12H5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  `;
+  
+  backToStreetPoint.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Back to street clicked from energy panorama');
+    returnToStreetView();
+  });
+  
+  panoramaOverlay.appendChild(backToStreetPoint);
+  
+  updatePanoramaPointPositions();
+  
+  console.log(`Created ${panoramaPoints.length} energy panorama story points + 1 back button`);
+  
+  // Show the main Energy dialogue after panorama points are created
+  showPanoramaDialogue(energyPoint);
+}
+
+// Show energy sub-content in dialogue panel
+
+// Create Transport-specific 360° points
+function createTransportPanoramaPoints() {
+  const transportPoint = storyPoints.find(point => point.title === "Transport");
+  if (!transportPoint) return;
+  
+  // Define 3 specific locations on the transport 360° image with their story content
+  const transportPoints = [
+    {
+      title: "Connected Networks",
+      key: "networks",
+      x: 25, // Left side - bike lanes area
+      y: 45,
+      longitude: -80,
+      latitude: 0,
+      content: transportPoint.options.find(opt => opt.key === "networks")
+    },
+    {
+      title: "Rethinking Private Cars", 
+      key: "private_cars",
+      x: 75, // Right side - public transport
+      y: 40,
+      longitude: 80,
+      latitude: 5,
+      content: transportPoint.options.find(opt => opt.key === "private_cars")
+    },
+    {
+      title: "Reclaimed Spaces",
+      key: "returned_people",
+      x: 50, // Center - community spaces
+      y: 65,
+      longitude: 0,
+      latitude: -20,
+      content: transportPoint.options.find(opt => opt.key === "returned_people")
+    }
+  ];
+
+  // Add interactive links from the main text as additional panorama points
+  const interactiveLinkPoints = createInteractiveLinkPanoramaPoints(transportPoint, transportPoints);
+  const allTransportPoints = [...transportPoints, ...interactiveLinkPoints];
+
+  // Create HTML overlay points (including interactive links)
+  allTransportPoints.forEach((transportSubPoint, index) => {
+    const pointElement = document.createElement('div');
+    let className = 'panorama-point';
+    if (transportSubPoint.isInteractiveLink) {
+      className += ' interactive-link';
+    }
+    pointElement.className = className;
+    // Store original position for simplified panorama positioning system
+    pointElement.dataset.originalX = transportSubPoint.x;
+    pointElement.dataset.originalY = transportSubPoint.y;
+    
+    // Initial position - will be updated by panorama positioning system
+    pointElement.style.left = `${transportSubPoint.x}%`;
+    pointElement.style.top = `${transportSubPoint.y}%`;
+    
+    // Add click handler
+    pointElement.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('Transport panorama point clicked:', transportSubPoint.title);
+      showTransportSubContent(transportSubPoint);
+      centerPanoramaOnPoint(pointElement);
+    });
+    
+    // Add hover event listeners to disable edge scrolling
+    pointElement.addEventListener("mouseenter", () => {
+      isHoveringCircle = true;
+      stopEdgeScrolling(); // Stop any current scrolling immediately
+    });
+    pointElement.addEventListener("mouseleave", () => {
+      isHoveringCircle = false;
+    });
+    
+    // Add to overlay
+    panoramaOverlay.appendChild(pointElement);
+    
+    // Store in array
+    panoramaPoints.push({
+      element: pointElement,
+      transportSubPoint: transportSubPoint,
+      index: index
+    });
+  });
+  
+  // Add back to street view button below day/night toggle
+  const backToStreetPoint = document.createElement('div');
+  backToStreetPoint.className = 'panorama-point back-to-street';
+  backToStreetPoint.style.left = '50%'; // Centered with day/night toggle
+  backToStreetPoint.style.top = '140px'; // Moved down from 120px
+  backToStreetPoint.style.transform = 'translateX(-50%)'; // Keep centered on its position
+  backToStreetPoint.style.position = 'fixed'; // Keep fixed position, don't move with panorama
+  
+  backToStreetPoint.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 32px; height: 32px;">
+      <path d="M19 12H5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  `;
+  
+  backToStreetPoint.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Back to street clicked from transport panorama');
+    returnToStreetView();
+  });
+  
+  panoramaOverlay.appendChild(backToStreetPoint);
+  
+  updatePanoramaPointPositions();
+  
+  console.log(`Created ${panoramaPoints.length} transport panorama story points + 1 back button`);
+  
+  // Show the main Transport dialogue after panorama points are created
+  showPanoramaDialogue(transportPoint);
+}
+
+// Show transport sub-content in dialogue panel
+function showTransportSubContent(transportSubPoint) {
+  if (!transportSubPoint.content) return;
+  
+  // Extract the actual content - handle both regular points and interactive link points
+  const actualContent = transportSubPoint.content.content || transportSubPoint.content;
+  
+  visitedContent.add(transportSubPoint.title);
+  
+  currentStoryPoint = { 
+    title: transportSubPoint.title,
+    mainText: actualContent
+  };
+  
+  locationTitle.textContent = transportSubPoint.title;
+  locationSubtitle.textContent = "";
+  
+  dialogueTextContainer.innerHTML = '';
+  
+  const dialogueEntry = document.createElement('div');
+  dialogueEntry.className = 'dialogue-entry';
+  
+  if (actualContent.speaker) {
+    const speakerDiv = document.createElement('div');
+    speakerDiv.className = 'dialogue-speaker';
+    speakerDiv.textContent = actualContent.speaker;
+    dialogueEntry.appendChild(speakerDiv);
+  }
+  
+  const textDiv = document.createElement('div');
+  textDiv.className = 'section-text';
+  textDiv.innerHTML = actualContent.text;
+  dialogueEntry.appendChild(textDiv);
+  
+  const backButton = document.createElement('div');
+  backButton.className = 'section-text dialogue-option';
+  backButton.innerHTML = '[Back to main Transport view](back)';
+  backButton.addEventListener('click', () => {
+    const mainTransportPoint = storyPoints.find(point => point.title === "Transport");
+    if (mainTransportPoint) {
+      showMainText(mainTransportPoint);
+    }
+  });
+  dialogueEntry.appendChild(backButton);
+  
+  dialogueTextContainer.appendChild(dialogueEntry);
+  dialoguePanel.classList.add('visible');
+  
+  console.log('Transport sub-content displayed:', transportSubPoint.title);
+}
+
 // Update panorama point positions based on camera rotation
 function updatePanoramaPointPositions() {
-  if (!panoramaPoints || panoramaPoints.length === 0 || !panoramaCamera) return;
+  if (!panoramaPoints || panoramaPoints.length === 0) return;
   
   panoramaPoints.forEach(pointData => {
     const pointElement = pointData.element;
@@ -2508,41 +3395,52 @@ function updatePanoramaPointPositions() {
     // Skip the back-to-street button - it should stay fixed on screen
     if (pointElement.classList.contains('back-to-street')) return;
     
-    // Get stored 3D coordinates from element dataset
-    const pointLon = parseFloat(pointElement.dataset.longitude);
-    const pointLat = parseFloat(pointElement.dataset.latitude);
+    // Get the original position stored when point was created
+    const originalX = parseFloat(pointElement.dataset.originalX);
+    const originalY = parseFloat(pointElement.dataset.originalY);
     
-    // Skip points without valid coordinates
-    if (isNaN(pointLon) || isNaN(pointLat)) {
+    // Skip points without valid original coordinates
+    if (isNaN(originalX) || isNaN(originalY)) {
       return;
     }
     
-    // Convert spherical coordinates to 3D position on the panorama sphere
-    const phi = THREE.MathUtils.degToRad(90 - pointLat);
-    const theta = THREE.MathUtils.degToRad(pointLon);
+    // Calculate 1:1 movement with camera rotation
+    // Convert camera rotation (degrees) back to screen percentage movement
+    // Mouse drag: lon = (mouseX - startX) * 0.18, so screen movement = lon / 0.18
+    // Then convert to percentage: percentage = (pixels / screenWidth) * 100
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
     
-    // Position on sphere (same radius as panorama sphere)
-    const sphereRadius = 490; // Slightly inside the panorama sphere (500)
-    const worldPosition = new THREE.Vector3(
-      sphereRadius * Math.sin(phi) * Math.cos(theta),
-      sphereRadius * Math.cos(phi),
-      sphereRadius * Math.sin(phi) * Math.sin(theta)
-    );
+    // Convert lon/lat rotation back to pixel movement, then to percentage
+    const pixelMovementX = lon / 0.18; // Reverse the mouse drag calculation
+    const pixelMovementY = lat / 0.18; // Reverse the mouse drag calculation
     
-    // Project 3D world position to 2D screen coordinates
-    const screenPosition = worldPosition.clone().project(panoramaCamera);
+    const horizontalOffset = (pixelMovementX / screenWidth) * 100; // Convert to percentage
+    const verticalOffset = (pixelMovementY / screenHeight) * 100; // Convert to percentage
     
-    // Convert normalized device coordinates to screen percentages
-    const screenX = (screenPosition.x + 1) * 50;
-    const screenY = (1 - screenPosition.y) * 50;
+    // Move points opposite to camera movement for 1:1 tracking
+    let newX = originalX - horizontalOffset;
+    let newY = originalY - verticalOffset;
     
-    // Update point position smoothly - no constraints or limits
-    pointElement.style.left = `${screenX}%`;
-    pointElement.style.top = `${screenY}%`;
+    // Handle horizontal wrapping for 360° panorama
+    while (newX < -100) newX += 200;
+    while (newX > 200) newX -= 200;
     
-    // Always keep points visible and interactive
-    pointElement.style.opacity = '1';
-    pointElement.style.pointerEvents = 'auto';
+    // Clamp vertical movement
+    newY = Math.max(-100, Math.min(200, newY));
+    
+    // Update point position
+    pointElement.style.left = `${newX}%`;
+    pointElement.style.top = `${newY}%`;
+    
+    // Hide points that are completely off screen
+    if (newX < -50 || newX > 150 || newY < -50 || newY > 150) {
+      pointElement.style.opacity = '0.2';
+      pointElement.style.pointerEvents = 'none';
+    } else {
+      pointElement.style.opacity = '1';
+      pointElement.style.pointerEvents = 'auto';
+    }
   });
 }
 
@@ -2550,12 +3448,15 @@ function updatePanoramaPointPositions() {
 function showEnergySubContent(energySubPoint) {
   if (!energySubPoint.content) return;
   
+  // Extract the actual content - handle both regular points and interactive link points
+  const actualContent = energySubPoint.content.content || energySubPoint.content;
+  
   // Mark this panorama point as visited
   visitedContent.add(energySubPoint.title);
   
   currentStoryPoint = { 
     title: energySubPoint.title,
-    mainText: energySubPoint.content
+    mainText: actualContent
   };
   
   locationTitle.textContent = energySubPoint.title;
@@ -2569,17 +3470,17 @@ function showEnergySubContent(energySubPoint) {
   dialogueEntry.className = 'dialogue-entry';
   
   // Add speaker if exists
-  if (energySubPoint.content.speaker) {
+  if (actualContent.speaker) {
     const speakerElement = document.createElement('div');
     speakerElement.className = 'dialogue-speaker';
-    speakerElement.textContent = energySubPoint.content.speaker;
+    speakerElement.textContent = actualContent.speaker;
     dialogueEntry.appendChild(speakerElement);
   }
   
   // Add text content
   const textElement = document.createElement('div');
   textElement.className = 'section-text';
-  textElement.textContent = energySubPoint.content.text;
+  textElement.textContent = actualContent.text;
   dialogueEntry.appendChild(textElement);
   
   // Add back to main option
@@ -2600,12 +3501,15 @@ function showEnergySubContent(energySubPoint) {
 function showEducationSubContent(educationSubPoint) {
   if (!educationSubPoint.content) return;
   
+  // Extract the actual content - handle both regular points and interactive link points
+  const actualContent = educationSubPoint.content.content || educationSubPoint.content;
+  
   // Mark this panorama point as visited
   visitedContent.add(educationSubPoint.title);
   
   currentStoryPoint = { 
     title: educationSubPoint.title,
-    mainText: educationSubPoint.content
+    mainText: actualContent
   };
   
   locationTitle.textContent = educationSubPoint.title;
@@ -2619,17 +3523,17 @@ function showEducationSubContent(educationSubPoint) {
   dialogueEntry.className = 'dialogue-entry';
   
   // Add speaker if exists
-  if (educationSubPoint.content.speaker) {
+  if (actualContent.speaker) {
     const speakerElement = document.createElement('div');
     speakerElement.className = 'dialogue-speaker';
-    speakerElement.textContent = educationSubPoint.content.speaker;
+    speakerElement.textContent = actualContent.speaker;
     dialogueEntry.appendChild(speakerElement);
   }
   
   // Add text content
   const textElement = document.createElement('div');
   textElement.className = 'section-text';
-  textElement.textContent = educationSubPoint.content.text;
+  textElement.textContent = actualContent.text;
   dialogueEntry.appendChild(textElement);
   
   // Add back to main option
@@ -2652,12 +3556,16 @@ function showEducationSubContent(educationSubPoint) {
 function returnToStreetView() {
   console.log('Returning to street view...');
   
+  // Hide back to street button
+  hideBackToStreetButton();
+  
   // Fade out panorama view
   panoramaContainer.style.opacity = '0';
   
   setTimeout(() => {
     // Switch back to map view
     isMapView = true;
+    document.body.classList.remove('panorama-view'); // Show connection lines again
     panoramaContainer.style.display = 'none';
     backgroundContainer.style.display = 'block';
     interactivePoints.style.display = 'block';
@@ -2687,36 +3595,20 @@ function centerPanoramaOnPoint(pointElement) {
   const targetLongitude = (leftPercent - 50) * 3.6; // -180 to 180
   const targetLatitude = (50 - topPercent) * 1.8; // 90 to -90 (inverted Y)
   
-  // Smooth transition to new camera position
-  const startLon = lon;
-  const startLat = lat;
-  const targetLon = targetLongitude;
-  const targetLat = Math.max(-85, Math.min(85, targetLatitude)); // Clamp latitude
-  
-  const duration = 800; // Animation duration in ms
-  const startTime = Date.now();
-  
-  function animateCamera() {
-    const elapsed = Date.now() - startTime;
-    const progress = Math.min(elapsed / duration, 1);
-    
-    // Easing function (ease-out)
-    const easeOut = 1 - Math.pow(1 - progress, 3);
-    
-    // Interpolate between start and target positions
-    lon = startLon + (targetLon - startLon) * easeOut;
-    lat = startLat + (targetLat - startLat) * easeOut;
-    
-    if (progress < 1) {
-      requestAnimationFrame(animateCamera);
-    }
-  }
-  
-  animateCamera();
+  // Direct camera movement without bounce-back animation
+  lon = targetLongitude;
+  lat = Math.max(-85, Math.min(85, targetLatitude)); // Clamp latitude
 }
 
-// Initialize background music
+// Initialize background music (lazy load for performance)
 function initializeMusic() {
+  // Only load music on desktop or when user explicitly enables it
+  const isMobile = window.innerWidth <= 768;
+  if (isMobile) {
+    console.log("Skipping background music on mobile for performance");
+    return;
+  }
+  
   backgroundMusic = new Audio("assets/sound/06-julian.mp3");
   backgroundMusic.loop = true;
   backgroundMusic.volume = 0.3; // Set to a comfortable level
@@ -2741,6 +3633,84 @@ function startMusicAfterUserInteraction() {
   }
 }
 
+// Mark interactive text link as visited when user has engaged with it
+function markInteractiveTextAsVisited(targetKey) {
+  // Add to persistent visited set
+  visitedInteractiveLinks.add(targetKey);
+  
+  // Find all interactive text elements with this target key and mark as visited
+  const interactiveElements = document.querySelectorAll(`.interactive-text[data-target-key="${targetKey}"]`);
+  interactiveElements.forEach(element => {
+    element.classList.add('visited');
+  });
+}
+
+// Helper function to extract interactive links from text and create panorama points for them
+function createInteractiveLinkPanoramaPoints(point, existingPoints = []) {
+  if (!point.mainText || !point.mainText.text) return [];
+  
+  // Parse the main text to find interactive links
+  const textParts = parseTextWithLinksAndStyling(point.mainText.text, point);
+  const linkParts = textParts.filter(part => part.type === "link" && part.target !== "close");
+  
+  if (linkParts.length === 0) return [];
+  
+  const linkPoints = [];
+  
+  // Calculate positions for interactive links around the panorama
+  // Position them in different quadrants to avoid overlap with existing points
+  const basePositions = [
+    { x: 85, y: 25 }, // Top right
+    { x: 15, y: 75 }, // Bottom left  
+    { x: 65, y: 80 }, // Bottom right
+    { x: 35, y: 20 }, // Top left
+    { x: 50, y: 90 }  // Bottom center
+  ];
+  
+  linkParts.forEach((linkPart, index) => {
+    // Find the corresponding content from the point's options
+    const linkedOption = point.options?.find(opt => opt.key === linkPart.target);
+    if (!linkedOption) return;
+    
+    // Use base position, cycling through available positions
+    const position = basePositions[index % basePositions.length];
+    
+    // Create the link point
+    const linkPoint = {
+      title: linkPart.content,
+      key: linkPart.target,
+      x: position.x,
+      y: position.y,
+      longitude: (position.x - 50) * 3.6, // Convert to panorama coordinates
+      latitude: (50 - position.y) * 1.8,
+      content: linkedOption, // Use the whole option object to match regular panorama points
+      isInteractiveLink: true // Flag to identify these as converted dialogue links
+    };
+    
+    linkPoints.push(linkPoint);
+  });
+  
+  return linkPoints;
+}
+
 // Note: Panorama click handling now done via HTML overlay elements directly
 
-window.addEventListener("load", initialize);
+window.addEventListener("load", () => {
+  // Initialize cached DOM elements for performance
+  initCachedElements();
+  
+  // Apply mobile-specific optimizations
+  applyMobileOptimizations();
+  
+  // Add hover listeners to dialogue panel for edge scrolling control
+  if (dialoguePanel) {
+    dialoguePanel.addEventListener("mouseenter", () => {
+      isHoveringDialogue = true;
+    });
+    dialoguePanel.addEventListener("mouseleave", () => {
+      isHoveringDialogue = false;
+    });
+  }
+  
+  initialize();
+});
