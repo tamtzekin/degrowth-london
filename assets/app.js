@@ -21,7 +21,11 @@ let pausedTypingState = null; // Store the exact state when paused
 
 // View toggle variables
 let isMapView = true;
+let isSceneMode = false; // Track if we're in a dedicated scene mode
+let currentSceneType = null; // Track which scene we're in (Energy, Food, etc.)
 let panoramaScene, panoramaCamera, panoramaRenderer, panoramaSphere, panoramaSphereNight, panoramaAmbientLight;
+
+// Day/Night toggle uses simple direct image swap
 let isMouseDown = false;
 let mouseX = 0, mouseY = 0;
 let lastMouseX = 0, lastMouseY = 0;
@@ -68,6 +72,32 @@ const panoramaContainer = document.getElementById("panoramaContainer");
 const panoramaCanvas = document.getElementById("panoramaCanvas");
 const panoramaOverlay = document.getElementById("panoramaOverlay");
 
+// Initialize scrollable street view background to replace CSS pseudo-elements
+function initializeScrollableStreetView() {
+  const backgroundContainer = document.getElementById('backgroundContainer');
+  const backgroundImage = backgroundContainer?.querySelector('.background-image');
+  
+  if (backgroundImage) {
+    // Check current day/night mode
+    const isNightMode = document.body.classList.contains('high-contrast');
+    
+    // Set the default street view image with scrollable sizing
+    const defaultImagePath = isNightMode ? 'assets/images/full-night-2D.jpg' : 'assets/images/full-day-2D.jpg';
+    
+    // Apply the default street background with scrollable width
+    backgroundImage.style.backgroundImage = `url(${defaultImagePath})`;
+    backgroundImage.style.backgroundSize = 'auto 100%';  // Full height, auto width for scrolling
+    backgroundImage.style.backgroundPosition = 'center center';
+    backgroundImage.style.backgroundRepeat = 'no-repeat';
+    
+    // Add scene-active class to hide pseudo-elements and use our custom background
+    backgroundImage.classList.add('scene-active');
+    backgroundImage.style.setProperty('--scene-active', '1');
+    
+    console.log('Initialized scrollable street view background:', defaultImagePath);
+  }
+}
+
 // Initialize the application
 async function initialize() {
   try {
@@ -75,6 +105,14 @@ async function initialize() {
     const response = await fetch("assets/story-data.json");
     storyPoints = await response.json();
 
+    // Initialize scrollable street view background
+    initializeScrollableStreetView();
+    
+    // Day/night toggle uses direct image swap - no initialization needed
+    
+    // Setup background drag controls for horizontal scrolling
+    setupBackgroundDragControls();
+    
     createInteractivePoints();
     setupEventListeners();
     setupDialogueSkipListener();
@@ -88,12 +126,86 @@ async function initialize() {
   }
 }
 
+// Calculate image-relative positions that stay locked to image content
+function calculateImageRelativePosition(percentX, percentY) {
+  const backgroundContainer = document.getElementById('backgroundContainer');
+  const backgroundImage = backgroundContainer?.querySelector('.background-image');
+  
+  if (!backgroundImage) {
+    // Fallback to old percentage system if no background image
+    return { left: `${percentX}%`, top: `${percentY}%` };
+  }
+  
+  // Get container dimensions
+  const containerRect = backgroundContainer.getBoundingClientRect();
+  const containerWidth = containerRect.width;
+  const containerHeight = containerRect.height;
+  
+  // For background-size: auto 100%, the image height matches container height
+  // The width is scaled proportionally based on the actual image aspect ratio
+  
+  // Use the actual aspect ratio for 7000x2000 images
+  let imageAspectRatio = 3.5; // 7000/2000 = 3.5:1 aspect ratio
+  const backgroundUrl = backgroundImage.style.backgroundImage;
+  
+  if (backgroundUrl && backgroundUrl !== 'none') {
+    // All your images are 7000x2000, so use consistent aspect ratio
+    imageAspectRatio = 3.5; // All images are 7000x2000
+  }
+  
+  const scaledImageWidth = containerHeight * imageAspectRatio;
+  const scaledImageHeight = containerHeight;
+  
+  // Calculate position for 7000x2000 images with background-size: auto 100%
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  
+  // With background-size: auto 100%, image height = viewport height
+  // Image width = viewport height * aspect ratio  
+  const renderedImageHeight = viewportHeight;
+  const renderedImageWidth = renderedImageHeight * imageAspectRatio;
+  
+  // Since background-position: center center, the image is centered in viewport
+  const imageCenterX = viewportWidth / 2;
+  
+  // Calculate where the left edge of the image is relative to the viewport
+  const imageLeftEdge = imageCenterX - (renderedImageWidth / 2);
+  
+  // Calculate actual position based on x,y coordinates from story-data
+  // x,y are percentages relative to the 7000x2000 image
+  const imageX = (percentX / 100) * renderedImageWidth;
+  const imageY = (percentY / 100) * renderedImageHeight;
+  
+  // Convert image coordinates to viewport coordinates
+  const finalX = imageLeftEdge + imageX;
+  const finalY = imageY;
+  
+  return { 
+    left: `${finalX}px`, 
+    top: `${finalY}px`,
+    // Store original percentages for reference
+    dataPercentX: percentX,
+    dataPercentY: percentY
+  };
+}
+
 function createInteractivePoints() {
   storyPoints.forEach((point, index) => {
     const pointElement = document.createElement("div");
     pointElement.className = "point";
-    pointElement.style.left = `${point.x}%`;
-    pointElement.style.top = `${point.y}%`;
+    // Use mobile coordinates on mobile devices, desktop coordinates otherwise
+    const isMobile = window.innerWidth <= 480;
+    const x = isMobile && point.mobileX !== undefined ? point.mobileX : point.x;
+    const y = isMobile && point.mobileY !== undefined ? point.mobileY : point.y;
+    
+    // Calculate image-relative position
+    const position = calculateImageRelativePosition(x, y);
+    pointElement.style.left = position.left;
+    pointElement.style.top = position.top;
+    
+    // Store original percentage coordinates for repositioning
+    pointElement.dataset.percentX = x;
+    pointElement.dataset.percentY = y;
     pointElement.dataset.index = index;
     pointElement.dataset.title = point.title;
     
@@ -121,6 +233,39 @@ function createInteractivePoints() {
     interactivePoints.appendChild(pointElement);
     pointElements.push(pointElement);
   });
+}
+
+// Update all circle positions to stay locked to image coordinates
+function updatePointPositions() {
+  pointElements.forEach(pointElement => {
+    const percentX = parseFloat(pointElement.dataset.percentX);
+    const percentY = parseFloat(pointElement.dataset.percentY);
+    
+    const position = calculateImageRelativePosition(percentX, percentY);
+    pointElement.style.left = position.left;
+    pointElement.style.top = position.top;
+  });
+  
+  // Also update scene circles if they exist
+  const sceneCircles = document.querySelectorAll('.scene-circle');
+  sceneCircles.forEach(circle => {
+    const percentX = parseFloat(circle.dataset.percentX);
+    const percentY = parseFloat(circle.dataset.percentY);
+    
+    if (!isNaN(percentX) && !isNaN(percentY)) {
+      const position = calculateImageRelativePosition(percentX, percentY);
+      circle.style.left = position.left;
+      circle.style.top = position.top;
+    }
+  });
+}
+
+// Background drag system DISABLED - using main drag system instead
+// This was causing conflicts and jankiness with the main dragging system
+
+function setupBackgroundDragControls() {
+  // Disabled to prevent conflicts with main drag system
+  console.log('Background drag controls disabled - using main drag system');
 }
 
 let hoverTitleElement = null;
@@ -206,23 +351,28 @@ function setupEventListeners() {
 
   // Auto-close intro popup when clicking on map or interacting with points
   container.addEventListener("click", (e) => {
-    // Only close if the welcome message is showing and user clicks on map area
+    // Close dialogue when clicking on map area
     if (
       dialoguePanel.classList.contains("visible") &&
-      currentStoryPoint === null &&
       !dialoguePanel.contains(e.target) &&
-      !e.target.closest(".point")
+      !e.target.closest(".point") &&
+      !e.target.classList.contains("interactive-text") &&
+      !e.target.closest(".interactive-text")
     ) {
-      hideDialogue();
+      // Close welcome message or scene dialogue
+      if (currentStoryPoint === null || isSceneMode) {
+        hideDialogue();
+      }
     }
     
-    // Reset map position when clicking off a selected circle
+    // Reset map position when clicking off a selected circle (but NOT in scene mode)
     if (
       !e.target.closest(".point") &&
       !dialoguePanel.contains(e.target) &&
       !e.target.classList.contains("interactive-text") &&
       !e.target.closest(".interactive-text") &&
-      currentStoryPoint !== null
+      currentStoryPoint !== null &&
+      !isSceneMode  // Don't reset when in scene mode
     ) {
       resetMapPosition();
       hideDialogue();
@@ -275,7 +425,7 @@ function setupEventListeners() {
   // Text speed toggle
   const textSpeedToggle = document.getElementById("textSpeedToggle");
   const textSpeeds = ["FAST", "RELAXED", "ZEN"];
-  const speedValues = { FAST: 0, RELAXED: 30, ZEN: 50 };
+  const speedValues = { FAST: 0, RELAXED: 65, ZEN: 50 };
   let currentSpeedIndex = 1; // Start with "Relaxed"
 
   textSpeedToggle.addEventListener("click", () => {
@@ -311,12 +461,9 @@ function setupEventListeners() {
     
     isHighContrast = !isHighContrast;
     document.body.classList.toggle("high-contrast", isHighContrast);
-
-    // Update 360° scene day/night transition for all locations
-    if (!isMapView && currentStoryPoint) {
-      console.log('Day/night toggle triggered, transitioning 360° scene. Night mode:', isHighContrast);
-      updateSceneOpacity();
-    }
+    
+    // Simple direct image swap - no complex transitions
+    swapDayNightImage();
 
     // Toggle between sun and moon icons
     if (isHighContrast) {
@@ -334,6 +481,7 @@ function setupEventListeners() {
             `;
     }
   });
+
 }
 
 function startDrag(e) {
@@ -392,55 +540,120 @@ function endDrag() {
   // Re-enable smooth transitions after drag ends for a polished feel
   backgroundContainer.style.transition = 'transform 0.08s ease';
   interactivePoints.style.transition = 'transform 0.08s ease';
+  // Also restore background image transition
+  const backgroundImage = backgroundContainer?.querySelector('.background-image');
+  if (backgroundImage) {
+    backgroundImage.style.transition = '';
+  }
+  // Restore CSS variable to enable transitions again
+  document.documentElement.style.setProperty('--dragging', '0');
 }
 
-function updateBackgroundPosition() {
+// Calculate precise drag limits to see exactly to the image edges (no grey space)
+function calculateImageDragLimits() {
+  const renderedImageHeight = window.innerHeight;
+  const renderedImageWidth = renderedImageHeight * 3.5; // 7000x2000 aspect ratio
+  const viewportWidth = window.innerWidth;
+  
+  const halfImageWidth = renderedImageWidth / 2;
+  const halfViewportWidth = viewportWidth / 2;
+  // This allows dragging just enough to see from left edge to right edge of the image
+  // Temporarily add extra margin to ensure we can see the full width
+  const maxDragDistance = Math.max(0, halfImageWidth - halfViewportWidth + 200); // +200px extra margin
+  
+  // Debug logging
+  console.log('Drag limits debug:', {
+    viewportSize: `${viewportWidth}x${renderedImageHeight}`,
+    renderedImageSize: `${renderedImageWidth}x${renderedImageHeight}`,
+    halfImage: halfImageWidth,
+    halfViewport: halfViewportWidth,
+    maxDragDistance: maxDragDistance,
+    canSeeFullWidth: maxDragDistance > 0 ? 'Yes' : 'No'
+  });
+  
   const isMobile = window.innerWidth <= 480;
   
-  let maxX, maxY;
-  
-  if (isMobile) {
-    // Mobile: Allow full image width dragging
-    // Container is 350% of viewport width, centered at -125%
-    // So we can drag from -125% to +125% = 250% total range
-    // Image is 2142px, viewport might be ~375px, so we need generous limits
-    maxX = window.innerWidth * 1.25; // Allow dragging 125% of viewport width in each direction
-    maxY = window.innerHeight * 0.15; // Keep Y limits reasonable
-  } else {
-    // Desktop: Keep original limits
-    maxX = window.innerWidth * 0.1;
-    maxY = window.innerHeight * 0.1;
-  }
-  
-  currentX = Math.max(-maxX, Math.min(maxX, currentX));
-  currentY = Math.max(-maxY, Math.min(maxY, currentY));
-  
-  // Remove any transitions during active dragging for instant response
-  if (isDragging) {
-    backgroundContainer.style.transition = 'none';
-    interactivePoints.style.transition = 'none';
-  }
-  
-  if (cachedElements.backgroundContainer) {
-    cachedElements.backgroundContainer.style.transform = `translate(${currentX}px, ${currentY}px)`;
-  }
+  return {
+    maxX: maxDragDistance,
+    maxY: isMobile ? window.innerHeight * 0.05 : window.innerHeight * 0.1
+  };
+}
 
-  // Move points with the background using the same transform
-  if (cachedElements.interactivePoints) {
-    cachedElements.interactivePoints.style.transform = `translate(${currentX}px, ${currentY}px)`;
-  }
+// Smooth background position updates with requestAnimationFrame batching
+let backgroundUpdatePending = false;
+
+function updateBackgroundPosition() {
+  // Batch multiple calls into a single animation frame
+  if (backgroundUpdatePending) return;
   
-  // Update spotlight position when map moves to keep it attached to the selected circle
-  if (cachedElements.dimmingOverlay && cachedElements.dimmingOverlay.classList.contains('active')) {
-    const selectedPoint = document.querySelector('.point.selected');
-    if (selectedPoint) {
-      updateSpotlightPosition(selectedPoint);
+  backgroundUpdatePending = true;
+  requestAnimationFrame(() => {
+    backgroundUpdatePending = false;
+    
+    const { maxX, maxY } = calculateImageDragLimits();
+    
+    currentX = Math.max(-maxX, Math.min(maxX, currentX));
+    currentY = Math.max(-maxY, Math.min(maxY, currentY));
+    
+    // Remove any transitions during active dragging for instant response
+    if (isDragging) {
+      backgroundContainer.style.transition = 'none !important';
+      interactivePoints.style.transition = 'none !important';
+      // Also ensure background image and all child elements have no transitions
+      const backgroundImage = backgroundContainer?.querySelector('.background-image');
+      if (backgroundImage) {
+        backgroundImage.style.transition = 'none !important';
+      }
+      // Remove transitions from all pseudo-elements by setting CSS variable
+      document.documentElement.style.setProperty('--dragging', '1');
+    } else {
+      // Restore transitions when not dragging
+      document.documentElement.style.setProperty('--dragging', '0');
     }
-  }
+    
+    if (cachedElements.backgroundContainer) {
+      cachedElements.backgroundContainer.style.transform = `translate(${currentX}px, ${currentY}px)`;
+    }
+
+    // Move points with the background using the same transform
+    if (cachedElements.interactivePoints) {
+      cachedElements.interactivePoints.style.transform = `translate(${currentX}px, ${currentY}px)`;
+    }
+    
+    // Update spotlight position when map moves (but not during active dragging to prevent jankiness)
+    if (!isDragging && cachedElements.dimmingOverlay && cachedElements.dimmingOverlay.classList.contains('active')) {
+      const selectedPoint = document.querySelector('.point.selected');
+      if (selectedPoint) {
+        updateSpotlightPosition(selectedPoint);
+      }
+    }
+  });
 }
 
 function updatePointPositions() {
-  // Points now move with background via CSS transform, no individual positioning needed
+  // Recalculate positions for all points when window resizes
+  document.querySelectorAll('.point').forEach(pointElement => {
+    const percentX = parseFloat(pointElement.dataset.percentX);
+    const percentY = parseFloat(pointElement.dataset.percentY);
+    
+    if (!isNaN(percentX) && !isNaN(percentY)) {
+      const position = calculateImageRelativePosition(percentX, percentY);
+      pointElement.style.left = position.left;
+      pointElement.style.top = position.top;
+    }
+  });
+  
+  // Also update scene circles if they exist
+  document.querySelectorAll('.scene-circle').forEach(circle => {
+    const percentX = parseFloat(circle.dataset.percentX);
+    const percentY = parseFloat(circle.dataset.percentY);
+    
+    if (!isNaN(percentX) && !isNaN(percentY)) {
+      const position = calculateImageRelativePosition(percentX, percentY);
+      circle.style.left = position.left;
+      circle.style.top = position.top;
+    }
+  });
 }
 
 // Update spotlight position to follow the selected circle
@@ -479,9 +692,282 @@ function updateSpotlightPosition(pointElement, animationProgress = 1) {
   
   const radius = baseRadius * currentScale;
   
-  // Use mask with soft gradient for smoother edge
+  // Match spotlight exactly to circle's rotating border
+  const spotlightRadius = radius; // Full radius to match the rotating circle border
+  dimmingOverlay.style.mask = `radial-gradient(circle at ${centerX}px ${centerY}px, transparent ${spotlightRadius - 10}px, rgba(0,0,0,0.1) ${spotlightRadius - 2}px, black ${spotlightRadius + 2}px)`;
+  dimmingOverlay.style.webkitMask = `radial-gradient(circle at ${centerX}px ${centerY}px, transparent ${spotlightRadius - 10}px, rgba(0,0,0,0.1) ${spotlightRadius - 2}px, black ${spotlightRadius + 2}px)`;
+}
+
+// Update spotlight position for scene circles (fixed positioning)
+function updateSpotlightPositionForSceneCircle(circleElement) {
+  const dimmingOverlay = document.getElementById('dimmingOverlay');
+  if (!dimmingOverlay || !dimmingOverlay.classList.contains('active')) return;
+  
+  const circleRect = circleElement.getBoundingClientRect();
+  const centerX = circleRect.left + circleRect.width / 2;
+  const centerY = circleRect.top + circleRect.height / 2;
+  
+  // Use scene circle radius (60px / 2 = 30px base)
+  const baseRadius = 30;
+  const currentScale = circleElement.classList.contains('selected') ? 4 : 1;
+  const radius = baseRadius * currentScale;
+  
+  // Apply spotlight mask
   dimmingOverlay.style.mask = `radial-gradient(circle at ${centerX}px ${centerY}px, transparent ${radius - 15}px, rgba(0,0,0,0.1) ${radius - 5}px, black ${radius + 5}px)`;
   dimmingOverlay.style.webkitMask = `radial-gradient(circle at ${centerX}px ${centerY}px, transparent ${radius - 15}px, rgba(0,0,0,0.1) ${radius - 5}px, black ${radius + 5}px)`;
+}
+
+// Center scene circle on screen with zoom animation (for fixed positioned elements)
+function centerSceneCircleOnScreen(circleElement) {
+  // Actually center the screen/camera on the scene circle
+  const isMobile = window.innerWidth <= 480;
+  
+  // Get circle's current position
+  const circleRect = circleElement.getBoundingClientRect();
+  const circleScreenX = circleRect.left + circleRect.width / 2;
+  const circleScreenY = circleRect.top + circleRect.height / 2;
+  
+  // Calculate where we want the circle to be on screen
+  const targetScreenX = window.innerWidth / 2;
+  const targetScreenY = isMobile ? window.innerHeight / 3 : window.innerHeight / 2;
+  
+  // Calculate the offset needed to center the circle
+  const offsetX = targetScreenX - circleScreenX;
+  const offsetY = targetScreenY - circleScreenY;
+  
+  // Apply the offset to current camera position
+  currentX += offsetX;
+  currentY += offsetY;
+  
+  // Apply reasonable bounds
+  const maxX = isMobile ? window.innerWidth * 0.4 : window.innerWidth * 0.15;
+  const maxY = isMobile ? window.innerHeight * 0.4 : window.innerHeight * 0.15;
+  currentX = Math.max(-maxX, Math.min(maxX, currentX));
+  currentY = Math.max(-maxY, Math.min(maxY, currentY));
+  
+  // Add smooth transition for camera movement
+  backgroundContainer.style.transition = "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+  interactivePoints.style.transition = "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+  
+  // Update background position to center on the circle
+  updateBackgroundPosition();
+  
+  // Remove transition after animation completes
+  setTimeout(() => {
+    backgroundContainer.style.transition = "transform 0.15s ease-out";
+    interactivePoints.style.transition = "transform 0.15s ease-out";
+  }, 600);
+  
+  console.log('Centered camera on scene circle');
+}
+
+// Center scene circle considering dialogue box boundaries to avoid clashes
+function centerSceneCircleWithDialogueBoundary(circleElement) {
+  const isMobile = window.innerWidth <= 480;
+  const isTablet = window.innerWidth > 480 && window.innerWidth <= 768;
+  
+  // For mobile/tablet, use simple centering as dialogue is at bottom
+  if (isMobile || isTablet) {
+    centerSceneCircleOnScreen(circleElement);
+    return;
+  }
+  
+  // Get circle's current position
+  const circleRect = circleElement.getBoundingClientRect();
+  const circleScreenX = circleRect.left + circleRect.width / 2;
+  const circleScreenY = circleRect.top + circleRect.height / 2;
+  
+  // Calculate dialogue box typical dimensions and position
+  const dialogueWidth = 400; // Typical dialogue width
+  const dialogueHeight = 300; // Typical dialogue height
+  const dialogueMargin = 20; // Margin from edges
+  
+  // Calculate dialogue box typical position (right side by default)
+  const dialogueLeft = window.innerWidth - dialogueWidth - dialogueMargin;
+  const dialogueTop = window.innerHeight * 0.2; // 20% from top
+  
+  // Calculate safe zone for circle (left side of screen, avoiding dialogue)
+  const safeZoneRight = dialogueLeft - 60; // Extra margin for enlarged circle
+  const targetScreenX = Math.min(window.innerWidth * 0.35, safeZoneRight / 2);
+  const targetScreenY = window.innerHeight * 0.5;
+  
+  // Calculate the offset needed to position the circle in safe zone
+  const offsetX = targetScreenX - circleScreenX;
+  const offsetY = targetScreenY - circleScreenY;
+  
+  // Apply the offset to current camera position
+  currentX += offsetX;
+  currentY += offsetY;
+  
+  // Apply reasonable bounds but allow more movement to avoid dialogue
+  const maxX = window.innerWidth * 0.25;
+  const maxY = window.innerHeight * 0.2;
+  currentX = Math.max(-maxX, Math.min(maxX, currentX));
+  currentY = Math.max(-maxY, Math.min(maxY, currentY));
+  
+  // Add smooth transition for camera movement
+  backgroundContainer.style.transition = "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+  interactivePoints.style.transition = "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+  
+  // Update background position to center on the circle
+  updateBackgroundPosition();
+  
+  // Remove transition after animation completes
+  setTimeout(() => {
+    backgroundContainer.style.transition = "transform 0.15s ease-out";
+    interactivePoints.style.transition = "transform 0.15s ease-out";
+  }, 600);
+  
+  console.log('Centered scene circle considering dialogue boundaries');
+}
+
+// Enter scene mode - use existing street view containers with scene background
+function enterSceneMode(sceneType) {
+  console.log(`🎬 Entering scene mode: ${sceneType}`);
+  
+  isSceneMode = true;
+  currentSceneType = sceneType;
+  
+  // Keep using the existing street view containers but change the background
+  // Hide street view circles
+  const streetCircles = document.querySelectorAll('.point:not(.scene-circle)');
+  streetCircles.forEach(circle => {
+    circle.style.display = 'none';
+  });
+  
+  // Load the correct scene image with smooth crossfade transition
+  const isNightMode = document.body.classList.contains('high-contrast');
+  const imagePath = getSceneImagePath(sceneType, isNightMode);
+  
+  const backgroundImage = document.querySelector('.background-image');
+  if (backgroundImage) {
+    // Create smooth crossfade to scene image
+    createSmoothImageTransition(backgroundImage, imagePath);
+    console.log(`✅ Starting crossfade to scene: ${imagePath}`);
+  }
+  
+  // Create scene-specific circles after entering scene mode
+  setTimeout(() => {
+    createSceneSpecificCircles(currentStoryPoint);
+  }, 100);
+}
+
+// Exit scene mode - return to street view
+function exitSceneMode() {
+  console.log('🚪 Exiting scene mode, returning to street view');
+  
+  isSceneMode = false;
+  currentSceneType = null;
+  currentStoryPoint = null; // Reset story point when exiting scene
+  isHoveringCircle = false; // Reset hover state to ensure edge scrolling works
+  
+  // Remove scene circles
+  document.querySelectorAll('.scene-circle').forEach(circle => circle.remove());
+  
+  // Show street view circles again
+  const streetCircles = document.querySelectorAll('.point:not(.scene-circle)');
+  streetCircles.forEach(circle => {
+    circle.style.display = 'block';
+  });
+  
+  // Restore street view background with smooth crossfade
+  const isNightMode = document.body.classList.contains('high-contrast');
+  const streetImagePath = isNightMode ? 'assets/images/full-night-2D.jpg' : 'assets/images/full-day-2D.jpg';
+  
+  const backgroundImage = document.querySelector('.background-image');
+  if (backgroundImage) {
+    createSmoothImageTransition(backgroundImage, streetImagePath);
+    console.log(`✅ Starting crossfade to street view: ${streetImagePath}`);
+  }
+}
+
+
+
+
+// === DAY/NIGHT TRANSITION SYSTEM ===
+// Separate system that handles smooth transitions without interfering with scenes
+
+// Initialize the day/night overlay system
+// Simple day/night image swap system
+function swapDayNightImage() {
+  const isNightMode = document.body.classList.contains('high-contrast');
+  const backgroundImage = document.querySelector('.background-image');
+  
+  if (!backgroundImage) {
+    console.log('❌ No .background-image element found!');
+    return;
+  }
+  
+  let targetImagePath;
+  
+  // Determine target image based on scene mode
+  if (isSceneMode && currentStoryPoint) {
+    // We're in a scene - get scene-specific image
+    targetImagePath = getSceneImagePath(currentStoryPoint.title, isNightMode);
+  } else {
+    // We're in street view - get street image
+    targetImagePath = isNightMode ? 'assets/images/full-night-2D.jpg' : 'assets/images/full-day-2D.jpg';
+  }
+  
+  // Smooth fade transition
+  createSmoothImageTransition(backgroundImage, targetImagePath);
+  console.log(`✅ Starting fade transition to: ${targetImagePath}`);
+}
+
+// Create a smooth crossfade transition between images
+function createSmoothImageTransition(backgroundElement, targetImagePath) {
+  // Create temporary overlay element for fade effect
+  const fadeOverlay = document.createElement('div');
+  fadeOverlay.style.cssText = `
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url(${targetImagePath});
+    background-size: auto 100%;
+    background-position: center center;
+    background-repeat: no-repeat;
+    opacity: 0;
+    z-index: 3;
+    pointer-events: none;
+    transition: opacity 1.5s ease-in-out;
+  `;
+  
+  // Add overlay to background container
+  backgroundElement.parentElement.appendChild(fadeOverlay);
+  
+  // Start the fade-in transition
+  setTimeout(() => {
+    fadeOverlay.style.opacity = '1';
+  }, 50);
+  
+  // After transition completes, update the main background and remove overlay
+  setTimeout(() => {
+    backgroundElement.style.backgroundImage = `url(${targetImagePath})`;
+    fadeOverlay.remove();
+    console.log(`🌅 Fade transition completed: ${targetImagePath}`);
+  }, 1600); // Slightly longer than transition duration
+}
+
+// Get the appropriate image path for a scene
+function getSceneImagePath(sceneType, isNightMode) {
+  switch (sceneType) {
+    case 'Food':
+      return isNightMode ? 'assets/images/food-night-2D.jpg' : 'assets/images/food-day-2D.jpg';
+    case 'Education':
+      return isNightMode ? 'assets/images/education-night-2D.jpg' : 'assets/images/education-day-2D.jpg';
+    case 'Energy':
+      return isNightMode ? 'assets/images/energy-night-2D.jpg' : 'assets/images/energy-day-2D.jpg';
+    case 'Transport':
+      return isNightMode ? 'assets/images/transport-night-2D.jpg' : 'assets/images/transport-day-2D.jpg';
+    case 'Governance':
+      return isNightMode ? 'assets/images/energy-night-2D.jpg' : 'assets/images/energy-day-2D.jpg';
+    case 'Housing':
+      return isNightMode ? 'assets/images/transport-night-2D.jpg' : 'assets/images/transport-day-2D.jpg';
+    default:
+      return isNightMode ? 'assets/images/energy-night-2D.jpg' : 'assets/images/energy-day-2D.jpg';
+  }
 }
 
 // Update help overlay text for touchscreen devices
@@ -575,14 +1061,14 @@ let isHoveringDialogue = false; // Track when mouse is over dialogue panel
 let visitedInteractiveLinks = new Set(); // Track visited interactive text links
 
 function handleEdgeScrolling(e) {
-  // Enable edge scrolling for both map and panorama modes, but not while dragging or when a circle is selected
+  // Enable edge scrolling for map view, scene mode, and panorama modes, but not while dragging
   if (isDragging) return;
   
-  // Different logic for map view vs 360° view
-  if (isMapView) {
-    // In map view: disable scrolling when dialogue is open (traditional behavior)
+  // Different logic for map view, scene mode, vs 360° view
+  if (isMapView || isSceneMode) {
+    // In map view or scene mode: disable scrolling when dialogue is open (traditional behavior)
     if (cachedElements.dialoguePanel && cachedElements.dialoguePanel.classList.contains('visible')) return;
-    // Disable scrolling when hovering over circles in map view
+    // Disable scrolling when hovering over circles in map/scene view
     if (isHoveringCircle) return;
   } else {
     // In 360° view: allow scrolling when dialogue is open, but not when hovering over dialogue or circles
@@ -641,7 +1127,7 @@ function handleEdgeScrolling(e) {
     const smoothFactor = scrollFactor;
     
     // Calculate velocity based on direction and smooth factor (reversed for intuitive movement)
-    const maxSpeed = 6.0; // Faster edge scrolling movement
+    const maxSpeed = 12.0; // Much faster scrolling for snappier movement
     targetScrollVelocityX = -relativeX * smoothFactor * maxSpeed;
     targetScrollVelocityY = -relativeY * smoothFactor * maxSpeed;
   } else {
@@ -671,8 +1157,8 @@ function startEdgeScrolling() {
     }
     lastFrameTime = currentTime;
     
-    // Faster acceleration for quicker response
-    const acceleration = 0.18; // Faster acceleration for quicker edge scrolling
+    // Much faster acceleration for snappier response
+    const acceleration = 0.4; // Increased for snappier edge scrolling
     const bounceMultiplier = 1.0; // No bounce effect
     
     const deltaX = targetScrollVelocityX - currentScrollVelocityX;
@@ -681,10 +1167,16 @@ function startEdgeScrolling() {
     currentScrollVelocityX += deltaX * acceleration * bounceMultiplier;
     currentScrollVelocityY += deltaY * acceleration * bounceMultiplier;
     
-    // Stop if velocity is very small
-    if (Math.abs(currentScrollVelocityX) < 0.01 && Math.abs(currentScrollVelocityY) < 0.01 &&
+    // Stop if velocity is very small (much lower threshold for longer movement)
+    if (Math.abs(currentScrollVelocityX) < 0.0005 && Math.abs(currentScrollVelocityY) < 0.0005 &&
         targetScrollVelocityX === 0 && targetScrollVelocityY === 0) {
-      stopEdgeScrolling();
+      // Actually stop the animation here
+      if (edgeScrollAnimationId) {
+        cancelAnimationFrame(edgeScrollAnimationId);
+        edgeScrollAnimationId = null;
+      }
+      currentScrollVelocityX = 0;
+      currentScrollVelocityY = 0;
       return;
     }
     
@@ -693,15 +1185,8 @@ function startEdgeScrolling() {
       currentX += currentScrollVelocityX;
       currentY += currentScrollVelocityY;
       
-      // Apply the same bounds as regular dragging
-      let maxX, maxY;
-      if (window.innerWidth <= 768) {
-        maxX = window.innerWidth * 0.8;
-        maxY = window.innerHeight * 0.3;
-      } else {
-        maxX = window.innerWidth * 0.1;
-        maxY = window.innerHeight * 0.1;
-      }
+      // Apply the same bounds as regular dragging using shared function
+      const { maxX, maxY } = calculateImageDragLimits();
       
       currentX = Math.max(-maxX, Math.min(maxX, currentX));
       currentY = Math.max(-maxY, Math.min(maxY, currentY));
@@ -728,42 +1213,58 @@ function startEdgeScrolling() {
 }
 
 function stopEdgeScrolling() {
-  if (edgeScrollAnimationId) {
-    cancelAnimationFrame(edgeScrollAnimationId);
-    edgeScrollAnimationId = null;
-  }
-  currentScrollVelocityX = 0;
-  currentScrollVelocityY = 0;
+  // Don't immediately stop - let it decelerate naturally
   targetScrollVelocityX = 0;
   targetScrollVelocityY = 0;
+  
+  // The animation will stop itself when velocity gets low enough
+  // This creates smoother, more natural deceleration
 }
 
-// Handle circle click - zoom and switch to 360° view only for Education and Food, otherwise show dialogue normally
+// Handle circle click - zoom and transition to scene-specific street view
 function handleCircleClick(point, pointElement, index) {
   console.log('Circle clicked:', point.title);
   
-  // Check if this point has a 360° image
-  const has360Image = point.title === "Education" || point.title === "Food" || point.title === "Energy" || point.title === "Transport"; // These points go directly to 360°
+  // Check if this point has a scene-specific image
+  const hasSceneImage = point.title === "Education" || point.title === "Food" || point.title === "Energy" || point.title === "Transport";
+  const skipDimmingOverlay = point.title === "Education" || point.title === "Food" || point.title === "Energy" || point.title === "Transport";
   
-  // Store has360Image on the point for later use
-  point._has360Image = has360Image;
+  // Store hasSceneImage on the point for later use
+  point._hasSceneImage = hasSceneImage;
   
-  if (!has360Image) {
-    // No 360° image - just show dialogue in street view
-    console.log('No 360° image for', point.title, '- showing dialogue in street view');
+  if (!hasSceneImage) {
+    // No scene image - show dialogue in street view with focus effects
+    console.log('No scene image for', point.title, '- showing dialogue in street view with focus effects');
+    
+    // Apply focus/dimming animations for non-scene circles (centering disabled)
+    // centerPointOnScreen(pointElement); // Disabled: centering movement not working well
+    
+    // Update selected state and add dimming overlay
+    pointElements.forEach((el) => el.classList.remove("selected"));
+    pointElement.classList.add("selected");
+    
+    const dimmingOverlay = document.getElementById('dimmingOverlay');
+    if (dimmingOverlay && isMapView && !skipDimmingOverlay) {
+      dimmingOverlay.classList.add('active');
+      
+      setTimeout(() => {
+        updateSpotlightPosition(pointElement, 0);
+      }, 150); // Wait longer for circle scaling to start
+    }
+    
     showDialogue(point, pointElement);
     return;
   }
   
-  // For 360° images, center the circle first before starting zoom transition
-  centerPointOnScreen(pointElement);
+  // For scene images, skip centering (disabled due to issues)
+  // centerPointOnScreen(pointElement); // Disabled: centering movement not working well
   
-  console.log('Has 360° image - starting zoom effect');
+  console.log('Has scene image - starting zoom transition to scene');
   
-  // Set the current story point for panorama creation
+  // Set the current story point for scene creation
   currentStoryPoint = point;
   
-  // Start transition immediately for faster 360° access
+  // Start zoom transition
   setTimeout(() => {
     // Get the circle's position for zoom target (after centering)
     const rect = pointElement.getBoundingClientRect();
@@ -783,102 +1284,320 @@ function handleCircleClick(point, pointElement, index) {
     backgroundContainer.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
     interactivePoints.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
     
-    const zoomScale = 1.5; // Zoom level (reduced from 2 to 1.5 for gentler effect)
-    const newTransform = `translate(${currentX + targetX}px, ${currentY + targetY}px) scale(${zoomScale})`;
+    const zoomScale = 1.5; // Zoom level
+    
+    // Apply bounds to prevent showing dead zones outside the image
+    const { maxX, maxY } = calculateImageDragLimits();
+    const finalX = Math.max(-maxX * zoomScale, Math.min(maxX * zoomScale, currentX + targetX));
+    const finalY = Math.max(-maxY * zoomScale, Math.min(maxY * zoomScale, currentY + targetY));
+    
+    const newTransform = `translate(${finalX}px, ${finalY}px) scale(${zoomScale})`;
     
     backgroundContainer.style.transform = newTransform;
     interactivePoints.style.transform = newTransform;
-  
-  // Start preparing 360° view early while zoom is happening
-  setTimeout(() => {
-    // Prepare panorama without showing it yet
-    onPanoramaWindowResize();
-    if (panoramaRenderer && panoramaScene && panoramaCamera) {
-      panoramaRenderer.render(panoramaScene, panoramaCamera);
-    }
-    loadPanoramaImage(point);
     
-    // Start showing panorama container (but transparent) to eliminate black screen
-    panoramaContainer.style.display = 'block';
-    panoramaContainer.style.opacity = '0';
-    
-    // Set up gradual cross-fade transitions
-    panoramaContainer.style.transition = 'opacity 0.6s ease-in-out';
-    backgroundContainer.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.6s ease-in-out';
-    interactivePoints.style.transition = 'opacity 0.6s ease-in-out';
-  }, 100); // Start prep earlier for faster zoom
-  
-  // Begin gradual cross-fade early in the zoom
-  setTimeout(() => {
-    // Start very gradual fade: panorama begins to appear, map begins to disappear
-    panoramaContainer.style.opacity = '0.3';
-    backgroundContainer.style.opacity = '0.7';
-    interactivePoints.style.opacity = '0.7';
-  }, 150); // Start fade early
-  
-  // Continue the cross-fade
-  setTimeout(() => {
-    // Mid-fade: both scenes equally visible
-    panoramaContainer.style.opacity = '0.6';
-    backgroundContainer.style.opacity = '0.4';
-    interactivePoints.style.opacity = '0.4';
-  }, 250);
-  
-  // Near completion of zoom
-  setTimeout(() => {
-    // Almost complete fade: panorama dominant, map nearly gone
-    panoramaContainer.style.opacity = '0.9';
-    backgroundContainer.style.opacity = '0.1';
-    interactivePoints.style.opacity = '0.1';
-  }, 350);
-  
-  // Complete the cross-fade after zoom finishes
-  setTimeout(() => {
-    // Final fade: panorama fully visible, map completely gone
-    panoramaContainer.style.opacity = '1';
-    backgroundContainer.style.opacity = '0';
-    interactivePoints.style.opacity = '0';
-  }, 400); // Complete at end of zoom
-  
-  // After cross-fade completes, finalize the view switch
-  setTimeout(() => {
-    // Remove zoom class
-    pointElement.classList.remove('zooming');
-    
-    // Complete the switch (map is already invisible)
-    isMapView = false;
-    document.body.classList.add('panorama-view'); // Hide connection lines
-    backgroundContainer.style.display = 'none';
-    interactivePoints.style.display = 'none';
-    
-    // Disable dimming overlay and spotlight when entering 360° view
-    const dimmingOverlay = document.getElementById('dimmingOverlay');
-    if (dimmingOverlay && dimmingOverlay.classList.contains('active')) {
-      dimmingOverlay.classList.remove('active');
-      dimmingOverlay.style.mask = '';
-      dimmingOverlay.style.webkitMask = '';
-    }
-    
-    // Reset transforms for next time
-    backgroundContainer.style.transform = `translate(${currentX}px, ${currentY}px)`;
-    interactivePoints.style.transform = `translate(${currentX}px, ${currentY}px)`;
-    
-    // Show dialogue for all points (both regular and 360° views)
+    // During zoom, fade out current circles and prepare scene transition
     setTimeout(() => {
-      showDialogue(point, pointElement);
-      // Add back to street view button for 360° views
-      if (!isMapView) {
+      // Hide current street view circles completely (not just dim them)
+      const currentCircles = document.querySelectorAll('.point:not(.scene-circle)');
+      currentCircles.forEach(circle => {
+        circle.style.transition = 'opacity 0.3s ease';
+        circle.style.opacity = '0';
+        // Hide them completely after fade
+        setTimeout(() => {
+          circle.style.display = 'none';
+        }, 300);
+      });
+      
+      // Enter scene mode with the specific scene type
+      enterSceneMode(point.title);
+      
+      // Reset zoom and prepare for scene view
+      setTimeout(() => {
+        // Remove zoom class
+        pointElement.classList.remove('zooming');
+        
+        // Reset transforms to normal
+        backgroundContainer.style.transform = `translate(${currentX}px, ${currentY}px)`;
+        interactivePoints.style.transform = `translate(${currentX}px, ${currentY}px)`;
+        
+        // Add scene-specific circles based on the story data
+        createSceneSpecificCircles(point);
+        
+        // Add back to street button
         showBackToStreetButton();
-      }
-    }, 100);
+        
+        // Show the main dialogue for this scene
+        setTimeout(() => {
+          showDialogue(point, pointElement);
+        }, 200);
+        
+      }, 300); // Time for background to change
+    }, 400); // During zoom animation
+  }, 100);
+}
+
+// Create scene-specific circle points based on story data
+function createSceneSpecificCircles(point) {
+  console.log('Creating scene-specific circles for:', point.title);
+  
+  // Remove any existing scene circles
+  document.querySelectorAll('.scene-circle').forEach(circle => circle.remove());
+  
+  // Find the corresponding story data from the loaded JSON
+  const storyData = storyPoints.find(sp => sp.title === point.title);
+  if (!storyData || !storyData.options || !storyData.options.length) {
+    console.log('No story options found for', point.title);
+    return;
+  }
+  
+  console.log('Found', storyData.options.length, 'options for', point.title);
+  
+  // Create circles for each option in this story point
+  storyData.options.forEach((option, index) => {
+    createSceneCircle(option, index, point);
+  });
+}
+
+// Create a single scene-specific circle
+function createSceneCircle(option, index, parentPoint) {
+  const circle = document.createElement('div');
+  circle.className = 'point scene-circle';
+  
+  // Use CSS classes for styling instead of inline styles
+  circle.style.position = 'fixed';
+  circle.style.zIndex = '15';
+  
+  // Add default pulse animation only when not selected
+  circle.style.animation = 'pulse 4s infinite ease-in-out';
+  
+  // Use coordinates from story-data if available, otherwise fallback to index-based positioning
+  let percentX, percentY;
+  
+  if (option.x !== undefined && option.y !== undefined) {
+    // Use coordinates from the story-data
+    percentX = option.x;
+    percentY = option.y;
+    console.log(`Using story-data coordinates for ${option.key}: ${percentX}, ${percentY}`);
+  } else {
+    // Fallback to spread positions if coordinates are not defined - more visible spread
+    const positions = [
+      { percentX: 25, percentY: 25 },   // Top left
+      { percentX: 75, percentY: 25 },   // Top right
+      { percentX: 40, percentY: 40 },   // Mid left
+      { percentX: 60, percentY: 40 },   // Mid right
+      { percentX: 50, percentY: 50 },   // Center
+      { percentX: 30, percentY: 65 },   // Bottom left
+      { percentX: 70, percentY: 65 },   // Bottom right
+      { percentX: 50, percentY: 75 },   // Bottom center
+      { percentX: 15, percentY: 50 },   // Left edge
+      { percentX: 85, percentY: 50 },   // Right edge
+    ];
+    const pos = positions[index % positions.length];
+    percentX = pos.percentX;
+    percentY = pos.percentY;
+  }
+  
+  // Calculate image-relative position
+  const position = calculateImageRelativePosition(percentX, percentY);
+  circle.style.left = position.left;
+  circle.style.top = position.top;
+  circle.style.position = 'absolute';  // Use absolute positioning within the container
+  
+  // Store original percentage coordinates for repositioning
+  circle.dataset.percentX = percentX;
+  circle.dataset.percentY = percentY;
+  
+  // Add title data for hover
+  circle.dataset.title = option.content?.speaker || option.key;
+  
+  // Add click handler with same animations as street circles
+  circle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    console.log('Scene circle clicked:', option.key);
     
-  }, 150); // Fast transition (reduced from 500ms)
-  }, 100); // Start immediately (reduced from 650ms)
+    // Add selected state and dimming effect like street circles
+    const allSceneCircles = document.querySelectorAll('.scene-circle');
+    allSceneCircles.forEach(c => {
+      c.classList.remove('selected');
+      // Restore default pulse animation for deselected circles
+      c.style.animation = 'pulse 4s infinite ease-in-out';
+    });
+    circle.classList.add('selected');
+    // Clear inline animation to let CSS .point.selected animations take over
+    circle.style.animation = '';
+    
+    // No dimming overlay for sub-circles - just visual scaling and rotation effects
+    
+    // Stop map movement and center the scene circle to avoid dialogue clash
+    stopEdgeScrolling();
+    
+    // Center the map so the circle is mostly in the centre and won't clash with dialogue
+    centerSceneCircleWithDialogueBoundary(circle);
+    
+    // Temporarily disable edge scrolling to prevent movement during dialogue
+    isHoveringCircle = true;
+    
+    // Show section after animation
+    setTimeout(() => {
+      showSection(parentPoint, option.key);
+    }, 400);
+  });
+  
+  // Add hover listeners for edge scrolling control and title display
+  circle.addEventListener('mouseenter', (e) => {
+    // Stop edge scrolling while hovering over scene circle
+    isHoveringCircle = true;
+    stopEdgeScrolling();
+    
+    // Show hover title using speaker data, converted to title case
+    const speakerTitle = option.content?.speaker || option.key;
+    const titleCaseTitle = toTitleCase(speakerTitle);
+    circle.hoverTimeout = setTimeout(() => showHoverTitle(e, titleCaseTitle), 50);
+  });
+  
+  circle.addEventListener('mouseleave', () => {
+    // Re-enable edge scrolling when not hovering
+    isHoveringCircle = false;
+    
+    // Clear any pending hover timeout
+    clearTimeout(circle.hoverTimeout);
+    hideHoverTitle();
+  });
+  
+  // Add to the interactive points container
+  const interactivePoints = document.getElementById('interactivePoints');
+  if (interactivePoints) {
+    // Always append to the main interactive points (like before)
+    interactivePoints.appendChild(circle);
+    console.log(`Scene circle created for ${option.key} at ${percentX}, ${percentY} - final position: ${position.left}, ${position.top}`);
+  }
+  
+}
+
+// Reset dialogue panel to default position  
+function resetDialoguePosition() {
+  const dialoguePanel = document.getElementById('dialoguePanel');
+  if (!dialoguePanel) return;
+  
+  const isMobile = window.innerWidth <= 480;
+  const isTablet = window.innerWidth > 480 && window.innerWidth <= 768;
+  
+  if (isMobile || isTablet) return; // Don't reset mobile/tablet positioning
+  
+  // Reset to default desktop position
+  dialoguePanel.style.top = '20%';
+  dialoguePanel.style.right = '0';
+  dialoguePanel.style.left = 'auto';
+  dialoguePanel.style.bottom = 'auto';
+}
+
+// Position dialogue to avoid covering enlarged circles
+function positionDialogueToAvoidCircle(circleElement) {
+  if (!circleElement) return;
+  
+  const isMobile = window.innerWidth <= 480;
+  const isTablet = window.innerWidth > 480 && window.innerWidth <= 768;
+  
+  // Skip repositioning for mobile/tablet as they already position at bottom
+  if (isMobile || isTablet) return;
+  
+  const dialoguePanel = document.getElementById('dialoguePanel');
+  if (!dialoguePanel) return;
+  
+  // Check for collision with ALL visible circles (main circles + scene circles)
+  const allCircles = document.querySelectorAll('.point:not(.hidden)');
+  let hasCollision = false;
+  let bestPosition = null;
+  
+  for (const circle of allCircles) {
+    const circleRect = circle.getBoundingClientRect();
+    const dialogueRect = dialoguePanel.getBoundingClientRect();
+    
+    // Calculate circle bounds when enlarged (scale 4x for selected, 1x for others)
+    const circleScale = circle.classList.contains('selected') ? 4 : 1;
+    const enlargedRadius = (circleRect.width / 2) * circleScale;
+    const circleCenterX = circleRect.left + circleRect.width / 2;
+    const circleCenterY = circleRect.top + circleRect.height / 2;
+    
+    const enlargedCircleBounds = {
+      left: circleCenterX - enlargedRadius,
+      right: circleCenterX + enlargedRadius,
+      top: circleCenterY - enlargedRadius,
+      bottom: circleCenterY + enlargedRadius
+    };
+    
+    // Check if dialogue overlaps with this circle
+    const isOverlapping = !(
+      dialogueRect.right < enlargedCircleBounds.left ||
+      dialogueRect.left > enlargedCircleBounds.right ||
+      dialogueRect.bottom < enlargedCircleBounds.top ||
+      dialogueRect.top > enlargedCircleBounds.bottom
+    );
+    
+    if (isOverlapping) {
+      hasCollision = true;
+      
+      // Determine best positioning strategy
+      const spaceOnLeft = enlargedCircleBounds.left;
+      const spaceOnRight = window.innerWidth - enlargedCircleBounds.right;
+      const spaceOnTop = enlargedCircleBounds.top;
+      const spaceOnBottom = window.innerHeight - enlargedCircleBounds.bottom;
+      
+      const dialogueWidth = dialogueRect.width;
+      const dialogueHeight = dialogueRect.height;
+      
+      // Prioritize left side, then top, then right, then bottom
+      if (spaceOnLeft >= dialogueWidth + 20) {
+        bestPosition = { side: 'left', space: spaceOnLeft };
+      } else if (spaceOnTop >= dialogueHeight + 40) {
+        bestPosition = { side: 'top', space: spaceOnTop };
+      } else if (spaceOnRight >= dialogueWidth + 20) {
+        bestPosition = { side: 'right', space: spaceOnRight };
+      } else if (spaceOnBottom >= dialogueHeight + 40) {
+        bestPosition = { side: 'bottom', space: spaceOnBottom };
+      }
+      
+      break; // Use first collision found
+    }
+  }
+  
+  if (hasCollision && bestPosition) {
+    switch (bestPosition.side) {
+      case 'left':
+        dialoguePanel.style.right = 'auto';
+        dialoguePanel.style.left = '20px';
+        dialoguePanel.style.top = '20%';
+        dialoguePanel.style.bottom = 'auto';
+        break;
+      case 'top':
+        dialoguePanel.style.top = '20px';
+        dialoguePanel.style.bottom = 'auto';
+        break;
+      case 'right':
+        dialoguePanel.style.right = '20px';
+        dialoguePanel.style.left = 'auto';
+        dialoguePanel.style.top = '20%';
+        dialoguePanel.style.bottom = 'auto';
+        break;
+      case 'bottom':
+        dialoguePanel.style.top = 'auto';
+        dialoguePanel.style.bottom = '20px';
+        break;
+    }
+    
+    console.log(`Dialogue repositioned to ${bestPosition.side} side to avoid covering circles`);
+  }
 }
 
 function showDialogue(point, pointElement) {
   currentStoryPoint = point;
   locationTitle.textContent = point.title;
+  
+  // Check for dialogue-circle collision and reposition if needed
+  if (pointElement) {
+    setTimeout(() => positionDialogueToAvoidCircle(pointElement), 100);
+  }
 
   // Hide minimized tab when showing dialogue
   hideMinimizedDialogueTab();
@@ -913,8 +1632,10 @@ function showDialogue(point, pointElement) {
   pointElement.classList.add("selected");
   
   // Add dimming overlay effect when circle is selected (only in map view, not 360° view)
+  // Skip dimming overlay for all scenes with background image switches
+  const skipDimmingOverlay = point.title === "Education" || point.title === "Food" || point.title === "Energy" || point.title === "Transport";
   const dimmingOverlay = document.getElementById('dimmingOverlay');
-  if (dimmingOverlay && isMapView) {
+  if (dimmingOverlay && isMapView && !skipDimmingOverlay) {
     dimmingOverlay.classList.add('active');
     
     // Wait for map positioning to be established before starting spotlight
@@ -946,7 +1667,7 @@ function showDialogue(point, pointElement) {
       
       // Start spotlight animation after positioning is established
       animateSpotlight();
-    }, 50); // Small delay to let map positioning settle
+    }, 200); // Longer delay to let circle scaling and positioning settle
     
     // Also update on window resize or scroll to keep spotlight attached
     const resizeHandler = () => {
@@ -967,7 +1688,7 @@ function showDialogue(point, pointElement) {
   }
 
   // Center the selected point on screen
-  centerPointOnScreen(pointElement);
+  // centerPointOnScreen(pointElement); // Disabled: centering movement not working well
 
   // Position speech bubble line to connect to selected circle
   positionSpeechBubbleLine(pointElement);
@@ -1008,9 +1729,9 @@ function centerPointOnScreen(pointElement) {
   currentX += offsetX;
   currentY += offsetY;
 
-  // More generous bounds for mobile
-  const maxX = isMobile ? window.innerWidth * 0.4 : window.innerWidth * 0.15;
-  const maxY = isMobile ? window.innerHeight * 0.4 : window.innerHeight * 0.15;
+  // More generous bounds for mobile and edge circles like Housing
+  const maxX = isMobile ? window.innerWidth * 0.6 : window.innerWidth * 0.3;
+  const maxY = isMobile ? window.innerHeight * 0.6 : window.innerHeight * 0.3;
   currentX = Math.max(-maxX, Math.min(maxX, currentX));
   currentY = Math.max(-maxY, Math.min(maxY, currentY));
 
@@ -1133,12 +1854,8 @@ function addToHistory(point, optionKey) {
 }
 
 function addBackButton(textContainer, point, currentKey) {
-  if (navigationHistory.length > 1) {
-    // Can go back to previous section (need at least main + current)
-    const backButton = createBackButton(() => goBack());
-    textContainer.appendChild(backButton);
-  }
-  // Note: Removed the fallback case since we always want to use goBack() when there's history
+  // Back button removed - not wanted in scene texts
+  // Function kept for compatibility but doesn't add any buttons
 }
 
 function createBackButton(clickHandler) {
@@ -1445,10 +2162,9 @@ function typeWriterParts(
       typeWriterParts(element, parts, partIndex + 1, 0, point, onComplete);
     }
   } else if (currentPart.type === "link") {
-    // Create clickable link element instantly
+    // Create clickable link element that will be typed letter by letter
     const linkSpan = document.createElement("span");
     linkSpan.className = "interactive-text";
-    linkSpan.textContent = currentPart.content;
     
     // Check if this link has been visited before and apply visited class
     if (visitedInteractiveLinks.has(currentPart.target)) {
@@ -1474,8 +2190,24 @@ function typeWriterParts(
     }
 
     element.appendChild(linkSpan);
-    // Move to next part immediately
-    typeWriterParts(element, parts, partIndex + 1, 0, point, onComplete);
+    
+    // Type the link text letter by letter like regular text
+    const linkText = currentPart.content;
+    let linkCharIndex = 0;
+    
+    function typeLinkText() {
+      if (linkCharIndex < linkText.length) {
+        linkSpan.textContent += linkText[linkCharIndex];
+        linkCharIndex++;
+        currentTypingTimeout = setTimeout(typeLinkText, textSpeed);
+      } else {
+        // Link text complete, move to next part
+        typeWriterParts(element, parts, partIndex + 1, 0, point, onComplete);
+      }
+    }
+    
+    // Start typing the link text
+    typeLinkText();
   } else if (currentPart.type === "styled") {
     // Create styled text element instantly
     const styledSpan = document.createElement("span");
@@ -1539,6 +2271,9 @@ function renderParsedText(element, parts, point) {
 
 function hideDialogue() {
   dialoguePanel.classList.remove("visible");
+  
+  // Reset dialogue position for next use
+  resetDialoguePosition();
   
   // Pause typing animation if currently active
   if (isTyping) {
@@ -1620,8 +2355,32 @@ function hideDialogue() {
     }
   });
   
-  // Reset current story point
-  currentStoryPoint = null;
+  // Also clean up scene circles if any are selected
+  const sceneCircles = document.querySelectorAll('.scene-circle');
+  sceneCircles.forEach(circle => {
+    if (circle.classList.contains('selected')) {
+      circle.classList.remove('selected');
+      // Reset the zoom and styling applied by centerSceneCircleOnScreen
+      circle.style.transform = 'scale(1)';
+      circle.style.zIndex = '15';
+      circle.style.background = 'rgba(157, 110, 109, 0.4)';
+      circle.style.borderColor = '#9d6e6d';
+      circle.style.boxShadow = `
+        inset 2px 2px 8px rgba(255, 255, 255, 0.6),
+        inset -2px -2px 8px rgba(157, 110, 109, 0.4),
+        0 0 0 2px rgba(157, 110, 109, 0.8),
+        0 0 0 4px rgba(255, 255, 255, 0.3),
+        0 4px 12px rgba(0, 0, 0, 0.3)
+      `;
+    }
+  });
+  
+  // Reset current story point (but only if not in panorama view or scene mode)
+  if (isMapView && !isSceneMode) {
+    currentStoryPoint = null;
+  } else {
+    console.log('Keeping currentStoryPoint for panorama/scene view:', currentStoryPoint?.title);
+  }
 
   // Reset all typing and skip state variables
   isTyping = false;
@@ -1744,6 +2503,7 @@ function reopenDialogue() {
 
 // Show back to street view button for 360° views
 function showBackToStreetButton() {
+  console.log('showBackToStreetButton called');
   // Remove any existing button first
   hideBackToStreetButton();
   
@@ -1776,12 +2536,14 @@ function showBackToStreetButton() {
   
   // Add to body
   document.body.appendChild(backButton);
+  console.log('Back to street button added to body');
 }
 
 // Hide back to street view button
 function hideBackToStreetButton() {
   const existingButton = document.getElementById('backToStreetButton');
   if (existingButton) {
+    console.log('Removing existing back to street button');
     existingButton.remove();
   }
 }
@@ -2086,279 +2848,107 @@ function loadImageProgressively(imagePath, onLoad, onProgress, onError) {
 
 // Initialize 360° panorama view
 function initializePanorama() {
-  try {
-    console.log('Initializing panorama...');
-    
-    // Create scene
-    panoramaScene = new THREE.Scene();
-    
-    // Create camera
-    panoramaCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    
-    // Create renderer
-    // Optimize renderer for mobile performance
-    const isMobile = window.innerWidth <= 768;
-    panoramaRenderer = new THREE.WebGLRenderer({ 
-      canvas: panoramaCanvas, 
-      antialias: !isMobile, // Disable antialiasing on mobile for better performance
-      alpha: false,
-      powerPreference: isMobile ? "low-power" : "high-performance"
-    });
-    panoramaRenderer.setSize(window.innerWidth, window.innerHeight);
-    panoramaRenderer.setClearColor(0x000000);
-    
-    // Mobile-specific optimizations
-    if (isMobile) {
-      panoramaRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    } else {
-      panoramaRenderer.setPixelRatio(window.devicePixelRatio);
-    }
-    
-    // Create sphere geometry for 360° photo - adaptive quality based on device
-    const sphereSegments = isMobile ? 32 : 60; // Reduce geometry complexity on mobile
-    const sphereRings = isMobile ? 20 : 40;
-    const geometry = new THREE.SphereGeometry(500, sphereSegments, sphereRings);
-    
-    // Fix UV mapping for correct orientation - flip both U and V
-    const uvs = geometry.attributes.uv.array;
-    for (let i = 0; i < uvs.length; i += 2) {
-      uvs[i] = 1 - uvs[i]; // Flip U coordinate
-      uvs[i + 1] = 1 - uvs[i + 1]; // Flip V coordinate
-    }
-    geometry.attributes.uv.needsUpdate = true;
-    
-    // Load texture with error handling
-    const textureLoader = new THREE.TextureLoader();
-    const texture = textureLoader.load(
-      'assets/images/360-energy.jpg',
-      function (texture) {
-        console.log('360-energy.jpg loaded successfully');
-        // Optimize texture filtering for performance
-        texture.minFilter = isMobile ? THREE.LinearFilter : THREE.LinearMipmapLinearFilter;
-        texture.magFilter = THREE.LinearFilter;
-        texture.flipY = false; // Don't flip - we'll handle it with UV mapping
-        texture.wrapS = THREE.ClampToEdgeWrapping; // More efficient than repeat
-        texture.wrapT = THREE.ClampToEdgeWrapping;
-        texture.generateMipmaps = !isMobile; // Skip mipmaps on mobile
-        
-        // Update the material with the loaded texture
-        if (panoramaSphere && panoramaSphere.material) {
-          panoramaSphere.material.map = texture;
-          panoramaSphere.material.color.setHex(0xffffff); // Remove blue tint
-          panoramaSphere.material.needsUpdate = true;
-          console.log('Texture applied to sphere material');
-        } else {
-          console.error('Panorama sphere or material not found');
-        }
-      },
-      function (progress) {
-        console.log('Loading progress:', progress);
-      },
-      function (error) {
-        console.error('Error loading 360-energy.jpg:', error);
-      }
-    );
-    
-    // Create material for day sphere
-    const materialDay = new THREE.MeshLambertMaterial({ 
-      color: 0x0066cc, // Blue color as temporary placeholder
-      side: THREE.BackSide, // Inside-out sphere
-      transparent: true,
-      opacity: 1
-    });
-    
-    // Create material for night sphere
-    const materialNight = new THREE.MeshLambertMaterial({ 
-      color: 0x0066cc, // Blue color as temporary placeholder
-      side: THREE.BackSide, // Inside-out sphere
-      transparent: true,
-      opacity: 0
-    });
-    
-    // Create sphere meshes for day and night
-    panoramaSphere = new THREE.Mesh(geometry, materialDay);
-    panoramaSphereNight = new THREE.Mesh(geometry.clone(), materialNight);
-    panoramaScene.add(panoramaSphere);
-    panoramaScene.add(panoramaSphereNight);
-    
-    // Add ambient lighting
-    const initialLightIntensity = 1.2;
-    panoramaAmbientLight = new THREE.AmbientLight(0xffffff, initialLightIntensity);
-    panoramaScene.add(panoramaAmbientLight);
-    
-    // Set initial camera position
-    panoramaCamera.position.set(0, 0, 0.1);
-    panoramaCamera.lookAt(0, 0, -1);
-    
-    // Handle window resize
-    window.addEventListener('resize', onPanoramaWindowResize, false);
-    
-    // Setup panorama controls
-    setupPanoramaControls();
-    
-    // Initialize raycaster for click detection
-    raycaster = new THREE.Raycaster();
-    mouse = new THREE.Vector2();
-    
-    console.log('Panorama initialized successfully');
-  } catch (error) {
-    console.error('Error initializing panorama:', error);
-  }
-}
-
-
-// Load different 360° image for each location
-function loadPanoramaImage(point) {
-  if (!panoramaSphere || !panoramaSphere.material) return;
+  console.log('Initializing flat panoramic view');
   
-  console.log('loadPanoramaImage called for:', point.title);
+  // Get panorama elements
+  const panoramaView = document.getElementById('panoramaView');
+  const panoramaContainer = document.getElementById('panoramaContainer');
+  const panoramaImage = document.getElementById('panoramaImage');
   
-  // Use the working Food loading method for all 360° scenes
-  loadPanoramaImages(point);
-}
-
-// Load both day and night textures for all 360° scenes
-function loadPanoramaImages(point) {
-  let dayImagePath, nightImagePath;
-  
-  switch (point.title) {
-    case 'Food':
-      dayImagePath = 'assets/images/market-360-day.jpg';
-      nightImagePath = 'assets/images/market-360-night.jpg';
-      break;
-    case 'Education':
-      dayImagePath = 'assets/images/rooftop-day.jpg';
-      nightImagePath = 'assets/images/rooftop-night.jpg';
-      break;
-    case 'Energy':
-      dayImagePath = 'assets/images/energy-360-day.jpg';
-      nightImagePath = 'assets/images/energy-360-night.jpg';
-      break;
-    case 'Transport':
-      dayImagePath = 'assets/images/transport-day.jpg';
-      nightImagePath = 'assets/images/transport-night.jpg';
-      break;
-    default:
-      dayImagePath = 'assets/images/energy-360-day.jpg';
-      nightImagePath = 'assets/images/energy-360-night.jpg';
-      console.log(`No specific 360° image for ${point.title}, using energy scene`);
-      break;
+  if (!panoramaView || !panoramaContainer || !panoramaImage) {
+    console.error('Panorama elements not found');
+    return;
   }
   
-  const textureLoader = new THREE.TextureLoader();
-  let dayLoaded = false;
-  let nightLoaded = false;
+  // Setup flat panorama drag controls (similar to street view)
+  setupFlatPanoramaControls();
   
-  console.log(`Loading ${point.title} panorama day and night images...`);
-  
-  // Load day texture
-  textureLoader.load(
-    dayImagePath,
-    function (dayTexture) {
-      console.log(`${point.title} day 360° image loaded`);
-      setupTexture(dayTexture);
-      
-      // Dispose old texture
-      if (panoramaSphere.material.map) {
-        panoramaSphere.material.map.dispose();
-      }
-      
-      panoramaSphere.material.map = dayTexture;
-      panoramaSphere.material.color.setHex(0xffffff);
-      panoramaSphere.material.needsUpdate = true;
-      
-      dayLoaded = true;
-      if (nightLoaded) updateSceneOpacity();
-    },
-    undefined,
-    function (error) {
-      console.error(`Error loading ${point.title} day image:`, error);
-    }
-  );
-  
-  // Load night texture
-  textureLoader.load(
-    nightImagePath,
-    function (nightTexture) {
-      console.log(`${point.title} night 360° image loaded`);
-      setupTexture(nightTexture);
-      
-      // Dispose old texture
-      if (panoramaSphereNight.material.map) {
-        panoramaSphereNight.material.map.dispose();
-      }
-      
-      panoramaSphereNight.material.map = nightTexture;
-      panoramaSphereNight.material.color.setHex(0xffffff);
-      panoramaSphereNight.material.needsUpdate = true;
-      
-      nightLoaded = true;
-      if (dayLoaded) updateSceneOpacity();
-    },
-    undefined,
-    function (error) {
-      console.error(`Error loading ${point.title} night image:`, error);
-    }
-  );
+  console.log('Flat panoramic view initialized successfully');
 }
 
-// Load both day and night textures for Food scenes  
-function loadFoodPanoramaImages(point) {
-  const textureLoader = new THREE.TextureLoader();
-  let dayLoaded = false;
-  let nightLoaded = false;
+// Load scene-specific street view image (no panoramic system - just change background)
+
+// Update scene image when day/night mode changes
+
+// Setup drag controls for flat panorama (similar to street view)
+function setupFlatPanoramaControls() {
+  const panoramaContainer = document.getElementById('panoramaContainer');
+  if (!panoramaContainer) return;
   
-  console.log('Loading Food panorama day and night images...');
+  let isDragging = false;
+  let startX = 0;
+  let currentTransformX = 0;
+  let hasDragged = false;
   
-  // Load day texture
-  textureLoader.load(
-    'assets/images/market-360-day.jpg',
-    function (dayTexture) {
-      console.log('Food day 360° image loaded');
-      setupTexture(dayTexture);
-      
-      // Dispose old texture
-      if (panoramaSphere.material.map) {
-        panoramaSphere.material.map.dispose();
-      }
-      
-      panoramaSphere.material.map = dayTexture;
-      panoramaSphere.material.color.setHex(0xffffff);
-      panoramaSphere.material.needsUpdate = true;
-      
-      dayLoaded = true;
-      if (nightLoaded) updateFoodSceneOpacity();
-    },
-    undefined,
-    function (error) {
-      console.error('Error loading Food day image:', error);
+  // Mouse events
+  panoramaContainer.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    startX = e.clientX;
+    hasDragged = false;
+    panoramaContainer.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+  
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    
+    const deltaX = e.clientX - startX;
+    if (Math.abs(deltaX) > 5) hasDragged = true;
+    
+    // Move panorama horizontally (1:1 with mouse movement)
+    currentTransformX = deltaX;
+    panoramaContainer.style.transform = `translateX(calc(-100% + ${currentTransformX}px))`;
+    
+    // Update circle positions
+    updateFlatPanoramaCircles(currentTransformX);
+  });
+  
+  document.addEventListener('mouseup', () => {
+    isDragging = false;
+    panoramaContainer.style.cursor = 'grab';
+    
+    // Reset drag flag after delay
+    setTimeout(() => {
+      hasDragged = false;
+    }, 10);
+  });
+  
+  // Touch events  
+  panoramaContainer.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      isDragging = true;
+      startX = e.touches[0].clientX;
+      hasDragged = false;
+      e.preventDefault();
     }
-  );
+  });
   
-  // Load night texture
-  textureLoader.load(
-    'assets/images/market-360-night.jpg',
-    function (nightTexture) {
-      console.log('Food night 360° image loaded');
-      setupTexture(nightTexture);
-      
-      // Dispose old texture
-      if (panoramaSphereNight.material.map) {
-        panoramaSphereNight.material.map.dispose();
-      }
-      
-      panoramaSphereNight.material.map = nightTexture;
-      panoramaSphereNight.material.color.setHex(0xffffff);
-      panoramaSphereNight.material.needsUpdate = true;
-      
-      nightLoaded = true;
-      if (dayLoaded) updateFoodSceneOpacity();
-    },
-    undefined,
-    function (error) {
-      console.error('Error loading Food night image:', error);
-    }
-  );
+  document.addEventListener('touchmove', (e) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    
+    const deltaX = e.touches[0].clientX - startX;
+    if (Math.abs(deltaX) > 5) hasDragged = true;
+    
+    // Move panorama horizontally (1:1 with touch movement)
+    currentTransformX = deltaX;
+    panoramaContainer.style.transform = `translateX(calc(-100% + ${currentTransformX}px))`;
+    
+    // Update circle positions
+    updateFlatPanoramaCircles(currentTransformX);
+    
+    e.preventDefault();
+  });
+  
+  document.addEventListener('touchend', () => {
+    isDragging = false;
+    
+    // Reset drag flag after delay
+    setTimeout(() => {
+      hasDragged = false;
+    }, 10);
+  });
+  
+  console.log('Flat panorama controls setup complete');
 }
 
 // Load day and night textures for non-Food scenes
@@ -2367,25 +2957,29 @@ function loadSinglePanoramaImage(point) {
   
   switch (point.title) {
     case 'Education':
-      dayImagePath = 'assets/images/rooftop-day.jpg';
-      nightImagePath = 'assets/images/rooftop-night.jpg';
+      dayImagePath = 'assets/images/education-day-2D.jpg';
+      nightImagePath = 'assets/images/education-night-2D.jpg';
       break;
     case 'Energy':
-      dayImagePath = 'assets/images/energy-360-day.jpg';
-      nightImagePath = 'assets/images/energy-360-night.jpg';
+      dayImagePath = 'assets/images/energy-day-2D.jpg';
+      nightImagePath = 'assets/images/energy-night-2D.jpg';
       break;
     case 'Transport':
-      dayImagePath = 'assets/images/transport-day.jpg';
-      nightImagePath = 'assets/images/transport-night.jpg';
+      dayImagePath = 'assets/images/transport-day-2D.jpg';
+      nightImagePath = 'assets/images/transport-night-2D.jpg';
+      break;
+    case 'Food':
+      dayImagePath = 'assets/images/food-day-2D.jpg';
+      nightImagePath = 'assets/images/food-night-2D.jpg';
       break;
     default:
-      dayImagePath = 'assets/images/energy-360-day.jpg';
-      nightImagePath = 'assets/images/energy-360-night.jpg';
-      console.log(`No specific 360° image for ${point.title}, using energy scene`);
+      dayImagePath = 'assets/images/energy-day-2D.jpg';
+      nightImagePath = 'assets/images/energy-night-2D.jpg';
+      console.log(`No specific scene image for ${point.title}, using energy scene`);
       break;
   }
   
-  console.log(`Loading day and night 360° images for ${point.title}...`);
+  console.log(`Loading day and night 2D scene images for ${point.title}...`);
   
   const textureLoader = new THREE.TextureLoader();
   
@@ -2488,6 +3082,14 @@ function updateSceneOpacity() {
       requestAnimationFrame(animateFade);
     } else {
       console.log('360° day/night transition completed');
+      console.log('currentStoryPoint at transition completion:', currentStoryPoint?.title);
+      // Trigger panorama dialogue with points after transition completes
+      if (currentStoryPoint) {
+        console.log('Calling showPanoramaDialogue after transition completion');
+        showPanoramaDialogue(currentStoryPoint);
+      } else {
+        console.log('ERROR: No currentStoryPoint available for panorama dialogue');
+      }
     }
   }
   
@@ -2588,17 +3190,35 @@ function setupPanoramaControls() {
       
       if (dragDistance > 5) { // Threshold for distinguishing click from drag
         hasDragged = true;
+        // Show minimized dialogue tab when dragging starts in panorama mode
+        if (currentStoryPoint && dialoguePanel.classList.contains("visible")) {
+          hideDialogue();
+          showMinimizedDialogueTab();
+        }
       }
       
       // Handle dragging (increased sensitivity for faster movement)
-      lon = (onMouseDownMouseX - event.clientX) * 0.18 + onMouseDownLon;
-      lat = (event.clientY - onMouseDownMouseY) * 0.18 + onMouseDownLat;
+      // Restrict movement to predominantly one axis to prevent diagonal spinning
+      const deltaX = onMouseDownMouseX - event.clientX;
+      const deltaY = event.clientY - onMouseDownMouseY;
+      
+      if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        // Horizontal movement dominates - only move horizontally
+        lon = deltaX * 0.18 + onMouseDownLon;
+        lat = onMouseDownLat; // Keep vertical position fixed
+      } else {
+        // Vertical movement dominates - only move vertically
+        lon = onMouseDownLon; // Keep horizontal position fixed
+        lat = deltaY * 0.18 + onMouseDownLat;
+      }
       
       // Limit vertical rotation
       lat = Math.max(-85, Math.min(85, lat));
       
-      // Update panorama point positions when camera moves
-      updatePanoramaPointPositions();
+      // IMMEDIATE real-time update of panorama point positions during drag
+      requestAnimationFrame(() => {
+        updatePanoramaPointPositions();
+      });
     }
   }
   
@@ -2622,9 +3242,13 @@ function setupPanoramaControls() {
       }
       
       isMouseDown = true;
+      hasDragged = false;
+      dragStartTime = Date.now();
       
       onMouseDownMouseX = event.touches[0].pageX;
       onMouseDownMouseY = event.touches[0].pageY;
+      dragStartPosition.x = event.touches[0].pageX;
+      dragStartPosition.y = event.touches[0].pageY;
       onMouseDownLon = lon;
       onMouseDownLat = lat;
     }
@@ -2634,19 +3258,52 @@ function setupPanoramaControls() {
     if (event.touches.length === 1 && isMouseDown) {
       event.preventDefault();
       
-      lon = (onMouseDownMouseX - event.touches[0].pageX) * 0.18 + onMouseDownLon;
-      lat = (event.touches[0].pageY - onMouseDownMouseY) * 0.18 + onMouseDownLat;
+      // Check if this constitutes a drag
+      const dragDistance = Math.sqrt(
+        Math.pow(event.touches[0].pageX - dragStartPosition.x, 2) + 
+        Math.pow(event.touches[0].pageY - dragStartPosition.y, 2)
+      );
+      
+      if (dragDistance > 5) { // Threshold for distinguishing touch from drag
+        hasDragged = true;
+        // Show minimized dialogue tab when dragging starts in panorama mode
+        if (currentStoryPoint && dialoguePanel.classList.contains("visible")) {
+          hideDialogue();
+          showMinimizedDialogueTab();
+        }
+      }
+      
+      // Handle touch dragging - restrict to one axis like mouse movement
+      const touchDeltaX = onMouseDownMouseX - event.touches[0].pageX;
+      const touchDeltaY = event.touches[0].pageY - onMouseDownMouseY;
+      
+      if (Math.abs(touchDeltaX) > Math.abs(touchDeltaY)) {
+        // Horizontal movement dominates - only move horizontally
+        lon = touchDeltaX * 0.18 + onMouseDownLon;
+        lat = onMouseDownLat; // Keep vertical position fixed
+      } else {
+        // Vertical movement dominates - only move vertically
+        lon = onMouseDownLon; // Keep horizontal position fixed
+        lat = touchDeltaY * 0.18 + onMouseDownLat;
+      }
       
       // Limit vertical rotation
       lat = Math.max(-85, Math.min(85, lat));
       
-      // Update panorama point positions when camera moves
-      updatePanoramaPointPositions();
+      // IMMEDIATE real-time update of panorama point positions during touch drag
+      requestAnimationFrame(() => {
+        updatePanoramaPointPositions();
+      });
     }
   }
   
   function onTouchEnd() {
     isMouseDown = false;
+    
+    // Reset drag flag after a short delay to allow click event to process
+    setTimeout(() => {
+      hasDragged = false;
+    }, 10);
   }
   
   // Animation loop for smooth camera movement
@@ -2666,6 +3323,9 @@ function setupPanoramaControls() {
       
       panoramaCamera.lookAt(target);
       panoramaRenderer.render(panoramaScene, panoramaCamera);
+      
+      // Update panorama point positions every frame for smooth movement
+      updatePanoramaPointPositions();
       
       // Debug info every 60 frames (roughly 1 second at 60fps)
       if (Math.floor(Date.now() / 1000) % 5 === 0 && Math.floor(Date.now() / 16) % 60 === 0) {
@@ -2697,13 +3357,450 @@ function onPanoramaWindowResize() {
 }
 
 
-// Removed panorama point creation functions - now showing main dialogue instead
+// Create simple test panorama circles without text parsing
+function createPanoramaCirclePoints(storyPoint) {
+  console.log('createPanoramaCirclePoints called - creating test circles');
+  console.log('panoramaOverlay exists:', !!panoramaOverlay);
+  
+  // Clear existing panorama points (except back-to-street button)
+  document.querySelectorAll('.panorama-point').forEach(p => {
+    if (!p.classList.contains('back-to-street')) {
+      p.remove();
+    }
+  });
+  console.log('Cleared existing panorama points');
+  
+  // Get manually positioned circles for this panorama
+  const manualCircles = getManualCirclePositions(storyPoint.title);
+  
+  console.log('Creating', manualCircles.length, 'manually positioned circles');
+  
+  // Create panorama points with manually set positions
+  panoramaPoints = manualCircles.map((circle, index) => ({
+    ...circle,
+    key: circle.key || `manual${index}`,
+    element: null
+  }));
+  
+  // Create the actual DOM elements
+  panoramaPoints.forEach((point, index) => {
+    createTestPanoramaCircle(point, index);
+  });
+  
+  console.log('Created', panoramaPoints.length, 'manually positioned panorama circles');
+  
+  // Set initial positions and start continuous updates to move with panorama
+  setTimeout(() => {
+    console.log('Setting initial positions for panorama circles');
+    setInitialPanoramaPositions();
+    
+    // Start continuous updates so circles move with panorama rotation
+    const positionInterval = setInterval(() => {
+      updatePanoramaPointPositions();
+    }, 16); // 60fps for smooth movement with panorama
+    
+    // Store interval reference to clean up later if needed
+    if (window.panoramaPositionInterval) {
+      clearInterval(window.panoramaPositionInterval);
+    }
+    window.panoramaPositionInterval = positionInterval;
+    
+    console.log('Started continuous position updates for panorama circles');
+  }, 100);
+}
 
-// Removed: createEducationPanoramaPoints() 
-// Removed: createFoodPanoramaPoints()
-// Removed: createEnergyPanoramaPoints()  
-// Removed: createTransportPanoramaPoints()
-// These functions have been removed since 360° views now show main dialogue directly
+// Manual positioning configuration for each panorama
+// Longitude: -180 to +180 (left to right, 0 = center/front)
+// Latitude: -90 to +90 (bottom to top, 0 = horizon)
+function getManualCirclePositions(panoramaTitle) {
+  const positions = {
+    'Food': [
+      { title: 'Rooftop Gardens', longitude: -90, latitude: 15, key: 'farmers_markets' },
+      { title: 'Blooming Gardens', longitude: 45, latitude: -10, key: 'fair_design' },
+      { title: 'Compost Area', longitude: 120, latitude: 5, key: 'waste' },
+      { title: 'Slow Food Kitchen', longitude: -150, latitude: -5, key: 'slow_food' }
+    ],
+    'Transport': [
+      { title: 'Connected Networks', longitude: -100, latitude: 15, key: 'networks' },
+      { title: 'Car Alternatives', longitude: 45, latitude: -25, key: 'private_cars' },
+      { title: 'Reclaimed Spaces', longitude: 100, latitude: 10, key: 'returned_people' },
+      { title: 'Traffic-Free Zone', longitude: -45, latitude: -10, key: 'traffic_gone' }
+    ],
+    'Education': [
+      { title: 'Cooperative Learning', longitude: -120, latitude: 20, key: 'cooperation_first' },
+      { title: 'Knowledge Hub', longitude: 30, latitude: -15, key: 'connected_knowledge' },
+      { title: 'Lifelong Learning Center', longitude: 90, latitude: 10, key: 'lifelong_education' }
+    ],
+    'Energy': [
+      { title: 'Energy Cooperative', longitude: -75, latitude: 25, key: 'energy_coops' },
+      { title: 'Fair Share Hub', longitude: 60, latitude: -20, key: 'fair_share' },
+      { title: 'Living System', longitude: 135, latitude: 0, key: 'living_system' }
+    ],
+    'Housing': [
+      { title: 'Blossoming Neighborhood', longitude: -150, latitude: 25, key: 'blossoming_neighbourhoods' },
+      { title: 'Community Planning', longitude: 0, latitude: -30, key: 'bottom_up_planning' },
+      { title: 'Heritage Space', longitude: 75, latitude: 15, key: 'place_based' },
+      { title: 'Diverse Community', longitude: 120, latitude: -10, key: 'diversity_care' },
+      { title: 'Fluid Housing', longitude: -75, latitude: 0, key: 'ownership' }
+    ],
+    'Governance': [
+      { title: 'Citizens Assembly', longitude: -135, latitude: 20, key: 'citizens_assemblies' },
+      { title: 'Decentralized Network', longitude: 30, latitude: -15, key: 'decentralised_connected' },
+      { title: 'Community Joy', longitude: 90, latitude: 5, key: 'joy' },
+      { title: 'Local Power Hub', longitude: -30, latitude: -20, key: 'local_power' }
+    ]
+  };
+  
+  // Return positions for the requested panorama, or default test positions
+  return positions[panoramaTitle] || [
+    { title: 'Test Circle 1', longitude: 0, latitude: 0, key: 'test1' },
+    { title: 'Test Circle 2', longitude: 90, latitude: 0, key: 'test2' },
+    { title: 'Test Circle 3', longitude: 180, latitude: 0, key: 'test3' },
+    { title: 'Test Circle 4', longitude: -90, latitude: 0, key: 'test4' }
+  ];
+}
+
+// Show story content for clicked panorama circle
+function showPanoramaStoryContent(pointData) {
+  console.log('showPanoramaStoryContent called with:', pointData);
+  console.log('currentStoryPoint:', currentStoryPoint);
+  
+  // Get the current panorama's main story point
+  const storyPoint = storyPoints.find(point => point.title === currentStoryPoint?.title);
+  console.log('Found main story point:', storyPoint?.title);
+  
+  if (!storyPoint || !storyPoint.options) {
+    console.log('No story point or options found for:', currentStoryPoint?.title);
+    console.log('Available story points:', storyPoints.map(p => p.title));
+    
+    // Fallback: show a simple dialogue with the circle info
+    locationTitle.textContent = pointData.title;
+    locationSubtitle.textContent = "";
+    storyText.innerHTML = `<p>This is the ${pointData.title} section content.</p>`;
+    dialoguePanel.classList.add("visible");
+    hideMinimizedDialogueTab();
+    return;
+  }
+  
+  // Find the specific content option based on the circle's key
+  const contentOption = storyPoint.options.find(option => option.key === pointData.key);
+  console.log('Looking for content with key:', pointData.key);
+  console.log('Available option keys:', storyPoint.options.map(opt => opt.key));
+  console.log('Found content option:', contentOption);
+  
+  if (!contentOption || !contentOption.content) {
+    console.log('No content found for key:', pointData.key);
+    
+    // Fallback: show basic info
+    locationTitle.textContent = pointData.title;
+    locationSubtitle.textContent = "";
+    storyText.innerHTML = `<p>Content for ${pointData.title} (${pointData.key})</p>`;
+    dialoguePanel.classList.add("visible");
+    hideMinimizedDialogueTab();
+    return;
+  }
+  
+  console.log('Found content option:', contentOption);
+  
+  // Get dialogue text container
+  const dialogueTextContainer = document.querySelector('.dialogue-text');
+  if (!dialogueTextContainer) {
+    console.error('Dialogue text container not found');
+    return;
+  }
+  
+  // Clear the dialogue text container
+  dialogueTextContainer.innerHTML = '';
+  
+  // Create dialogue entry for this option content
+  const dialogueEntry = document.createElement('div');
+  dialogueEntry.classList.add('dialogue-entry');
+  
+  // Create speaker element
+  const speakerElement = document.createElement('div');
+  speakerElement.classList.add('speaker');
+  speakerElement.textContent = contentOption.content.speaker || pointData.title;
+  dialogueEntry.appendChild(speakerElement);
+  
+  // Create story text element
+  const textElement = document.createElement('div');
+  textElement.classList.add('story-text');
+  
+  // Process and display the text content with interactive text processing
+  const processedText = processInteractiveText(contentOption.content.text || "");
+  textElement.innerHTML = processedText;
+  dialogueEntry.appendChild(textElement);
+  
+  // Add back button to return to main section
+  const backButton = document.createElement('button');
+  backButton.classList.add('back-button');
+  backButton.innerHTML = '← Back to ' + (currentStoryPoint?.title || 'Main');
+  backButton.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Return to main section content
+    if (currentStoryPoint && currentStoryPoint.mainText) {
+      showMainDialogueContent(currentStoryPoint);
+    }
+  });
+  dialogueEntry.appendChild(backButton);
+  
+  // Add the dialogue entry to container
+  dialogueTextContainer.appendChild(dialogueEntry);
+  
+  // Update title
+  locationTitle.textContent = contentOption.content.speaker || pointData.title;
+  locationSubtitle.textContent = "";
+  
+  // Show the dialogue panel
+  dialoguePanel.classList.add("visible");
+  
+  // Hide minimized tab if showing
+  hideMinimizedDialogueTab();
+  
+  console.log('Displayed story content for:', pointData.title);
+}
+
+// Show main dialogue content for a section (when returning from option view)
+function showMainDialogueContent(storyPoint) {
+  // Get dialogue text container
+  const dialogueTextContainer = document.querySelector('.dialogue-text');
+  if (!dialogueTextContainer) {
+    console.error('Dialogue text container not found');
+    return;
+  }
+  
+  // Clear the dialogue text container
+  dialogueTextContainer.innerHTML = '';
+  
+  // Create dialogue entry for main content
+  const dialogueEntry = document.createElement('div');
+  dialogueEntry.classList.add('dialogue-entry');
+  
+  // Create speaker element
+  const speakerElement = document.createElement('div');
+  speakerElement.classList.add('speaker');
+  speakerElement.textContent = storyPoint.mainText.speaker || storyPoint.title;
+  dialogueEntry.appendChild(speakerElement);
+  
+  // Create story text element
+  const textElement = document.createElement('div');
+  textElement.classList.add('story-text');
+  
+  // Process and display the main text content
+  const processedText = processInteractiveText(storyPoint.mainText.text || "");
+  textElement.innerHTML = processedText;
+  dialogueEntry.appendChild(textElement);
+  
+  // Add the dialogue entry to container
+  dialogueTextContainer.appendChild(dialogueEntry);
+  
+  // Update title
+  locationTitle.textContent = storyPoint.title;
+  locationSubtitle.textContent = storyPoint.subtitle || "";
+  
+  console.log('Displayed main dialogue content for:', storyPoint.title);
+}
+
+// Set initial positions for panorama circles (like street view)
+function setInitialPanoramaPositions() {
+  if (!panoramaPoints || panoramaPoints.length === 0) {
+    return;
+  }
+  
+  panoramaPoints.forEach(pointData => {
+    const circleElement = pointData.element;
+    if (!circleElement) return;
+    
+    // Convert longitude/latitude to screen position percentage
+    // Map longitude (-180 to 180) to horizontal position (0% to 100%)
+    const screenX = ((pointData.longitude + 180) / 360) * 100;
+    
+    // Map latitude (-90 to 90) to vertical position (0% to 100%, inverted)
+    const screenY = ((90 - pointData.latitude) / 180) * 100;
+    
+    // Set fixed position on the panorama container
+    circleElement.style.left = `${screenX}%`;
+    circleElement.style.top = `${screenY}%`;
+    
+    console.log(`Positioned ${pointData.title} at ${screenX.toFixed(1)}%, ${screenY.toFixed(1)}%`);
+  });
+}
+
+// Create a simple test panorama circle
+function createTestPanoramaCircle(pointData, index) {
+  console.log('Creating test panorama circle:', pointData.title);
+  
+  const circleElement = document.createElement('div');
+  circleElement.className = 'panorama-point test-circle';
+  circleElement.dataset.key = pointData.key;
+  circleElement.dataset.index = index;
+  circleElement.dataset.title = pointData.title;
+  
+  // Style exactly like street view circles
+  circleElement.style.position = 'absolute';
+  circleElement.style.zIndex = '999';
+  circleElement.style.transform = 'translate(-50%, -50%) scale(1)';
+  circleElement.style.opacity = '1';
+  circleElement.style.pointerEvents = 'auto';
+  circleElement.style.cursor = 'pointer';
+  
+  // Use mobile-optimized sizing
+  const isMobile = window.innerWidth <= 480;
+  if (isMobile) {
+    circleElement.style.width = '80px';
+    circleElement.style.height = '80px';
+    circleElement.style.borderWidth = '2px';
+  } else {
+    circleElement.style.width = '150px';
+    circleElement.style.height = '150px';
+    circleElement.style.borderWidth = '7px';
+  }
+  
+  // Apply street view circle styling
+  circleElement.style.background = 'radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.2), rgba(0, 0, 0, 0.1))';
+  circleElement.style.border = `${circleElement.style.borderWidth} dashed #e8e8e8`;
+  circleElement.style.borderRadius = '50%';
+  circleElement.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+  circleElement.style.boxShadow = `
+    inset 5px 5px 15px rgba(255, 255, 255, 0.3),
+    inset -5px -5px 15px rgba(0, 0, 0, 0.4),
+    0 10px 30px rgba(0, 0, 0, 0.3),
+    0 0 0 2px rgba(255, 255, 255, 0.1)
+  `;
+  circleElement.style.animation = 'gentlePulse 6s ease-in-out infinite';
+  
+  // Add debug number in center
+  circleElement.innerHTML = `<div style="color: #e8e8e8; text-align: center; line-height: ${isMobile ? '74px' : '136px'}; font-size: ${isMobile ? '14px' : '18px'}; font-weight: bold; text-shadow: 0 0 5px rgba(0,0,0,0.8);">${index + 1}</div>`;
+  
+  // Add hover animations like street view circles
+  circleElement.addEventListener('mouseenter', () => {
+    circleElement.style.transform = 'translate(-50%, -50%) scale(1.15)';
+  });
+  
+  circleElement.addEventListener('mouseleave', () => {
+    if (!circleElement.classList.contains('selected')) {
+      circleElement.style.transform = 'translate(-50%, -50%) scale(1)';
+    }
+  });
+  
+  // Add click handler with selection animation
+  circleElement.addEventListener('click', (e) => {
+    console.log('Circle clicked!', pointData.title, 'Key:', pointData.key);
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (hasDragged) {
+      console.log('Click ignored - hasDragged is true');
+      hasDragged = false;
+      return;
+    }
+    
+    // Add selection state like street view circles
+    circleElement.classList.add('selected');
+    circleElement.style.transform = 'translate(-50%, -50%) scale(1.3)';
+    
+    // Show the story content for this circle
+    console.log(`Showing story content for: ${pointData.title} (key: ${pointData.key})`);
+    showPanoramaStoryContent(pointData);
+    
+    // Remove selection after delay
+    setTimeout(() => {
+      circleElement.classList.remove('selected');
+      circleElement.style.transform = 'translate(-50%, -50%) scale(1)';
+    }, 1000);
+  });
+  
+  // Set initial position based on longitude/latitude for immediate visibility
+  const pointLongitude = pointData.longitude || 0;
+  const pointLatitude = pointData.latitude || 0;
+  const initialX = 50 + (pointLongitude / 180) * 30; // Spread across screen
+  const initialY = 50 - (pointLatitude / 90) * 20;   // Spread vertically
+  
+  circleElement.style.left = `${initialX}%`;
+  circleElement.style.top = `${initialY}%`;
+  circleElement.style.display = 'block';
+  circleElement.style.opacity = '1';
+  
+  console.log(`Created circle ${pointData.title} at initial position:`, {
+    longitude: pointLongitude,
+    latitude: pointLatitude,
+    screenX: initialX,
+    screenY: initialY
+  });
+  
+  console.log('panoramaOverlay element:', panoramaOverlay);
+  console.log('panoramaOverlay display style:', panoramaOverlay ? getComputedStyle(panoramaOverlay).display : 'null');
+  
+  // Add to panorama container instead of overlay, like street view circles
+  const panoramaContainer = document.getElementById('panoramaContainer');
+  if (panoramaContainer) {
+    panoramaContainer.appendChild(circleElement);
+    console.log('Test circle appended to panorama container. Children count:', panoramaContainer.children.length);
+    
+    // Store reference for position updates
+    pointData.element = circleElement;
+    
+    console.log('Test panorama circle created for:', pointData.title);
+  } else {
+    console.error('panoramaContainer is null - cannot append circle');
+  }
+}
+
+// Show content for an interactive link clicked in panorama view
+function showInteractiveLinkContent(pointData) {
+  if (!pointData.content) return;
+  
+  // Update the dialogue panel with the new content
+  locationTitle.textContent = pointData.title;
+  locationSubtitle.textContent = ""; // Clear subtitle for sub-content
+  
+  // Clear existing dialogue content
+  dialogueTextContainer.innerHTML = "";
+  
+  // Create the dialogue entry
+  const dialogueEntry = document.createElement("div");
+  dialogueEntry.className = "dialogue-entry";
+  
+  // Add speaker if present
+  if (pointData.content.speaker) {
+    const speaker = document.createElement("div");
+    speaker.className = "dialogue-speaker";
+    speaker.textContent = pointData.content.speaker;
+    dialogueEntry.appendChild(speaker);
+  }
+  
+  // Add the content text
+  const text = document.createElement("div");
+  text.className = "section-text";
+  text.textContent = pointData.content.text;
+  dialogueEntry.appendChild(text);
+  
+  // Add back button
+  const backButton = document.createElement("div");
+  backButton.className = "back-button";
+  backButton.innerHTML = `
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z"/>
+    </svg>
+    Back
+  `;
+  
+  backButton.addEventListener("click", () => {
+    // Return to main panorama view
+    showDialogue(currentStoryPoint, null);
+  });
+  
+  dialogueEntry.appendChild(backButton);
+  dialogueTextContainer.appendChild(dialogueEntry);
+  
+  // Show the dialogue panel
+  dialoguePanel.classList.add("visible");
+  
+  // Hide minimized tab if it exists
+  hideMinimizedDialogueTab();
+}
 
 function PLACEHOLDER_TO_REPLACE() {
   const educationPoint = storyPoints.find(point => point.title === "Education");
@@ -2853,6 +3950,14 @@ function PLACEHOLDER_TO_REPLACE() {
 
 // Show dialogue in panorama view without street view manipulations
 function showPanoramaDialogue(point) {
+  console.log('showPanoramaDialogue called for:', point.title);
+  console.log('Point structure:', {
+    title: point.title,
+    hasMainText: !!point.mainText,
+    mainTextHasText: !!(point.mainText && point.mainText.text),
+    mainTextPreview: point.mainText ? point.mainText.text.substring(0, 100) + '...' : 'none'
+  });
+  
   currentStoryPoint = point;
   locationTitle.textContent = point.title;
   locationSubtitle.textContent = point.subtitle || "";
@@ -2879,6 +3984,14 @@ function showPanoramaDialogue(point) {
 
   // Show main text (skip street view positioning)
   showMainText(point);
+  
+  // Create panorama circle points like street view
+  console.log('Setting timeout to create panorama circle points in 500ms...');
+  setTimeout(() => {
+    console.log('Timeout triggered - calling createPanoramaCirclePoints');
+    createPanoramaCirclePoints(point);
+    // Position update is now handled inside createPanoramaCirclePoints
+  }, 500); // Small delay to ensure panorama is fully loaded
 }
 
 
@@ -3384,62 +4497,45 @@ function showTransportSubContent(transportSubPoint) {
   console.log('Transport sub-content displayed:', transportSubPoint.title);
 }
 
-// Update panorama point positions based on camera rotation
-function updatePanoramaPointPositions() {
-  if (!panoramaPoints || panoramaPoints.length === 0) return;
+// Update panorama circle positions to move WITH the panorama rotation
+// Update circle positions for 2D panoramic view (like street view)
+function updateFlatPanoramaCircles(transformX) {
+  if (!panoramaPoints || panoramaPoints.length === 0) {
+    return;
+  }
+  
+  // Calculate movement as percentage of screen width
+  const movementPercent = (transformX / window.innerWidth) * 100;
   
   panoramaPoints.forEach(pointData => {
-    const pointElement = pointData.element;
-    if (!pointElement) return;
+    const circleElement = pointData.element;
+    if (!circleElement) return;
     
     // Skip the back-to-street button - it should stay fixed on screen
-    if (pointElement.classList.contains('back-to-street')) return;
+    if (circleElement.classList.contains('back-to-street')) return;
     
-    // Get the original position stored when point was created
-    const originalX = parseFloat(pointElement.dataset.originalX);
-    const originalY = parseFloat(pointElement.dataset.originalY);
-    
-    // Skip points without valid original coordinates
-    if (isNaN(originalX) || isNaN(originalY)) {
-      return;
+    // Initialize position if not set (like street view circles)
+    if (!pointData.baseX) {
+      // Set base position based on longitude/latitude (spread across panorama)
+      pointData.baseX = 50 + (pointData.longitude || 0) / 4; // Spread horizontally
+      pointData.baseY = 50 + (pointData.latitude || 0) / 2;  // Spread vertically
     }
     
-    // Calculate 1:1 movement with camera rotation
-    // Convert camera rotation (degrees) back to screen percentage movement
-    // Mouse drag: lon = (mouseX - startX) * 0.18, so screen movement = lon / 0.18
-    // Then convert to percentage: percentage = (pixels / screenWidth) * 100
-    const screenWidth = window.innerWidth;
-    const screenHeight = window.innerHeight;
+    // Move circle opposite to panorama movement (like street view)
+    const currentX = pointData.baseX - movementPercent;
+    const currentY = pointData.baseY;
     
-    // Convert lon/lat rotation back to pixel movement, then to percentage
-    const pixelMovementX = lon / 0.18; // Reverse the mouse drag calculation
-    const pixelMovementY = lat / 0.18; // Reverse the mouse drag calculation
-    
-    const horizontalOffset = (pixelMovementX / screenWidth) * 100; // Convert to percentage
-    const verticalOffset = (pixelMovementY / screenHeight) * 100; // Convert to percentage
-    
-    // Move points opposite to camera movement for 1:1 tracking
-    let newX = originalX - horizontalOffset;
-    let newY = originalY - verticalOffset;
-    
-    // Handle horizontal wrapping for 360° panorama
-    while (newX < -100) newX += 200;
-    while (newX > 200) newX -= 200;
-    
-    // Clamp vertical movement
-    newY = Math.max(-100, Math.min(200, newY));
-    
-    // Update point position
-    pointElement.style.left = `${newX}%`;
-    pointElement.style.top = `${newY}%`;
-    
-    // Hide points that are completely off screen
-    if (newX < -50 || newX > 150 || newY < -50 || newY > 150) {
-      pointElement.style.opacity = '0.2';
-      pointElement.style.pointerEvents = 'none';
+    // Show circle if it's in visible range
+    if (currentX >= -20 && currentX <= 120) {
+      circleElement.style.display = 'block';
+      circleElement.style.left = `${currentX}%`;
+      circleElement.style.top = `${currentY}%`;
+      circleElement.style.transform = 'translate(-50%, -50%)';
+      circleElement.style.position = 'absolute';
+      circleElement.style.zIndex = '999';
+      circleElement.style.pointerEvents = 'auto';
     } else {
-      pointElement.style.opacity = '1';
-      pointElement.style.pointerEvents = 'auto';
+      circleElement.style.display = 'none';
     }
   });
 }
@@ -3552,33 +4648,162 @@ function showEducationSubContent(educationSubPoint) {
 }
 
 
-// Return to street view from 360° panorama
+// Return to street view from scene
 function returnToStreetView() {
-  console.log('Returning to street view...');
+  console.log('Returning to street view from scene...');
   
-  // Hide back to street button
+  // Exit scene mode first
+  exitSceneMode();
+  
+  // Hide back to street button immediately
   hideBackToStreetButton();
   
-  // Fade out panorama view
-  panoramaContainer.style.opacity = '0';
+  // Start zoom-out transition effect
+  const backgroundContainer = document.getElementById('backgroundContainer');
+  const interactivePoints = document.getElementById('interactivePoints');
   
+  // Phase 1: Start zoom-out and fade scene circles
+  const sceneCircles = document.querySelectorAll('.scene-circle');
+  sceneCircles.forEach(circle => {
+    circle.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+    circle.style.opacity = '0';
+    circle.style.transform = 'scale(0.5)';  // Shrink as they fade
+  });
+  
+  // Phase 2: Apply smoother reverse zoom effect with cross-fade preparation
   setTimeout(() => {
-    // Switch back to map view
-    isMapView = true;
-    document.body.classList.remove('panorama-view'); // Show connection lines again
-    panoramaContainer.style.display = 'none';
-    backgroundContainer.style.display = 'block';
-    interactivePoints.style.display = 'block';
-    backgroundContainer.style.opacity = '1';
-    interactivePoints.style.opacity = '1';
+    backgroundContainer.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.4s ease';
+    interactivePoints.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    
+    // Apply smoother zoom-out effect
+    const zoomOutScale = 0.85;
+    backgroundContainer.style.transform = `translate(${currentX}px, ${currentY}px) scale(${zoomOutScale})`;
+    interactivePoints.style.transform = `translate(${currentX}px, ${currentY}px) scale(${zoomOutScale})`;
+    
+    // Start fading out current background for cross-fade
+    const backgroundImage = backgroundContainer.querySelector('.background-image');
+    if (backgroundImage) {
+      backgroundImage.style.transition = 'opacity 0.6s ease';
+      backgroundImage.style.opacity = '0.3';
+    }
+  }, 150);
+  
+  // Phase 3: Reset zoom and start background cross-fade
+  setTimeout(() => {
+    // Smoothly reset transforms
+    backgroundContainer.style.transition = 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    interactivePoints.style.transition = 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    backgroundContainer.style.transform = `translate(${currentX}px, ${currentY}px)`;
+    interactivePoints.style.transform = `translate(${currentX}px, ${currentY}px)`;
+    
+    // Remove scene circles from DOM
+    sceneCircles.forEach(circle => circle.remove());
+    
+    // Restore street view circles with smoother fade in
+    const streetCircles = document.querySelectorAll('.point:not(.scene-circle)');
+    streetCircles.forEach(circle => {
+      circle.style.display = 'block';
+      circle.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+      circle.style.transform = 'scale(0.7)';  // Start smaller
+      circle.style.opacity = '0';
+      
+      // Stagger the animation for smoother appearance
+      setTimeout(() => {
+        circle.style.opacity = '1';
+        circle.style.transform = 'scale(1)';
+      }, Math.random() * 200 + 50); // Random delay between 50-250ms
+    });
+  }, 600);
+  
+  // Phase 4: Complete cross-fade to street view background
+  setTimeout(() => {
+    // Restore original street view background with cross-fade
+    const backgroundContainer = document.getElementById('backgroundContainer');
+    const backgroundImage = backgroundContainer.querySelector('.background-image');
+    
+    if (backgroundImage) {
+      // Check current day/night mode
+      const isNightMode = document.body.classList.contains('high-contrast');
+      
+      // Set the default street view image with scrollable sizing
+      const defaultImagePath = isNightMode ? 'assets/images/full-night-2D.jpg' : 'assets/images/full-day-2D.jpg';
+      
+      // Apply the default street background with cross-fade using overlay technique
+      const fadeOverlay = document.createElement('div');
+      fadeOverlay.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: url(${defaultImagePath});
+        background-size: auto 100%;
+        background-position: center center;
+        background-repeat: no-repeat;
+        opacity: 0;
+        z-index: 3;
+        transition: opacity 0.8s ease-in-out;
+        pointer-events: none;
+      `;
+      
+      backgroundContainer.appendChild(fadeOverlay);
+      
+      // Trigger fade-in after a short delay
+      setTimeout(() => {
+        fadeOverlay.style.opacity = '1';
+      }, 50);
+      
+      // After fade completes, apply to main background and remove overlay
+      setTimeout(() => {
+        backgroundImage.style.backgroundImage = `url(${defaultImagePath})`;
+        backgroundImage.style.backgroundSize = 'auto 100%';
+        backgroundImage.style.backgroundPosition = 'center center';
+        backgroundImage.style.backgroundRepeat = 'no-repeat';
+        
+        // Remove the fade overlay
+        fadeOverlay.remove();
+        
+        console.log('Cross-fade to street view completed');
+      }, 850);
+      
+      // Keep scene-active class to hide pseudo-elements but use our custom street background
+      backgroundImage.classList.add('scene-active');
+      backgroundImage.style.setProperty('--scene-active', '1');
+      
+      console.log('Cross-faded to street view background:', defaultImagePath);
+    }
     
     // Hide any open dialogue
     if (dialoguePanel.classList.contains('visible')) {
       hideDialogue();
     }
     
-    console.log('Returned to street view');
-  }, 250); // Wait for fade out
+    // Remove any dimming overlay that might be stuck active and reset background brightness
+    const dimmingOverlay = document.getElementById('dimmingOverlay');
+    if (dimmingOverlay) {
+      dimmingOverlay.classList.remove('active');
+      dimmingOverlay.style.mask = '';
+      dimmingOverlay.style.webkitMask = '';
+      dimmingOverlay.style.opacity = '0';
+      console.log('Removed dimming overlay when returning to street view');
+    }
+    
+    // Reset background image brightness and filters to normal
+    if (backgroundImage) {
+      backgroundImage.style.filter = '';
+      backgroundImage.style.opacity = '1';
+      backgroundImage.style.brightness = '';
+      console.log('Reset background image brightness to normal');
+    }
+    
+    // Clear current story point and scene flag
+    if (currentStoryPoint) {
+      currentStoryPoint._hasSceneImage = false;
+    }
+    currentStoryPoint = null;
+    
+    console.log('Returned to street view with zoom-out transition');
+  }, 700);
 }
 
 // Center panorama camera on selected point
@@ -3691,6 +4916,13 @@ function createInteractiveLinkPanoramaPoints(point, existingPoints = []) {
   });
   
   return linkPoints;
+}
+
+// Convert text to proper title case (only first letter and after certain punctuation)
+function toTitleCase(str) {
+  return str.toLowerCase().replace(/^.|[.!?]\s+./g, function(match) {
+    return match.toUpperCase();
+  });
 }
 
 // Note: Panorama click handling now done via HTML overlay elements directly

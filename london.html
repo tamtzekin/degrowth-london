@@ -24,10 +24,11 @@
                 <div class="background-image"></div>
             </div>
 
-            <!-- 360 Photo View -->
-            <div class="panorama-container" id="panoramaContainer" style="display: none;">
-                <canvas id="panoramaCanvas"></canvas>
-                <div class="panorama-overlay" id="panoramaOverlay"></div>
+            <!-- Flat Panoramic View -->
+            <div class="panorama-view" id="panoramaView" style="display: none;">
+                <div class="panorama-container" id="panoramaContainer">
+                    <div class="panorama-image" id="panoramaImage"></div>
+                </div>
             </div>
 
             <div class="interactive-points" id="interactivePoints"></div>
@@ -161,7 +162,7 @@
         </div>
 
 
-        <script src="assets/three.global.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
         <script src="assets/app.js"></script>
     </body>
 </html>

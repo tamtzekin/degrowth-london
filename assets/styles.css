@@ -33,11 +33,26 @@ body {
 
 .background-container {
     position: absolute;
-    width: 120%;
+    width: 350%; /* Wide enough for 7000px images without grey space */
     height: 120%;
     top: -10%;
-    left: -10%;
+    left: -125%; /* Adjusted to center the wider container */
     transition: transform 0.15s ease-out, opacity 0.5s ease-in-out;
+}
+
+/* Disable all transitions and hide pseudo-elements during dragging to prevent flickering */
+:root[style*="--dragging: 1"] .background-container,
+:root[style*="--dragging: 1"] .background-image,
+:root[style*="--dragging: 1"] .background-image::before,
+:root[style*="--dragging: 1"] .background-image::after {
+    transition: none !important;
+    animation: none !important;
+}
+
+/* Completely hide pseudo-elements during dragging to eliminate flickering */
+:root[style*="--dragging: 1"] .background-image::before,
+:root[style*="--dragging: 1"] .background-image::after {
+    display: none !important;
 }
 .background-image {
     width: 100%;
@@ -53,10 +68,12 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: url("/assets/images/street_day.jpg") center/cover;
+    background: url("/assets/images/full-day-2D.jpg") center/cover;
     z-index: 1;
 }
 
+/* OLD SYSTEM DISABLED - Using new JavaScript overlay system instead */
+/*
 .background-image::after {
     content: '';
     position: absolute;
@@ -64,10 +81,33 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: url("/assets/images/street_night.jpg") center/cover;
+    background: url("images/full-night-2D.jpg") center center;
+    background-size: auto 100%;
+    background-repeat: no-repeat;
     opacity: 0;
     z-index: 2;
     transition: opacity 4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+*/
+
+/* Hide only the before pseudo-element when scene is active, keep after (night overlay) */
+.background-image.scene-active::before {
+    display: none;
+}
+
+/* OLD SYSTEM DISABLED - Using new JavaScript overlay system instead */
+/*
+body.high-contrast .background-image.scene-active::after {
+    display: block;
+}
+*/
+
+/* Override background-size for scrollable scenes and street view */
+.background-image.scene-active {
+    background-size: auto 100% !important;
+    background-position: center center !important;
+    background-repeat: no-repeat !important;
+    object-fit: none !important;
 }
 
 .interactive-points {
@@ -195,20 +235,22 @@ body {
     position: fixed;
     width: 130px;
     height: 130px;
-    background: rgba(157, 110, 109, 0.4);
-    border: 3px dashed #9d6e6d;
+    background: rgba(249, 193, 206, 0.6);
+    border: 3px dashed #f9c1ce;
     border-radius: 50%;
     cursor: crosshair;
     pointer-events: all;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 10;
+    transform-origin: center center;
     box-shadow:
-        inset 2px 2px 8px rgba(255, 255, 255, 0.6),
-        inset -2px -2px 8px rgba(157, 110, 109, 0.4),
-        0 0 0 2px rgba(157, 110, 109, 0.8),
-        0 0 0 4px rgba(255, 255, 255, 0.3),
-        0 6px 16px rgba(0, 0, 0, 0.4),
-        0 12px 32px rgba(0, 0, 0, 0.3);
+        inset 2px 2px 8px rgba(255, 255, 255, 0.8),
+        inset -2px -2px 8px rgba(249, 193, 206, 0.6),
+        0 0 0 2px rgba(249, 193, 206, 0.9),
+        0 0 0 4px rgba(255, 255, 255, 0.5),
+        0 6px 16px rgba(0, 0, 0, 0.6),
+        0 12px 32px rgba(0, 0, 0, 0.4),
+        0 0 20px rgba(249, 193, 206, 0.4);
     transform: scale(1);
     animation: gentlePulse 6s ease-in-out infinite;
 }
@@ -280,6 +322,8 @@ body {
     animation: shrinkCircle 0.3s ease-out;
     transform: scale(1);
 }
+
+/* Scene circles inherit all styling from .point - no custom overrides */
 
 .point.zooming {
     z-index: 1000;
@@ -926,10 +970,10 @@ body {
     
     /* Mobile background - full height with draggable width */
     .background-container {
-        width: 350%; /* Much wider for full image draggability */
+        width: 350%; /* Wide enough for 7000px images without grey space */
         height: 100vh; /* Full viewport height */
         top: 0; /* Start from top */
-        left: -125%; /* Center the much wider container */
+        left: -125%; /* Center the wider container */
         overflow: visible; /* Allow dragging beyond bounds */
     }
     
@@ -940,7 +984,7 @@ body {
         background-size: cover; /* Cover the container */
         background-position: center center;
         background-repeat: no-repeat;
-        transform: scale(1.4); /* 1.4x scale as requested */
+        transform: scale(1.2); /* Slightly higher scale to ensure no gaps */
         transform-origin: center center;
         min-height: 100vh; /* Ensure full height */
     }
@@ -989,15 +1033,15 @@ body {
         padding: 12px;
     }
     .point {
-        width: 130px;
-        height: 130px;
-        border-width: 3px;
+        width: 80px;
+        height: 80px;
+        border-width: 2px;
     }
     
     .point.active,
     .point:hover {
-        width: 182px;
-        height: 182px;
+        width: 110px;
+        height: 110px;
     }
     .dialogue-text-container {
         padding: 0px 26px 0 10px;
@@ -1024,23 +1068,23 @@ body {
     }
 
     .section-text {
-        font-size: 1.1em;
+        font-size: 1.0em;
         line-height: 1.5;
         margin-top: 20px; /* More spacing before section text */
     }
     
     .dialogue-speaker {
-        font-size: 0.9em;
+        font-size: 0.8em;
         margin-top: 14px; /* More spacing above speaker */
         margin-bottom: -7px; /* More spacing after speaker */
     }
     
     .location-title {
-        font-size: 1.3em;
+        font-size: 1.1em;
     }
     
     .location-subtitle {
-        font-size: 1.2em;
+        font-size: 1.0em;
     }
     .spiral-logo {
         width: 40px;
@@ -1048,10 +1092,39 @@ body {
         top: -5px;
         left: 5px;
     }
+    
+    /* Mobile panorama points - smaller for better mobile experience */
+    .panorama-point.interactive-link {
+        width: 60px;
+        height: 60px;
+        border: 3px dotted #f9c1ce;
+    }
+    
+    .panorama-point.back-to-street {
+        width: 45px;
+        height: 45px;
+        border: 2px solid #f9c1ce;
+    }
+    
+    .panorama-point.back-to-street svg {
+        width: 18px;
+        height: 18px;
+    }
 }
 
 /* Tablet responsive */
 @media (min-width: 481px) and (max-width: 768px) {
+    /* Back to street button - position near day/night toggle */
+    .back-to-street-button {
+        top: 90px; /* Below day/night toggle */
+        right: 20px; /* Same horizontal position as day/night toggle */
+        left: auto;
+        bottom: auto;
+        transform: none;
+        padding: 12px 18px;
+        font-size: 15px;
+    }
+    
     /* Fix viewport stretching for tablet */
     body, html {
         width: 100vw;
@@ -1069,10 +1142,10 @@ body {
     
     /* Tablet background - similar to mobile but less extreme */
     .background-container {
-        width: 300%; /* Wide enough for good draggability */
+        width: 350%; /* Wide enough for good draggability to match 7000px images */
         height: 100vh; /* Full viewport height */
         top: 0; /* Start from top */
-        left: -100%; /* Center the wider container */
+        left: -125%; /* Center the wider container */
         overflow: visible; /* Allow dragging beyond bounds */
     }
     
@@ -1110,7 +1183,7 @@ body {
     }
     
     .help-item {
-        font-size: 2.1em;
+        font-size: 1.1em;
     }
     
     .help-icon {
@@ -1120,7 +1193,7 @@ body {
     }
     
     .help-close {
-        font-size: 2.1em; /* Scale up text */
+        font-size: 1.1em; /* Scale up text */
         padding: 31px 63px; /* Scale up padding proportionally */
         min-width: 252px; /* Scale up min-width proportionally */
         margin-top: 16px; /* Scale up margin */
@@ -1386,9 +1459,12 @@ body.high-contrast {
     /* No transitions to prevent bounce-back effect */
 }
 
+/* OLD SYSTEM DISABLED - Using new JavaScript overlay system instead */
+/*
 body.high-contrast .background-image::after {
     opacity: 1;
 }
+*/
 
 body.high-contrast .dialogue-panel {
     background: rgba(26, 26, 26, 1);
@@ -1573,7 +1649,7 @@ body.high-contrast .spiral-logo svg {
     display: block;
 }
 
-/* Panorama overlay for HTML click points - DISABLED: No longer showing circles in 360° views */
+/* Panorama overlay for HTML click points */
 .panorama-overlay {
     position: absolute;
     top: 0;
@@ -1582,7 +1658,7 @@ body.high-contrast .spiral-logo svg {
     height: 100%;
     z-index: 10;
     pointer-events: none; /* Allow drag events to pass through */
-    display: none; /* Hide all panorama circles - showing main dialogue instead */
+    display: block; /* Show panorama circles again */
 }
 
 /* Panorama overlay points */
@@ -1711,8 +1787,8 @@ body.high-contrast .spiral-logo svg {
 
 /* Back to street view button in panorama - styled as dashed circle like other points */
 .panorama-point.back-to-street {
-    width: 70px;
-    height: 70px;
+    width: 55px;
+    height: 55px;
     background: rgba(249, 193, 206, 0.8);
     border: 3px solid #f9c1ce;
     border-radius: 50%;
@@ -1743,8 +1819,8 @@ body.high-contrast .spiral-logo svg {
 }
 
 .panorama-point.back-to-street svg {
-    width: 32px;
-    height: 32px;
+    width: 24px;
+    height: 24px;
     fill: #ffffff;
     stroke: #ffffff;
 }
@@ -1785,14 +1861,27 @@ body.high-contrast .spiral-logo svg {
 
     
     .day-night-toggle {
-        width: 75px;
-        height: 75px;
-        top: 80px;
+        width: 60px;
+        height: 60px;
+        top: 20px;
+        right: 20px;
+        left: auto;
+        transform: none;
     }
     
     .day-night-toggle svg {
-        width: 32px;
-        height: 32px;
+        width: 26px;
+        height: 26px;
+    }
+    
+    /* Back to street button - move to top left on mobile */
+    .back-to-street-button {
+        top: 20px;
+        left: 20px;
+        bottom: auto;
+        transform: none;
+        padding: 10px 15px;
+        font-size: 14px;
     }
     
     
@@ -1835,6 +1924,45 @@ body.high-contrast .spiral-logo svg {
 /* Click to skip text should be pink in day/night mode */
 body.high-contrast .dialogue-text-container.typing::before {
     color: #f9c1ce;
+}
+
+/* 2D Panoramic View System - works like street view */
+.panorama-view {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: #1a1a1a;
+    z-index: 10;
+    overflow: hidden;
+}
+
+.panorama-view .panorama-container {
+    position: absolute;
+    width: 350%; /* Wide 2D panoramic image for horizontal scrolling */
+    height: 120%; /* Slightly taller for vertical movement */
+    top: -10%;
+    left: -125%; /* Center the wide container */
+    cursor: grab;
+    transition: transform 0.15s ease-out;
+    z-index: 1;
+}
+
+.panorama-view .panorama-container:active {
+    cursor: grabbing;
+}
+
+.panorama-view .panorama-container.dragging {
+    cursor: grabbing;
+}
+
+.panorama-view .panorama-image {
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
 }
 
 
