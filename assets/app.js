@@ -71,7 +71,7 @@ const backgroundContainer = document.getElementById("backgroundContainer");
 const interactivePoints = document.getElementById("interactivePoints");
 const dialoguePanel = document.getElementById("dialoguePanel");
 const locationTitle = document.getElementById("locationTitle");
-const locationSubtitle = document.getElementById("locationSubtitle");
+// locationSubtitle removed - using only subtitle class now
 const dialogueTextContainer = document.getElementById("dialogueTextContainer");
 const helpOverlay = document.getElementById("helpOverlay");
 const helpClose = document.getElementById("helpClose");
@@ -599,11 +599,9 @@ function setupEventListeners() {
     ) {
       // On mobile or in scene mode, just hide dialogue without resetting position
       if (isMobileParagraphMode) {
-        // For mobile paragraph mode, only close if all paragraphs are complete
-        if (currentParagraphIndex >= currentParagraphs.length) {
-          closeMobileDialogueWithAnimation();
-        }
-        // Otherwise, don't close - user is still reading paragraphs
+        // For mobile paragraph mode, close dialogue with animation regardless of completion state
+        console.log('Mobile: Outside click - closing dialogue');
+        closeMobileDialogueWithAnimation();
       } else {
         hideDialogue();
       }
@@ -621,35 +619,93 @@ function setupEventListeners() {
     }
   });
 
-  // Auto-close help overlay when clicking anywhere except help overlay
+  // Auto-close help overlay when clicking anywhere except help overlay  
   document.addEventListener("click", (e) => {
+    const isHelpOverlayVisible = !helpOverlay.classList.contains("hidden");
+    const isTargetInOverlay = helpOverlay.contains(e.target);
+    const isTargetInDialogue = dialoguePanel.contains(e.target);
+    const isHelpButton = e.target.id === 'helpButton' || e.target.closest('#helpButton');
+    
+    console.log('Document click - Help overlay check:', {
+      target: e.target.tagName + (e.target.id ? '#' + e.target.id : '') + (e.target.className ? '.' + e.target.className.split(' ')[0] : ''),
+      isHelpOverlayVisible,
+      isTargetInOverlay,
+      isTargetInDialogue,
+      isHelpButton,
+      currentTime: Date.now()
+    });
+    
+    // Close help overlay when clicking outside it (single click should work)
     if (
-      !helpOverlay.classList.contains("hidden") &&
-      !helpOverlay.contains(e.target) &&
-      !dialoguePanel.contains(e.target)
+      isHelpOverlayVisible &&
+      !isTargetInOverlay &&
+      !isTargetInDialogue &&
+      !isHelpButton  // Don't close if clicking help button itself
     ) {
-      helpOverlay.classList.add("hidden");
-      // Show help button after first close
-      showHelpButtonAfterFirstClose();
-      // Start music when user interacts (closes help overlay)
-      startMusicAfterUserInteraction();
-      // Skip welcome message - go straight to dialogue
+      console.log('✅ Closing help overlay via outside click');
+      e.preventDefault();
+      e.stopPropagation();
+      closeHelpOverlay();
     }
-  });
+  }, true); // Use capture phase to ensure we catch clicks first
 
-  helpClose.addEventListener("click", () => {
+  // Centralized function to close help overlay
+  function closeHelpOverlay() {
+    console.log('✅ Closing help overlay');
     helpOverlay.classList.add("hidden");
+    // Remove active state from help button
+    const helpButton = document.getElementById('helpButton');
+    if (helpButton) helpButton.classList.remove('active');
     // Show help button after first close
     showHelpButtonAfterFirstClose();
     // Start music when user interacts (closes help overlay)
     startMusicAfterUserInteraction();
-    // Skip welcome message - go straight to dialogue
+    console.log('✅ Help overlay closed successfully');
+  }
+  
+  // Multiple event listeners for OK button to ensure it works
+  helpClose.addEventListener("click", (e) => {
+    console.log('✅ Help close button clicked via click event');
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    closeHelpOverlay();
+  });
+  
+  helpClose.addEventListener("touchend", (e) => {
+    console.log('✅ Help close button touched via touchend event');
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    closeHelpOverlay();
+  });
+  
+  helpClose.addEventListener("mouseup", (e) => {
+    console.log('✅ Help close button clicked via mouseup event');
+    e.preventDefault();
+    e.stopPropagation();
+    closeHelpOverlay();
+  });
+  
+  // Debug logging
+  helpClose.addEventListener("touchstart", () => {
+    console.log('💆 Help close button touch started');
+  });
+  
+  console.log('Help close button setup complete:', {
+    element: helpClose,
+    rect: helpClose.getBoundingClientRect(),
+    computed: window.getComputedStyle(helpClose),
+    parent: helpClose.parentElement
   });
   
   // Help button event listener to reopen help overlay
   const helpButton = document.getElementById("helpButton");
   helpButton.addEventListener("click", () => {
+    console.log('❓ Help button clicked - showing overlay');
     helpOverlay.classList.remove("hidden");
+    // Add active state to help button
+    helpButton.classList.add('active');
   });
   
   // Check if help button should be shown on page load
@@ -778,14 +834,19 @@ function dragTouch(e) {
   e.preventDefault();
   const touch = e.touches[0];
   
-  // Calculate new position (same as desktop for consistency)
-  const newX = touch.clientX - startX;
-  const newY = touch.clientY - startY;
+  // Calculate new position - 1:1 movement with touch for smooth dragging
+  const deltaX = (touch.clientX - startX) - currentX;
+  const deltaY = (touch.clientY - startY) - currentY;
+  
+  // Apply mobile sensitivity multiplier to the delta, not absolute position
+  const mobileSensitivity = 1.3; // Slightly more responsive
+  const newX = currentX + (deltaX * mobileSensitivity);
+  const newY = currentY + (deltaY * mobileSensitivity);
   
   // Apply drag limits to prevent going beyond image boundaries
   const limits = calculateImageDragLimits();
   
-  // Apply some smoothing for more fluid feel
+  // Apply bounds smoothly
   currentX = Math.max(-limits.maxX, Math.min(limits.maxX, newX));
   currentY = Math.max(-limits.maxY, Math.min(limits.maxY, newY));
   
@@ -1126,7 +1187,7 @@ function enterSceneMode(sceneType) {
     circle.style.opacity = '0';
     setTimeout(() => {
       circle.style.display = 'none';
-    }, 800);
+    }, 400); // Reduced from 800ms to match faster animation
   });
   
   // Load the correct scene image with smooth crossfade transition
@@ -1141,20 +1202,23 @@ function enterSceneMode(sceneType) {
   }
   
   // Create scene-specific circles after crossfade begins
-  setTimeout(() => {
+  // Wait for image to fully load before creating circles and dialogue
+  waitForImageTransition(imagePath, () => {
+    console.log('✅ Scene background loaded, creating circles');
     createSceneSpecificCircles(currentStoryPoint);
-    // Fade in scene circles
+    
+    // Fade in scene circles after they're created
     setTimeout(() => {
       const sceneCircles = document.querySelectorAll('.scene-circle');
       sceneCircles.forEach(circle => {
         circle.style.opacity = '0';
-        circle.style.transition = 'opacity 0.8s ease-in';
+        circle.style.transition = 'opacity 0.6s ease-in';
         setTimeout(() => {
           circle.style.opacity = '1';
         }, 50);
       });
     }, 100);
-  }, 800); // Wait for street circles to fade out
+  });
 }
 
 // Exit scene mode - return to street view
@@ -1231,6 +1295,21 @@ function swapDayNightImage() {
   // Smooth fade transition
   createSmoothImageTransition(backgroundImage, targetImagePath);
   console.log(`✅ Starting fade transition to: ${targetImagePath}`);
+}
+
+// Wait for image to load before continuing with scene setup
+function waitForImageTransition(imagePath, callback) {
+  const img = new Image();
+  img.onload = () => {
+    console.log('✅ Scene image loaded:', imagePath);
+    // Wait additional time for crossfade animation to complete
+    setTimeout(callback, 400);
+  };
+  img.onerror = () => {
+    console.warn('⚠️ Scene image failed to load, continuing anyway:', imagePath);
+    setTimeout(callback, 400);
+  };
+  img.src = imagePath;
 }
 
 // Create a smooth crossfade transition between images
@@ -2115,10 +2194,23 @@ function centerPointOnScreen(pointElement) {
 }
 
 function showMainText(point) {
+  currentStoryPoint = point;
+  
+  // Apply custom dialogue positioning if specified
+  const isMobile = window.innerWidth <= 480;
+  if (point.dialoguePosition) {
+    const position = isMobile ? point.dialoguePosition.mobile : point.dialoguePosition.desktop;
+    console.log('Setting dialogue position:', position, isMobile ? '(mobile)' : '(desktop)');
+    setDialoguePosition(position, isMobile);
+  } else {
+    // Reset to default position
+    resetDialoguePosition();
+  }
+  
   // Check if mobile paragraph mode should be used
   if (initMobileParagraphMode(point)) {
     // Use mobile paragraph system
-    locationSubtitle.textContent = point.mainText?.speaker || '';
+    // Using subtitle class directly in mobile paragraph mode
     
     dialoguePanel.classList.add("visible");
     showMobileParagraph(); // This now handles pre-sizing internally
@@ -2147,7 +2239,7 @@ function showMainText(point) {
   dialogueEntry.className = "dialogue-entry";
 
   const speaker = document.createElement("div");
-  speaker.className = "dialogue-speaker";
+  speaker.className = "subtitle";
   speaker.textContent = point.mainText.speaker;
   dialogueEntry.appendChild(speaker);
 
@@ -2160,7 +2252,7 @@ function showMainText(point) {
   dialogueTextContainer.appendChild(dialogueEntry);
 
   // Pre-calculate height for mobile/tablet before starting typewriter
-  const isMobile = window.innerWidth <= 480;
+  // Reuse isMobile from earlier in function to avoid redeclaration
   const isTablet = window.innerWidth > 480 && window.innerWidth <= 768;
   
   if (isMobile || isTablet) {
@@ -2200,6 +2292,17 @@ function showSection(point, optionKey) {
     return;
   }
   console.log('Found option:', option);
+  
+  // Apply custom dialogue positioning for this option if specified
+  const isMobile = window.innerWidth <= 480;
+  if (option.dialoguePosition) {
+    const position = isMobile ? option.dialoguePosition.mobile : option.dialoguePosition.desktop;
+    console.log('Setting option dialogue position:', position, isMobile ? '(mobile)' : '(desktop)');
+    setDialoguePosition(position, isMobile);
+  } else {
+    // Reset to default position if no custom position specified
+    resetDialoguePosition();
+  }
 
   // Add current state to history before navigating
   addToHistory(point, optionKey);
@@ -2209,7 +2312,7 @@ function showSection(point, optionKey) {
   
   // Update location title and subtitle 
   locationTitle.textContent = point.title; // Use main section title
-  locationSubtitle.textContent = option.content.speaker || "";
+  // Speaker content will be shown via subtitle class in dialogue entry
 
   // Check if mobile paragraph mode should be used for section content
   if (initMobileParagraphMode({ ...point, mainText: option.content })) {
@@ -2240,7 +2343,7 @@ function showSection(point, optionKey) {
   dialogueEntry.className = "dialogue-entry";
 
   const speaker = document.createElement("div");
-  speaker.className = "dialogue-speaker";
+  speaker.className = "subtitle";
   speaker.textContent = option.content.speaker;
   dialogueEntry.appendChild(speaker);
 
@@ -2330,7 +2433,7 @@ function goBack() {
     dialogueEntry.className = "dialogue-entry";
 
     const speaker = document.createElement("div");
-    speaker.className = "dialogue-speaker";
+    speaker.className = "subtitle";
     speaker.textContent = previousState.point.mainText.speaker;
     dialogueEntry.appendChild(speaker);
 
@@ -2373,7 +2476,7 @@ function goBack() {
     dialogueEntry.className = "dialogue-entry";
 
     const speaker = document.createElement("div");
-    speaker.className = "dialogue-speaker";
+    speaker.className = "subtitle";
     speaker.textContent = option.content.speaker;
     dialogueEntry.appendChild(speaker);
 
@@ -2695,6 +2798,18 @@ function renderParsedText(element, parts, point) {
 
 function hideDialogue() {
   dialoguePanel.classList.remove("visible");
+  
+  // ALWAYS reset mobile paragraph mode state when hiding dialogue
+  if (isMobileParagraphMode) {
+    console.log('Resetting mobile paragraph mode state in hideDialogue()');
+    isMobileParagraphMode = false;
+    isExpandedMobileView = false;
+    currentParagraphs = [];
+    currentParagraphIndex = 0;
+    completedParagraphs = [];
+    dialoguePanel.classList.remove('mobile-paragraph-mode');
+    dialoguePanel.classList.remove('dynamic-height');
+  }
   
   // Update back button visibility on mobile
   updateBackButtonVisibility();
@@ -3085,7 +3200,7 @@ function resetMapPosition() {
 }
 
 function setupDialogueSkipListener() {
-  // Unified click handler for both mobile and desktop
+  // Separate click handlers for mobile and desktop
   dialogueTextContainer.addEventListener("click", (e) => {
     console.log(
       "Dialogue click detected - isTyping:",
@@ -3102,40 +3217,29 @@ function setupDialogueSkipListener() {
       return;
     }
 
+    // COMPLETELY DISABLE desktop click-to-skip functionality when in mobile paragraph mode
     if (isMobileParagraphMode) {
-      // Mobile paragraph mode has different behavior
-      if (isTyping) {
-        // First tap: complete current paragraph text immediately
-        console.log("Mobile: First tap - completing paragraph text");
-        playSkipSound();
-        skipToNextSentence = true;
-        hasUsedSkip = true;
-        dialogueTextContainer.classList.remove("typing");
-        return;
-      } else {
-        // Second tap: Only advance if user clicks on the arrow itself, not just anywhere
-        // The arrow has its own click handler, so this does nothing
-        console.log("Mobile: Text area tap when not typing - no action (use arrow to advance)");
-      }
+      console.log("Mobile: All click interactions handled by mobile system only - desktop skip disabled");
+      return; // Do nothing - mobile paragraph mode has its own separate handlers
+    }
+    
+    // Desktop mode behavior (only when NOT in mobile paragraph mode)
+    if (isTyping) {
+      console.log("Desktop: Skipping current typing animation");
+      playSkipSound();
+      skipToNextSentence = true;
+      hasUsedSkip = true;
+      dialogueTextContainer.classList.remove("typing");
+      return;
     } else {
-      // Desktop mode behavior
-      if (isTyping) {
-        console.log("Desktop: Skipping current typing animation");
-        playSkipSound();
-        skipToNextSentence = true;
-        hasUsedSkip = true;
-        dialogueTextContainer.classList.remove("typing");
-        return;
-      } else {
-        // Desktop mode: no action when not typing (preserve existing behavior)
-        console.log("Desktop: No action when not typing");
-      }
+      // Desktop mode: no action when not typing (preserve existing behavior)
+      console.log("Desktop: No action when not typing");
     }
   });
 }
 
 function playSkipSound() {
-  // Create a subtle wooden tap sound using Web Audio API
+  // Create a soft wooden click sound using Web Audio API
   if (
     typeof AudioContext !== "undefined" ||
     typeof webkitAudioContext !== "undefined"
@@ -3143,7 +3247,7 @@ function playSkipSound() {
     const audioContext = new (window.AudioContext ||
       window.webkitAudioContext)();
 
-    // Create a wooden tap sound with multiple frequencies
+    // Create a softer wooden click with natural wood resonance
     const oscillator1 = audioContext.createOscillator();
     const oscillator2 = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
@@ -3154,39 +3258,40 @@ function playSkipSound() {
     filterNode.connect(gainNode);
     gainNode.connect(audioContext.destination);
 
-    // Set up filter for woody resonance
-    filterNode.type = "bandpass";
-    filterNode.frequency.setValueAtTime(400, audioContext.currentTime);
-    filterNode.Q.setValueAtTime(3, audioContext.currentTime);
+    // Set up filter for softer, more natural wood tone
+    filterNode.type = "lowpass";
+    filterNode.frequency.setValueAtTime(600, audioContext.currentTime);
+    filterNode.Q.setValueAtTime(2, audioContext.currentTime);
 
-    // Low frequency for wood body resonance
-    oscillator1.frequency.setValueAtTime(200, audioContext.currentTime);
+    // Lower fundamental frequency for softer click
+    oscillator1.frequency.setValueAtTime(120, audioContext.currentTime);
     oscillator1.frequency.exponentialRampToValueAtTime(
-      150,
-      audioContext.currentTime + 0.08,
+      80,
+      audioContext.currentTime + 0.06,
     );
     
-    // Higher frequency for the tap attack
-    oscillator2.frequency.setValueAtTime(800, audioContext.currentTime);
+    // Gentler attack frequency for soft click
+    oscillator2.frequency.setValueAtTime(350, audioContext.currentTime);
     oscillator2.frequency.exponentialRampToValueAtTime(
-      400,
-      audioContext.currentTime + 0.04,
+      200,
+      audioContext.currentTime + 0.03,
     );
 
-    // Subtle volume with quick attack and medium decay
-    gainNode.gain.setValueAtTime(0.06, audioContext.currentTime);
+    // Softer volume with quick attack and smooth decay
+    gainNode.gain.setValueAtTime(0.04, audioContext.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(
-      0.01,
-      audioContext.currentTime + 0.12,
+      0.005,
+      audioContext.currentTime + 0.08,
     );
 
-    oscillator1.type = "triangle";
-    oscillator2.type = "sawtooth";
+    // Use sine for smoother, more natural wood tone
+    oscillator1.type = "sine";
+    oscillator2.type = "triangle";
     
     oscillator1.start(audioContext.currentTime);
     oscillator2.start(audioContext.currentTime);
-    oscillator1.stop(audioContext.currentTime + 0.12);
-    oscillator2.stop(audioContext.currentTime + 0.06);
+    oscillator1.stop(audioContext.currentTime + 0.08);
+    oscillator2.stop(audioContext.currentTime + 0.04);
   }
 }
 
@@ -3325,6 +3430,12 @@ function initMobileParagraphMode(point) {
   const isMobile = window.innerWidth <= 480;
   if (!isMobile) return false;
   
+  console.log('Initializing mobile paragraph mode - previous state:', {
+    wasMobileParagraphMode: isMobileParagraphMode,
+    oldParagraphIndex: currentParagraphIndex,
+    oldParagraphsLength: currentParagraphs.length
+  });
+  
   isMobileParagraphMode = true;
   isExpandedMobileView = false;
   currentParagraphIndex = 0;
@@ -3393,6 +3504,43 @@ function showMobileParagraph() {
   // Add container to DOM first (so height calculation is stable)
   dialogueTextContainer.appendChild(paragraphContainer);
   
+  // Add mobile-specific click handler to paragraph container
+  paragraphContainer.addEventListener('click', (e) => {
+    e.stopPropagation(); // Prevent event bubbling to desktop handlers
+    
+    console.log('Mobile paragraph click - isTyping:', isTyping);
+    
+    // Don't process clicks on interactive elements
+    if (e.target.classList.contains("interactive-text") || 
+        e.target.closest(".back-button") || 
+        e.target.closest('.mobile-close-button') ||
+        e.target.closest('.mobile-next-arrow')) {
+      return;
+    }
+    
+    if (isTyping) {
+      // First tap: complete current paragraph text immediately
+      console.log("Mobile: First tap - completing paragraph text");
+      playSkipSound();
+      skipToNextSentence = true;
+      hasUsedSkip = true;
+      dialogueTextContainer.classList.remove("typing");
+    } else {
+      // Text is complete, advance to next paragraph like the arrow does
+      console.log("Mobile: Paragraph complete - advancing to next");
+      currentParagraphIndex++;
+      
+      if (currentParagraphIndex < currentParagraphs.length) {
+        console.log('Mobile: Container click - showing next paragraph');
+        showMobileParagraph();
+      } else {
+        // All paragraphs completed - close dialogue with animation
+        console.log('Mobile: Container click - final paragraph reached, closing dialogue');
+        closeMobileDialogueWithAnimation();
+      }
+    }
+  });
+  
   // Now start typewriter animation - the box should not grow
   typeWriterWithLinks(paragraphContainer, paragraph, 0, currentStoryPoint, () => {
     // Paragraph completed, show Next arrow
@@ -3406,10 +3554,7 @@ function showMobileParagraph() {
     });
   });
   
-  // Add swipe down gesture handler (only add once)
-  if (currentParagraphIndex === 0) {
-    addMobileSwipeHandler();
-  }
+  // Swipe handler removed - using click-only advancement
 }
 
 function calculateOptimalDialogueHeight(textContent, isMobile = false, isTablet = false) {
@@ -3599,6 +3744,12 @@ function resizeDialogueToContent() {
 }
 
 function showMobileNextArrow(container) {
+  // Don't show arrow if this is the final paragraph
+  if (currentParagraphIndex >= currentParagraphs.length - 1) {
+    console.log('Mobile: Final paragraph reached - not showing next arrow');
+    return;
+  }
+  
   // Remove any existing next arrows
   const existingArrow = container.querySelector('.mobile-next-arrow');
   if (existingArrow) {
@@ -3634,9 +3785,29 @@ function showMobileNextArrow(container) {
     }
   });
   
-  // Append inline to the last text element in the container
-  const lastChild = container.lastElementChild || container;
-  lastChild.appendChild(nextArrow);
+  // Find the last text node and append the arrow inline right at the end of the text
+  const walker = document.createTreeWalker(
+    container,
+    NodeFilter.SHOW_TEXT,
+    null,
+    false
+  );
+  
+  let lastTextNode = null;
+  let node;
+  while (node = walker.nextNode()) {
+    if (node.nodeValue.trim()) { // Only consider non-empty text nodes
+      lastTextNode = node;
+    }
+  }
+  
+  if (lastTextNode && lastTextNode.parentElement) {
+    // Insert arrow right after the last text content
+    lastTextNode.parentElement.appendChild(nextArrow);
+  } else {
+    // Fallback: append to container
+    container.appendChild(nextArrow);
+  }
   
   // Animate in the arrow
   setTimeout(() => {
@@ -3645,76 +3816,51 @@ function showMobileNextArrow(container) {
   }, 100);
 }
 
-function addMobileSwipeHandler() {
-  let startY = 0;
-  let currentY = 0;
-  let isDragging = false;
+// Swipe handler removed - mobile dialogue now uses click-only advancement
+
+// Dialogue positioning system
+function setDialoguePosition(position, isMobile = false) {
+  const panel = dialoguePanel;
   
-  const handleTouchStart = (e) => {
-    startY = e.touches[0].clientY;
-    isDragging = true;
-  };
+  // Clear existing position classes
+  panel.classList.remove('dialogue-top', 'dialogue-bottom', 'dialogue-left', 'dialogue-right');
   
-  const handleTouchMove = (e) => {
-    if (!isDragging) return;
-    currentY = e.touches[0].clientY;
-    const deltaY = currentY - startY;
-    
-    // Show visual feedback for swipe down (expansion)
-    if (deltaY > 30) {
-      dialoguePanel.style.transform = `translateY(${Math.min(deltaY * 0.3, 50)}px)`;
-      dialoguePanel.style.opacity = Math.max(0.7, 1 - (deltaY * 0.002));
+  if (isMobile) {
+    // Mobile positioning: top or bottom
+    if (position === 'top' || position === 'mobile-top') {
+      panel.classList.add('dialogue-top');
+      panel.style.top = '20px';
+      panel.style.bottom = 'auto';
+    } else if (position === 'bottom' || position === 'mobile-bottom') {
+      panel.classList.add('dialogue-bottom');
+      panel.style.bottom = '20px';
+      panel.style.top = 'auto';
     }
-    // Show visual feedback for swipe up (next paragraph)
-    else if (deltaY < -20) {
-      dialoguePanel.style.transform = `translateY(${Math.max(deltaY * 0.2, -20)}px)`;
-      dialoguePanel.style.opacity = Math.max(0.8, 1 + (deltaY * 0.001));
+  } else {
+    // Desktop positioning: left or right
+    if (position === 'left' || position === 'desktop-left') {
+      panel.classList.add('dialogue-left');
+      panel.style.left = '20px';
+      panel.style.right = 'auto';
+    } else if (position === 'right' || position === 'desktop-right') {
+      panel.classList.add('dialogue-right');
+      panel.style.right = '20px';
+      panel.style.left = 'auto';
     }
-  };
+  }
   
-  const handleTouchEnd = (e) => {
-    if (!isDragging) return;
-    isDragging = false;
-    
-    const deltaY = currentY - startY;
-    
-    // Reset visual feedback
-    dialoguePanel.style.transform = '';
-    dialoguePanel.style.opacity = '';
-    
-    // Trigger expansion if swipe down is significant
-    if (deltaY > 80) {
-      expandMobileDialogue();
-    }
-    // Trigger next paragraph if swipe up is significant
-    else if (deltaY < -50) {
-      advanceToNextParagraph();
-    }
-  };
-  
-  dialoguePanel.addEventListener('touchstart', handleTouchStart, { passive: true });
-  dialoguePanel.addEventListener('touchmove', handleTouchMove, { passive: true });
-  dialoguePanel.addEventListener('touchend', handleTouchEnd, { passive: true });
+  console.log('Dialogue positioned:', position, isMobile ? '(mobile)' : '(desktop)');
 }
 
-function advanceToNextParagraph() {
-  if (!isMobileParagraphMode) return;
+function resetDialoguePosition() {
+  const panel = dialoguePanel;
   
-  currentParagraphIndex++;
-  
-  console.log('Mobile: Advancing paragraph', {
-    currentIndex: currentParagraphIndex,
-    totalParagraphs: currentParagraphs.length,
-    shouldContinue: currentParagraphIndex < currentParagraphs.length
-  });
-  
-  if (currentParagraphIndex < currentParagraphs.length) {
-    showMobileParagraph();
-  } else {
-    // All paragraphs completed - close dialogue with animation
-    console.log('Mobile: All paragraphs completed, closing dialogue');
-    closeMobileDialogueWithAnimation();
-  }
+  // Clear all position classes and styles
+  panel.classList.remove('dialogue-top', 'dialogue-bottom', 'dialogue-left', 'dialogue-right');
+  panel.style.top = '';
+  panel.style.bottom = '';
+  panel.style.left = '';
+  panel.style.right = '';
 }
 
 function closeMobileDialogueWithAnimation() {
@@ -4483,7 +4629,7 @@ function showPanoramaStoryContent(pointData) {
     
     // Fallback: show a simple dialogue with the circle info
     locationTitle.textContent = pointData.title;
-    locationSubtitle.textContent = "";
+    // No longer using locationSubtitle element
     storyText.innerHTML = `<p>This is the ${pointData.title} section content.</p>`;
     dialoguePanel.classList.add("visible");
     hideMinimizedDialogueTab();
@@ -4501,7 +4647,7 @@ function showPanoramaStoryContent(pointData) {
     
     // Fallback: show basic info
     locationTitle.textContent = pointData.title;
-    locationSubtitle.textContent = "";
+    // No longer using locationSubtitle element
     storyText.innerHTML = `<p>Content for ${pointData.title} (${pointData.key})</p>`;
     dialoguePanel.classList.add("visible");
     hideMinimizedDialogueTab();
@@ -4559,7 +4705,7 @@ function showPanoramaStoryContent(pointData) {
   
   // Update title
   locationTitle.textContent = contentOption.content.speaker || pointData.title;
-  locationSubtitle.textContent = "";
+  // No longer using locationSubtitle element
   
   // Show the dialogue panel
   dialoguePanel.classList.add("visible");
@@ -4762,7 +4908,7 @@ function showInteractiveLinkContent(pointData) {
   
   // Update the dialogue panel with the new content
   locationTitle.textContent = pointData.title;
-  locationSubtitle.textContent = ""; // Clear subtitle for sub-content
+  // No longer using locationSubtitle element // Clear subtitle for sub-content
   
   // Clear existing dialogue content
   dialogueTextContainer.innerHTML = "";
@@ -4774,7 +4920,7 @@ function showInteractiveLinkContent(pointData) {
   // Add speaker if present
   if (pointData.content.speaker) {
     const speaker = document.createElement("div");
-    speaker.className = "dialogue-speaker";
+    speaker.className = "subtitle";
     speaker.textContent = pointData.content.speaker;
     dialogueEntry.appendChild(speaker);
   }
@@ -4968,7 +5114,7 @@ function showPanoramaDialogue(point) {
   
   currentStoryPoint = point;
   locationTitle.textContent = point.title;
-  locationSubtitle.textContent = point.subtitle || "";
+  // Point subtitle now handled via subtitle class in dialogue entry
 
   // Mark this point as visited
   visitedContent.add(point.title);
@@ -5177,7 +5323,7 @@ function showFoodSubContent(foodSubPoint) {
   // Check if mobile paragraph mode should be used
   if (initMobileParagraphMode(currentStoryPoint)) {
     // Use mobile paragraph system
-    locationSubtitle.textContent = actualContent.speaker || '';
+    // Speaker content handled via subtitle class
     
     dialoguePanel.classList.add("visible");
     showMobileParagraph();
@@ -5186,7 +5332,7 @@ function showFoodSubContent(foodSubPoint) {
   }
 
   // Desktop mode continues with existing system
-  locationSubtitle.textContent = "";
+  // No longer using locationSubtitle element
   
   // Clear dialogue content
   dialogueTextContainer.innerHTML = '';
@@ -5494,7 +5640,7 @@ function showTransportSubContent(transportSubPoint) {
   // Check if mobile paragraph mode should be used
   if (initMobileParagraphMode(currentStoryPoint)) {
     // Use mobile paragraph system
-    locationSubtitle.textContent = actualContent.speaker || '';
+    // Speaker content handled via subtitle class
     
     dialoguePanel.classList.add("visible");
     showMobileParagraph();
@@ -5503,7 +5649,7 @@ function showTransportSubContent(transportSubPoint) {
   }
 
   // Desktop mode continues with existing system
-  locationSubtitle.textContent = "";
+  // No longer using locationSubtitle element
   
   dialogueTextContainer.innerHTML = '';
   
@@ -5605,7 +5751,7 @@ function showEnergySubContent(energySubPoint) {
   // Check if mobile paragraph mode should be used
   if (initMobileParagraphMode(currentStoryPoint)) {
     // Use mobile paragraph system
-    locationSubtitle.textContent = actualContent.speaker || '';
+    // Speaker content handled via subtitle class
     
     dialoguePanel.classList.add("visible");
     showMobileParagraph();
@@ -5614,7 +5760,7 @@ function showEnergySubContent(energySubPoint) {
   }
 
   // Desktop mode continues with existing system
-  locationSubtitle.textContent = "";
+  // No longer using locationSubtitle element
   
   // Clear dialogue content
   dialogueTextContainer.innerHTML = '';
@@ -5673,7 +5819,7 @@ function showEducationSubContent(educationSubPoint) {
   // Check if mobile paragraph mode should be used
   if (initMobileParagraphMode(currentStoryPoint)) {
     // Use mobile paragraph system
-    locationSubtitle.textContent = actualContent.speaker || '';
+    // Speaker content handled via subtitle class
     
     dialoguePanel.classList.add("visible");
     showMobileParagraph();
@@ -5682,7 +5828,7 @@ function showEducationSubContent(educationSubPoint) {
   }
 
   // Desktop mode continues with existing system
-  locationSubtitle.textContent = "";
+  // No longer using locationSubtitle element
   
   // Clear dialogue content
   dialogueTextContainer.innerHTML = '';
