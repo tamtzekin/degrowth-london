@@ -19,6 +19,13 @@ let visitedContent = new Set(); // Track which dialogue content has been visited
 let isTypingPaused = false;
 let pausedTypingState = null; // Store the exact state when paused
 
+// Mobile paragraph dialogue system variables
+let isMobileParagraphMode = false; // Track if we're in mobile paragraph mode
+let currentParagraphs = []; // Array of paragraphs to display
+let currentParagraphIndex = 0; // Current paragraph being displayed
+let isExpandedMobileView = false; // Track if mobile dialogue is expanded to full screen
+let completedParagraphs = []; // Store completed paragraphs for expanded view
+
 // View toggle variables
 let isMapView = true;
 let isSceneMode = false; // Track if we're in a dedicated scene mode
@@ -233,6 +240,61 @@ function createInteractivePoints() {
       // Clear any pending hover timeout
       clearTimeout(pointElement.hoverTimeout);
       hideHoverTitle();
+    });
+
+    // Add mobile touch hold functionality
+    let holdTimeout = null;
+    let isHolding = false;
+    
+    pointElement.addEventListener("touchstart", (e) => {
+      const isMobile = window.innerWidth <= 480;
+      if (isMobile) {
+        isHolding = false;
+        
+        // Start hold timer
+        holdTimeout = setTimeout(() => {
+          isHolding = true;
+          // Scale up circle like desktop hover
+          pointElement.style.transform = 'translate(-50%, -50%) scale(1.15)';
+          pointElement.style.transition = 'transform 0.2s ease';
+          
+          // Show title with subtle animation
+          showHoverTitle(e, point.title);
+        }, 500); // 500ms hold to trigger
+      }
+    });
+    
+    pointElement.addEventListener("touchend", (e) => {
+      const isMobile = window.innerWidth <= 480;
+      if (isMobile) {
+        // Clear hold timer
+        if (holdTimeout) {
+          clearTimeout(holdTimeout);
+          holdTimeout = null;
+        }
+        
+        if (isHolding) {
+          // Was holding - reset scale and hide title
+          pointElement.style.transform = 'translate(-50%, -50%) scale(1)';
+          hideHoverTitle();
+          isHolding = false;
+          e.preventDefault(); // Prevent click
+        }
+        // If not holding, let normal click handler work
+      }
+    });
+    
+    pointElement.addEventListener("touchcancel", (e) => {
+      const isMobile = window.innerWidth <= 480;
+      if (isMobile && holdTimeout) {
+        clearTimeout(holdTimeout);
+        holdTimeout = null;
+        if (isHolding) {
+          pointElement.style.transform = 'translate(-50%, -50%) scale(1)';
+          hideHoverTitle();
+          isHolding = false;
+        }
+      }
     });
     
     interactivePoints.appendChild(pointElement);
@@ -525,7 +587,8 @@ function setupEventListeners() {
       !isSceneMode &&  // Don't reset when in scene mode
       !isMobile  // Don't reset map position on mobile - stay where user positioned it
     ) {
-      resetMapPosition();
+      // Don't reset map position - stay in same place after dialogue closes
+      // resetMapPosition();
       hideDialogue();
     } else if (
       !e.target.closest(".point") &&
@@ -535,7 +598,15 @@ function setupEventListeners() {
       currentStoryPoint !== null
     ) {
       // On mobile or in scene mode, just hide dialogue without resetting position
-      hideDialogue();
+      if (isMobileParagraphMode) {
+        // For mobile paragraph mode, only close if all paragraphs are complete
+        if (currentParagraphIndex >= currentParagraphs.length) {
+          closeMobileDialogueWithAnimation();
+        }
+        // Otherwise, don't close - user is still reading paragraphs
+      } else {
+        hideDialogue();
+      }
     }
   });
 
@@ -558,6 +629,8 @@ function setupEventListeners() {
       !dialoguePanel.contains(e.target)
     ) {
       helpOverlay.classList.add("hidden");
+      // Show help button after first close
+      showHelpButtonAfterFirstClose();
       // Start music when user interacts (closes help overlay)
       startMusicAfterUserInteraction();
       // Skip welcome message - go straight to dialogue
@@ -566,10 +639,24 @@ function setupEventListeners() {
 
   helpClose.addEventListener("click", () => {
     helpOverlay.classList.add("hidden");
+    // Show help button after first close
+    showHelpButtonAfterFirstClose();
     // Start music when user interacts (closes help overlay)
     startMusicAfterUserInteraction();
     // Skip welcome message - go straight to dialogue
   });
+  
+  // Help button event listener to reopen help overlay
+  const helpButton = document.getElementById("helpButton");
+  helpButton.addEventListener("click", () => {
+    helpOverlay.classList.remove("hidden");
+  });
+  
+  // Check if help button should be shown on page load
+  const hasClosedBefore = localStorage.getItem('helpOverlayClosedOnce');
+  if (hasClosedBefore) {
+    helpButton.classList.add('show');
+  }
   
   // Update help text for touchscreen devices
   updateHelpTextForDevice();
@@ -662,11 +749,20 @@ function startDragTouch(e) {
     e.target.closest(".dialogue-panel")
   )
     return;
+  
   isDragging = true;
   container.classList.add("dragging");
   const touch = e.touches[0];
+  
+  // Store the initial touch position and current translation
   startX = touch.clientX - currentX;
   startY = touch.clientY - currentY;
+  
+  // Disable smooth transitions during drag to prevent conflicts
+  document.documentElement.style.setProperty('--dragging', '1');
+  
+  // Prevent scrolling and other touch behaviors on mobile
+  e.preventDefault();
 }
 
 function drag(e) {
@@ -682,13 +778,16 @@ function dragTouch(e) {
   e.preventDefault();
   const touch = e.touches[0];
   
-  // Calculate new position with slight momentum
+  // Calculate new position (same as desktop for consistency)
   const newX = touch.clientX - startX;
   const newY = touch.clientY - startY;
   
+  // Apply drag limits to prevent going beyond image boundaries
+  const limits = calculateImageDragLimits();
+  
   // Apply some smoothing for more fluid feel
-  currentX = newX;
-  currentY = newY;
+  currentX = Math.max(-limits.maxX, Math.min(limits.maxX, newX));
+  currentY = Math.max(-limits.maxY, Math.min(limits.maxY, newY));
   
   updateBackgroundPosition();
 }
@@ -1190,6 +1289,22 @@ function getSceneImagePath(sceneType, isNightMode) {
   }
 }
 
+function showHelpButtonAfterFirstClose() {
+  // Check if this is the first time closing help overlay
+  const hasClosedBefore = localStorage.getItem('helpOverlayClosedOnce');
+  
+  if (!hasClosedBefore) {
+    // Mark that user has closed help overlay once
+    localStorage.setItem('helpOverlayClosedOnce', 'true');
+    
+    // Show the help button
+    const helpButton = document.getElementById("helpButton");
+    if (helpButton) {
+      helpButton.classList.add('show');
+    }
+  }
+}
+
 // Update help overlay text for touchscreen devices
 function updateHelpTextForDevice() {
   // Detect touchscreen capability
@@ -1502,8 +1617,8 @@ function handleCircleClick(point, pointElement, index) {
     pointElement.classList.add('zooming');
     
     // Apply zoom transform to background and points
-    backgroundContainer.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-    interactivePoints.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    backgroundContainer.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    interactivePoints.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
     
     const zoomScale = 1.5; // Zoom level
     
@@ -2000,6 +2115,18 @@ function centerPointOnScreen(pointElement) {
 }
 
 function showMainText(point) {
+  // Check if mobile paragraph mode should be used
+  if (initMobileParagraphMode(point)) {
+    // Use mobile paragraph system
+    locationSubtitle.textContent = point.mainText?.speaker || '';
+    
+    dialoguePanel.classList.add("visible");
+    showMobileParagraph(); // This now handles pre-sizing internally
+    updateBackButtonVisibility();
+    return;
+  }
+
+  // Desktop/normal mode continues with existing system
   // Reset skip state variables for new main text
   skipToNextSentence = false;
   hasUsedSkip = false;
@@ -2032,6 +2159,25 @@ function showMainText(point) {
   // Add container first
   dialogueTextContainer.appendChild(dialogueEntry);
 
+  // Pre-calculate height for mobile/tablet before starting typewriter
+  const isMobile = window.innerWidth <= 480;
+  const isTablet = window.innerWidth > 480 && window.innerWidth <= 768;
+  
+  if (isMobile || isTablet) {
+    const preCalculatedHeight = calculateOptimalDialogueHeight(point.mainText.text, isMobile, isTablet);
+    if (preCalculatedHeight) {
+      if (isMobile) {
+        resizeMobileDialogueToContent(preCalculatedHeight);
+      } else {
+        // For tablet
+        dialoguePanel.classList.add('dynamic-height');
+        dialoguePanel.style.transition = 'height 0.3s ease-out';
+        dialoguePanel.style.height = `${preCalculatedHeight}px`;
+        setTimeout(() => { dialoguePanel.style.transition = ''; }, 300);
+      }
+    }
+  }
+
   // Animate text typing letter by letter with inline link parsing
   typeWriterWithLinks(text, point.mainText.text, 0, point, () => {
     addBackButton(text, point, "main");
@@ -2057,6 +2203,22 @@ function showSection(point, optionKey) {
 
   // Add current state to history before navigating
   addToHistory(point, optionKey);
+
+  // Store the current story point for mobile paragraph system
+  currentStoryPoint = point;
+  
+  // Update location title and subtitle 
+  locationTitle.textContent = point.title; // Use main section title
+  locationSubtitle.textContent = option.content.speaker || "";
+
+  // Check if mobile paragraph mode should be used for section content
+  if (initMobileParagraphMode({ ...point, mainText: option.content })) {
+    // Use mobile paragraph system for sections too
+    dialoguePanel.classList.add("visible");
+    showMobileParagraph();
+    updateBackButtonVisibility();
+    return;
+  }
 
   // Reset skip state variables for new section
   skipToNextSentence = false;
@@ -2093,6 +2255,8 @@ function showSection(point, optionKey) {
   // Animate text typing letter by letter with inline link parsing
   typeWriterWithLinks(text, option.content.text, 0, point, () => {
     addBackButton(text, point, optionKey);
+    // Resize dialogue to fit content after text completes
+    setTimeout(() => resizeDialogueToContent(), 100);
   });
 
   dialoguePanel.classList.add("visible");
@@ -2100,6 +2264,9 @@ function showSection(point, optionKey) {
   
   // Update back button visibility on mobile
   updateBackButtonVisibility();
+  
+  // Initial resize to fit content
+  setTimeout(() => resizeDialogueToContent(), 300);
   
   // Mark interactive text link as visited (since user has clicked and engaged with it)
   // This is done after content creation so visited class is applied to newly created elements
@@ -2918,40 +3085,57 @@ function resetMapPosition() {
 }
 
 function setupDialogueSkipListener() {
-  // Add click handler to dialogue text container for skip functionality
+  // Unified click handler for both mobile and desktop
   dialogueTextContainer.addEventListener("click", (e) => {
     console.log(
-      "Skip click detected - isTyping:",
+      "Dialogue click detected - isTyping:",
       isTyping,
-      "target:",
-      e.target,
-      "hasInteractiveClass:",
-      e.target.classList.contains("interactive-text"),
+      "isMobileParagraphMode:",
+      isMobileParagraphMode
     );
 
-    // Only skip if we're typing and not clicking on interactive text or back button
-    if (isTyping && !e.target.classList.contains("interactive-text") && !e.target.closest(".back-button")) {
-      console.log("Executing skip to next sentence");
+    // Don't process if clicking on interactive elements
+    if (e.target.classList.contains("interactive-text") || 
+        e.target.closest(".back-button") || 
+        e.target.closest('.mobile-close-button') ||
+        e.target.closest('.mobile-next-arrow')) {
+      return;
+    }
 
-      // Play gentle click sound
-      playSkipSound();
-
-      skipToNextSentence = true;
-      hasUsedSkip = true;
-      dialogueTextContainer.classList.remove("typing");
+    if (isMobileParagraphMode) {
+      // Mobile paragraph mode has different behavior
+      if (isTyping) {
+        // First tap: complete current paragraph text immediately
+        console.log("Mobile: First tap - completing paragraph text");
+        playSkipSound();
+        skipToNextSentence = true;
+        hasUsedSkip = true;
+        dialogueTextContainer.classList.remove("typing");
+        return;
+      } else {
+        // Second tap: Only advance if user clicks on the arrow itself, not just anywhere
+        // The arrow has its own click handler, so this does nothing
+        console.log("Mobile: Text area tap when not typing - no action (use arrow to advance)");
+      }
     } else {
-      console.log(
-        "Skip blocked - isTyping:",
-        isTyping,
-        "isInteractive:",
-        e.target.classList.contains("interactive-text"),
-      );
+      // Desktop mode behavior
+      if (isTyping) {
+        console.log("Desktop: Skipping current typing animation");
+        playSkipSound();
+        skipToNextSentence = true;
+        hasUsedSkip = true;
+        dialogueTextContainer.classList.remove("typing");
+        return;
+      } else {
+        // Desktop mode: no action when not typing (preserve existing behavior)
+        console.log("Desktop: No action when not typing");
+      }
     }
   });
 }
 
 function playSkipSound() {
-  // Create a gentle click sound using Web Audio API
+  // Create a subtle wooden tap sound using Web Audio API
   if (
     typeof AudioContext !== "undefined" ||
     typeof webkitAudioContext !== "undefined"
@@ -2959,29 +3143,50 @@ function playSkipSound() {
     const audioContext = new (window.AudioContext ||
       window.webkitAudioContext)();
 
-    // Create a gentle, leafy click sound
-    const oscillator = audioContext.createOscillator();
+    // Create a wooden tap sound with multiple frequencies
+    const oscillator1 = audioContext.createOscillator();
+    const oscillator2 = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
+    const filterNode = audioContext.createBiquadFilter();
 
-    oscillator.connect(gainNode);
+    oscillator1.connect(filterNode);
+    oscillator2.connect(filterNode);
+    filterNode.connect(gainNode);
     gainNode.connect(audioContext.destination);
 
-    // Gentle, high-pitched click with quick decay
-    oscillator.frequency.setValueAtTime(1200, audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(
-      800,
-      audioContext.currentTime + 0.1,
+    // Set up filter for woody resonance
+    filterNode.type = "bandpass";
+    filterNode.frequency.setValueAtTime(400, audioContext.currentTime);
+    filterNode.Q.setValueAtTime(3, audioContext.currentTime);
+
+    // Low frequency for wood body resonance
+    oscillator1.frequency.setValueAtTime(200, audioContext.currentTime);
+    oscillator1.frequency.exponentialRampToValueAtTime(
+      150,
+      audioContext.currentTime + 0.08,
+    );
+    
+    // Higher frequency for the tap attack
+    oscillator2.frequency.setValueAtTime(800, audioContext.currentTime);
+    oscillator2.frequency.exponentialRampToValueAtTime(
+      400,
+      audioContext.currentTime + 0.04,
     );
 
-    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+    // Subtle volume with quick attack and medium decay
+    gainNode.gain.setValueAtTime(0.06, audioContext.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(
       0.01,
-      audioContext.currentTime + 0.15,
+      audioContext.currentTime + 0.12,
     );
 
-    oscillator.type = "sine";
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.15);
+    oscillator1.type = "triangle";
+    oscillator2.type = "sawtooth";
+    
+    oscillator1.start(audioContext.currentTime);
+    oscillator2.start(audioContext.currentTime);
+    oscillator1.stop(audioContext.currentTime + 0.12);
+    oscillator2.stop(audioContext.currentTime + 0.06);
   }
 }
 
@@ -3114,6 +3319,498 @@ window.addEventListener('resize', () => {
     }
   }
 });
+
+// Mobile paragraph dialogue system functions
+function initMobileParagraphMode(point) {
+  const isMobile = window.innerWidth <= 480;
+  if (!isMobile) return false;
+  
+  isMobileParagraphMode = true;
+  isExpandedMobileView = false;
+  currentParagraphIndex = 0;
+  completedParagraphs = [];
+  
+  // Split text into paragraphs (split by double newlines or <br><br>)
+  let textToSplit = point.mainText ? point.mainText.text : '';
+  if (!textToSplit && point.options && point.options.length > 0) {
+    // If no main text, use first option's content
+    textToSplit = point.options[0].content ? point.options[0].content.text : '';
+  }
+  
+  // Split by double line breaks or paragraph markers
+  currentParagraphs = textToSplit.split(/\n\s*\n|<br>\s*<br>|\\\n\s*\\\n/).filter(p => p.trim());
+  
+  // If no paragraph breaks found but text is long, split by sentences for mobile readability
+  if (currentParagraphs.length === 1 && textToSplit.length > 200) {
+    // Split by sentence endings followed by whitespace
+    const sentences = textToSplit.split(/(?<=[.!?])\s+/).filter(s => s.trim());
+    if (sentences.length > 1) {
+      // Group sentences into reasonable chunks (2-3 sentences per paragraph)
+      currentParagraphs = [];
+      for (let i = 0; i < sentences.length; i += 2) {
+        const chunk = sentences.slice(i, i + 2).join(' ').trim();
+        if (chunk) currentParagraphs.push(chunk);
+      }
+    }
+  }
+  
+  console.log('Mobile paragraph mode initialized:', {
+    totalParagraphs: currentParagraphs.length,
+    firstParagraph: currentParagraphs[0]?.substring(0, 100),
+    allParagraphs: currentParagraphs.map((p, i) => `${i}: ${p.substring(0, 50)}...`)
+  });
+  
+  return true;
+}
+
+function showMobileParagraph() {
+  if (!isMobileParagraphMode || currentParagraphIndex >= currentParagraphs.length) {
+    console.log('Mobile: Cannot show paragraph - mode:', isMobileParagraphMode, 'index:', currentParagraphIndex, 'total:', currentParagraphs.length);
+    return;
+  }
+  
+  const paragraph = currentParagraphs[currentParagraphIndex];
+  const isMobile = window.innerWidth <= 480;
+  
+  console.log('Mobile: Starting paragraph', currentParagraphIndex + 1, ':', paragraph.substring(0, 50) + '...');
+  
+  // Clear existing content
+  dialogueTextContainer.innerHTML = '';
+  
+  // Use dynamic sizing that grows with content
+  dialoguePanel.classList.add('dynamic-height');
+  dialoguePanel.classList.add('mobile-paragraph-mode');
+  
+  // Reset to natural sizing - let it grow dynamically
+  dialoguePanel.style.height = 'auto';
+  dialoguePanel.style.minHeight = 'auto';
+  dialoguePanel.style.maxHeight = 'none';
+  
+  // Create paragraph container
+  const paragraphContainer = document.createElement('div');
+  paragraphContainer.className = 'mobile-paragraph-container';
+  
+  // Add container to DOM first (so height calculation is stable)
+  dialogueTextContainer.appendChild(paragraphContainer);
+  
+  // Now start typewriter animation - the box should not grow
+  typeWriterWithLinks(paragraphContainer, paragraph, 0, currentStoryPoint, () => {
+    // Paragraph completed, show Next arrow
+    showMobileNextArrow(paragraphContainer);
+    
+    // Store completed paragraph
+    completedParagraphs.push({
+      index: currentParagraphIndex,
+      content: paragraph,
+      element: paragraphContainer.cloneNode(true)
+    });
+  });
+  
+  // Add swipe down gesture handler (only add once)
+  if (currentParagraphIndex === 0) {
+    addMobileSwipeHandler();
+  }
+}
+
+function calculateOptimalDialogueHeight(textContent, isMobile = false, isTablet = false) {
+  // Create a temporary invisible element that exactly matches the dialogue structure
+  const tempDialogue = document.createElement('div');
+  tempDialogue.className = 'dialogue-panel visible'; // Add visible to get proper styling
+  if (isMobile) tempDialogue.classList.add('dynamic-height');
+  
+  tempDialogue.style.cssText = `
+    position: absolute;
+    visibility: hidden;
+    left: -9999px;
+    top: -9999px;
+    width: ${isMobile ? 'calc(100vw - 30px)' : isTablet ? 'calc(100vw - 40px)' : '450px'};
+    opacity: 0;
+    pointer-events: none;
+    height: auto;
+    max-height: none;
+    min-height: auto;
+  `;
+  
+  // Create the dialogue structure exactly as it appears
+  const dialogueContent = document.createElement('div');
+  dialogueContent.className = 'dialogue-content';
+  
+  const dialogueHeader = document.createElement('div');
+  dialogueHeader.className = 'dialogue-header';
+  
+  // Use actual title content for more accurate measurement
+  const locationTitle = document.createElement('div');
+  locationTitle.className = 'location-title';
+  locationTitle.textContent = currentStoryPoint?.title || 'Sample Title';
+  
+  const locationSubtitle = document.createElement('div');
+  locationSubtitle.className = 'location-subtitle';
+  locationSubtitle.textContent = currentStoryPoint?.mainText?.speaker || '';
+  
+  dialogueHeader.appendChild(locationTitle);
+  dialogueHeader.appendChild(locationSubtitle);
+  
+  const textContainer = document.createElement('div');
+  textContainer.className = 'dialogue-text-container';
+  
+  // Create the paragraph container structure
+  const paragraphContainer = document.createElement('div');
+  paragraphContainer.className = isMobile ? 'mobile-paragraph-container' : 'dialogue-entry';
+  
+  // Add the text content - render the FULL text at once to measure properly
+  const textDiv = document.createElement('div');
+  textDiv.className = 'section-text';
+  
+  // Process the text through the same parsing system to handle links/formatting
+  const parsedParts = parseTextWithLinksAndStyling(textContent, currentStoryPoint || {});
+  parsedParts.forEach(part => {
+    if (part.type === 'text') {
+      textDiv.appendChild(document.createTextNode(part.content));
+    } else if (part.type === 'link') {
+      const linkSpan = document.createElement('span');
+      linkSpan.className = 'interactive-text';
+      linkSpan.textContent = part.content;
+      textDiv.appendChild(linkSpan);
+    } else if (part.type === 'styled') {
+      const styledSpan = document.createElement('span');
+      styledSpan.className = part.styleClass;
+      styledSpan.textContent = part.content;
+      textDiv.appendChild(styledSpan);
+    } else if (part.type === 'linebreak') {
+      textDiv.appendChild(document.createElement('br'));
+    }
+  });
+  
+  paragraphContainer.appendChild(textDiv);
+  textContainer.appendChild(paragraphContainer);
+  dialogueContent.appendChild(dialogueHeader);
+  dialogueContent.appendChild(textContainer);
+  tempDialogue.appendChild(dialogueContent);
+  
+  document.body.appendChild(tempDialogue);
+  
+  // Force a reflow to ensure accurate measurement
+  tempDialogue.offsetHeight;
+  
+  // Get the actual rendered height
+  const totalHeight = tempDialogue.getBoundingClientRect().height;
+  document.body.removeChild(tempDialogue);
+  
+  console.log('Height calculation for single paragraph:', {
+    textPreview: textContent.substring(0, 50) + '...',
+    fullTextLength: textContent.length,
+    measuredHeight: totalHeight,
+    isMobile,
+    isTablet
+  });
+  
+  // Add minimal breathing room for mobile paragraphs
+  const breathingRoom = 10;
+  const finalHeight = totalHeight + breathingRoom;
+  
+  let maxHeight, minHeight;
+  if (isMobile) {
+    maxHeight = window.innerHeight * 0.8;
+    // For mobile paragraphs, use natural content height with small minimum
+    minHeight = 80; // Small fixed minimum instead of percentage
+  } else if (isTablet) {
+    maxHeight = window.innerHeight * 0.7;
+    minHeight = window.innerHeight * 0.3;
+  } else {
+    // Desktop - return null to use CSS defaults
+    return null;
+  }
+  
+  const result = Math.max(minHeight, Math.min(maxHeight, finalHeight));
+  console.log('Final calculated height:', result);
+  return result;
+}
+
+function resizeMobileDialogueToContent(preCalculatedHeight = null) {
+  const isMobile = window.innerWidth <= 480;
+  if (!isMobile) return;
+  
+  // Skip resizing if in expanded view
+  if (isExpandedMobileView) return;
+  
+  let newHeight;
+  if (preCalculatedHeight) {
+    newHeight = preCalculatedHeight;
+  } else {
+    // Fallback to current method if no pre-calculated height (shouldn't happen in new system)
+    console.warn('Mobile: Using fallback height calculation - this should not happen with pre-sizing');
+    const contentHeight = dialogueTextContainer.scrollHeight;
+    const headerHeight = 90;
+    const padding = 60;
+    const maxHeight = window.innerHeight * 0.8;
+    const minHeight = window.innerHeight * 0.2;
+    newHeight = Math.max(minHeight, Math.min(maxHeight, contentHeight + headerHeight + padding));
+  }
+  
+  // Add dynamic height class to override CSS constraints
+  dialoguePanel.classList.add('dynamic-height');
+  
+  // Apply the new height with smooth transition for paragraph changes
+  dialoguePanel.style.transition = 'height 0.3s ease-out';
+  dialoguePanel.style.height = `${newHeight}px`;
+  dialoguePanel.style.minHeight = `${newHeight}px`;
+  dialoguePanel.style.maxHeight = `${newHeight}px`;
+  
+  console.log('Mobile: Dialogue height set to', newHeight + 'px');
+  
+  // Remove transition after animation completes
+  setTimeout(() => {
+    dialoguePanel.style.transition = '';
+  }, 300);
+}
+
+function resizeDialogueToContent() {
+  const isMobile = window.innerWidth <= 480;
+  const isTablet = window.innerWidth > 480 && window.innerWidth <= 768;
+  
+  if (isMobile) {
+    resizeMobileDialogueToContent();
+    return;
+  }
+  
+  if (isTablet) {
+    // For tablets, also resize dynamically
+    const contentHeight = dialogueTextContainer.scrollHeight;
+    const headerHeight = 90;
+    const padding = 60;
+    const maxHeight = window.innerHeight * 0.7;
+    const minHeight = window.innerHeight * 0.3;
+    
+    const newHeight = Math.max(minHeight, Math.min(maxHeight, contentHeight + headerHeight + padding));
+    
+    // Add dynamic height class to override CSS constraints
+    dialoguePanel.classList.add('dynamic-height');
+    dialoguePanel.style.transition = 'height 0.3s ease-out';
+    dialoguePanel.style.height = `${newHeight}px`;
+    
+    setTimeout(() => {
+      dialoguePanel.style.transition = '';
+    }, 300);
+  } else {
+    // Desktop: remove dynamic height class to use CSS defaults
+    dialoguePanel.classList.remove('dynamic-height');
+    dialoguePanel.style.height = '';
+  }
+}
+
+function showMobileNextArrow(container) {
+  // Remove any existing next arrows
+  const existingArrow = container.querySelector('.mobile-next-arrow');
+  if (existingArrow) {
+    existingArrow.remove();
+  }
+  
+  // Create inline span element instead of div
+  const nextArrow = document.createElement('span');
+  nextArrow.className = 'mobile-next-arrow';
+  nextArrow.innerHTML = `
+    <svg width="16" height="12" viewBox="0 0 20 16" fill="currentColor">
+      <path d="M12 2l6 6-6 6v-4H2V6h10V2z"/>
+    </svg>
+  `;
+  
+  nextArrow.addEventListener('click', (e) => {
+    e.stopPropagation();
+    currentParagraphIndex++;
+    
+    console.log('Mobile: Next arrow clicked', {
+      newIndex: currentParagraphIndex,
+      totalParagraphs: currentParagraphs.length,
+      shouldShowNext: currentParagraphIndex < currentParagraphs.length
+    });
+    
+    if (currentParagraphIndex < currentParagraphs.length) {
+      console.log('Mobile: Showing next paragraph');
+      showMobileParagraph();
+    } else {
+      // All paragraphs completed - close dialogue with animation
+      console.log('Mobile: Final paragraph reached, closing dialogue');
+      closeMobileDialogueWithAnimation();
+    }
+  });
+  
+  // Append inline to the last text element in the container
+  const lastChild = container.lastElementChild || container;
+  lastChild.appendChild(nextArrow);
+  
+  // Animate in the arrow
+  setTimeout(() => {
+    nextArrow.style.opacity = '1';
+    nextArrow.style.transform = 'translateY(0)';
+  }, 100);
+}
+
+function addMobileSwipeHandler() {
+  let startY = 0;
+  let currentY = 0;
+  let isDragging = false;
+  
+  const handleTouchStart = (e) => {
+    startY = e.touches[0].clientY;
+    isDragging = true;
+  };
+  
+  const handleTouchMove = (e) => {
+    if (!isDragging) return;
+    currentY = e.touches[0].clientY;
+    const deltaY = currentY - startY;
+    
+    // Show visual feedback for swipe down (expansion)
+    if (deltaY > 30) {
+      dialoguePanel.style.transform = `translateY(${Math.min(deltaY * 0.3, 50)}px)`;
+      dialoguePanel.style.opacity = Math.max(0.7, 1 - (deltaY * 0.002));
+    }
+    // Show visual feedback for swipe up (next paragraph)
+    else if (deltaY < -20) {
+      dialoguePanel.style.transform = `translateY(${Math.max(deltaY * 0.2, -20)}px)`;
+      dialoguePanel.style.opacity = Math.max(0.8, 1 + (deltaY * 0.001));
+    }
+  };
+  
+  const handleTouchEnd = (e) => {
+    if (!isDragging) return;
+    isDragging = false;
+    
+    const deltaY = currentY - startY;
+    
+    // Reset visual feedback
+    dialoguePanel.style.transform = '';
+    dialoguePanel.style.opacity = '';
+    
+    // Trigger expansion if swipe down is significant
+    if (deltaY > 80) {
+      expandMobileDialogue();
+    }
+    // Trigger next paragraph if swipe up is significant
+    else if (deltaY < -50) {
+      advanceToNextParagraph();
+    }
+  };
+  
+  dialoguePanel.addEventListener('touchstart', handleTouchStart, { passive: true });
+  dialoguePanel.addEventListener('touchmove', handleTouchMove, { passive: true });
+  dialoguePanel.addEventListener('touchend', handleTouchEnd, { passive: true });
+}
+
+function advanceToNextParagraph() {
+  if (!isMobileParagraphMode) return;
+  
+  currentParagraphIndex++;
+  
+  console.log('Mobile: Advancing paragraph', {
+    currentIndex: currentParagraphIndex,
+    totalParagraphs: currentParagraphs.length,
+    shouldContinue: currentParagraphIndex < currentParagraphs.length
+  });
+  
+  if (currentParagraphIndex < currentParagraphs.length) {
+    showMobileParagraph();
+  } else {
+    // All paragraphs completed - close dialogue with animation
+    console.log('Mobile: All paragraphs completed, closing dialogue');
+    closeMobileDialogueWithAnimation();
+  }
+}
+
+function closeMobileDialogueWithAnimation() {
+  console.log('Closing mobile dialogue with animation');
+  
+  // Add close animation class
+  dialoguePanel.classList.add('closing');
+  
+  // Hide the dialogue after animation completes
+  setTimeout(() => {
+    hideDialogue();
+    dialoguePanel.classList.remove('closing');
+    dialoguePanel.classList.remove('mobile-paragraph-mode');
+    
+    // Clean up mobile paragraph mode
+    isMobileParagraphMode = false;
+    isExpandedMobileView = false;
+    currentParagraphs = [];
+    currentParagraphIndex = 0;
+    completedParagraphs = [];
+  }, 300); // Match animation duration
+}
+
+function expandMobileDialogue() {
+  isExpandedMobileView = true;
+  
+  // Clear current content and show all completed paragraphs
+  dialogueTextContainer.innerHTML = '';
+  
+  // Create scrollable container with all paragraphs
+  const expandedContainer = document.createElement('div');
+  expandedContainer.className = 'mobile-expanded-container';
+  
+  // Add all completed paragraphs
+  completedParagraphs.forEach(para => {
+    const paraDiv = para.element.cloneNode(true);
+    // Remove next arrows from completed paragraphs
+    const arrows = paraDiv.querySelectorAll('.mobile-next-arrow');
+    arrows.forEach(arrow => arrow.remove());
+    expandedContainer.appendChild(paraDiv);
+    
+    // Add spacing between paragraphs
+    const spacer = document.createElement('div');
+    spacer.style.height = '20px';
+    expandedContainer.appendChild(spacer);
+  });
+  
+  // Add X button in top-right
+  const closeButton = document.createElement('div');
+  closeButton.className = 'mobile-close-button';
+  closeButton.innerHTML = '×';
+  closeButton.addEventListener('click', () => {
+    contractMobileDialogue();
+  });
+  
+  // Style the expanded view
+  dialoguePanel.classList.add('mobile-expanded');
+  dialogueTextContainer.appendChild(expandedContainer);
+  dialogueTextContainer.appendChild(closeButton);
+  
+  // Scroll to bottom to show latest content
+  setTimeout(() => {
+    dialogueTextContainer.scrollTop = dialogueTextContainer.scrollHeight;
+  }, 100);
+}
+
+function contractMobileDialogue() {
+  isExpandedMobileView = false;
+  dialoguePanel.classList.remove('mobile-expanded');
+  
+  // Return to paragraph mode
+  showMobileParagraph();
+}
+
+function exitMobileParagraphMode() {
+  isMobileParagraphMode = false;
+  isExpandedMobileView = false;
+  
+  // Don't restart dialogue - just show completed paragraphs with interactive options
+  // The last paragraph should already have all the interactive text/links from the typewriter system
+  console.log('Mobile paragraph mode finished - staying on completed content');
+  
+  // Reset variables for next time
+  currentParagraphs = [];
+  currentParagraphIndex = 0;
+  completedParagraphs = [];
+  
+  // Remove the next arrow from the last paragraph since we're done
+  const lastArrow = dialogueTextContainer.querySelector('.mobile-next-arrow');
+  if (lastArrow) {
+    lastArrow.remove();
+  }
+  
+  // Make sure the dialogue box is sized correctly for the final content
+  setTimeout(() => resizeMobileDialogueToContent(), 100);
+}
 
 // Optimize texture setup for performance
 function setupTexture(texture) {
@@ -4476,6 +5173,19 @@ function showFoodSubContent(foodSubPoint) {
   };
   
   locationTitle.textContent = foodSubPoint.title;
+  
+  // Check if mobile paragraph mode should be used
+  if (initMobileParagraphMode(currentStoryPoint)) {
+    // Use mobile paragraph system
+    locationSubtitle.textContent = actualContent.speaker || '';
+    
+    dialoguePanel.classList.add("visible");
+    showMobileParagraph();
+    console.log('Food sub-content displayed (mobile mode):', foodSubPoint.title);
+    return;
+  }
+
+  // Desktop mode continues with existing system
   locationSubtitle.textContent = "";
   
   // Clear dialogue content
@@ -4493,29 +5203,37 @@ function showFoodSubContent(foodSubPoint) {
     dialogueEntry.appendChild(speakerDiv);
   }
   
-  // Add main text
+  // Add main text with typewriter effect instead of innerHTML
   const textDiv = document.createElement('div');
   textDiv.className = 'section-text';
-  textDiv.innerHTML = parseTextWithLinks(actualContent.text);
   dialogueEntry.appendChild(textDiv);
   
-  // Add back button
-  const backButton = document.createElement('div');
-  backButton.className = 'back-button';
-  backButton.innerHTML = '← Back to Food Overview';
-  backButton.addEventListener('click', () => {
-    // Return to main food overview
-    const mainFoodPoint = storyPoints.find(point => point.title === "Food");
-    if (mainFoodPoint) {
-      showMainText(mainFoodPoint);
-    }
+  // Use typewriter system like main dialogues
+  typeWriterWithLinks(textDiv, actualContent.text, 0, currentStoryPoint, () => {
+    // Add back button after text completes
+    const backButton = document.createElement('div');
+    backButton.className = 'back-button';
+    backButton.innerHTML = '← Back to Food Overview';
+    backButton.addEventListener('click', () => {
+      // Return to main food overview
+      const mainFoodPoint = storyPoints.find(point => point.title === "Food");
+      if (mainFoodPoint) {
+        showMainText(mainFoodPoint);
+      }
+    });
+    dialogueEntry.appendChild(backButton);
+    
+    // Resize dialogue to fit content after text completes
+    setTimeout(() => resizeDialogueToContent(), 100);
   });
-  dialogueEntry.appendChild(backButton);
   
   dialogueTextContainer.appendChild(dialogueEntry);
   
   // Show dialogue panel
   dialoguePanel.classList.add('visible');
+  
+  // Initial resize to fit content
+  setTimeout(() => resizeDialogueToContent(), 300);
   
   console.log('Food sub-content displayed:', foodSubPoint.title);
 }
@@ -4772,6 +5490,19 @@ function showTransportSubContent(transportSubPoint) {
   };
   
   locationTitle.textContent = transportSubPoint.title;
+  
+  // Check if mobile paragraph mode should be used
+  if (initMobileParagraphMode(currentStoryPoint)) {
+    // Use mobile paragraph system
+    locationSubtitle.textContent = actualContent.speaker || '';
+    
+    dialoguePanel.classList.add("visible");
+    showMobileParagraph();
+    console.log('Transport sub-content displayed (mobile mode):', transportSubPoint.title);
+    return;
+  }
+
+  // Desktop mode continues with existing system
   locationSubtitle.textContent = "";
   
   dialogueTextContainer.innerHTML = '';
@@ -4788,19 +5519,22 @@ function showTransportSubContent(transportSubPoint) {
   
   const textDiv = document.createElement('div');
   textDiv.className = 'section-text';
-  textDiv.innerHTML = actualContent.text;
   dialogueEntry.appendChild(textDiv);
   
-  const backButton = document.createElement('div');
-  backButton.className = 'section-text dialogue-option';
-  backButton.innerHTML = '[Back to main Transport view](back)';
-  backButton.addEventListener('click', () => {
-    const mainTransportPoint = storyPoints.find(point => point.title === "Transport");
-    if (mainTransportPoint) {
-      showMainText(mainTransportPoint);
-    }
+  // Use typewriter system like main dialogues
+  typeWriterWithLinks(textDiv, actualContent.text, 0, currentStoryPoint, () => {
+    // Add back button after text completes
+    const backButton = document.createElement('div');
+    backButton.className = 'section-text dialogue-option';
+    backButton.innerHTML = '[Back to main Transport view](back)';
+    backButton.addEventListener('click', () => {
+      const mainTransportPoint = storyPoints.find(point => point.title === "Transport");
+      if (mainTransportPoint) {
+        showMainText(mainTransportPoint);
+      }
+    });
+    dialogueEntry.appendChild(backButton);
   });
-  dialogueEntry.appendChild(backButton);
   
   dialogueTextContainer.appendChild(dialogueEntry);
   dialoguePanel.classList.add('visible');
@@ -4867,6 +5601,19 @@ function showEnergySubContent(energySubPoint) {
   };
   
   locationTitle.textContent = energySubPoint.title;
+  
+  // Check if mobile paragraph mode should be used
+  if (initMobileParagraphMode(currentStoryPoint)) {
+    // Use mobile paragraph system
+    locationSubtitle.textContent = actualContent.speaker || '';
+    
+    dialoguePanel.classList.add("visible");
+    showMobileParagraph();
+    console.log('Energy sub-content displayed (mobile mode):', energySubPoint.title);
+    return;
+  }
+
+  // Desktop mode continues with existing system
   locationSubtitle.textContent = "";
   
   // Clear dialogue content
@@ -4884,18 +5631,20 @@ function showEnergySubContent(energySubPoint) {
     dialogueEntry.appendChild(speakerElement);
   }
   
-  // Add text content
+  // Add text content with typewriter effect
   const textElement = document.createElement('div');
   textElement.className = 'section-text';
-  textElement.textContent = actualContent.text;
   dialogueEntry.appendChild(textElement);
   
-  // Add back to main option
-  const backElement = document.createElement('div');
-  backElement.className = 'section-text';
-  backElement.style.marginTop = '20px';
-  backElement.innerHTML = '[Back to Energy overview](close)';
-  dialogueEntry.appendChild(backElement);
+  // Use typewriter system like main dialogues
+  typeWriterWithLinks(textElement, actualContent.text, 0, currentStoryPoint, () => {
+    // Add back to main option after text completes
+    const backElement = document.createElement('div');
+    backElement.className = 'section-text';
+    backElement.style.marginTop = '20px';
+    backElement.innerHTML = '[Back to Energy overview](close)';
+    dialogueEntry.appendChild(backElement);
+  });
   
   dialogueTextContainer.appendChild(dialogueEntry);
   
@@ -4920,6 +5669,19 @@ function showEducationSubContent(educationSubPoint) {
   };
   
   locationTitle.textContent = educationSubPoint.title;
+  
+  // Check if mobile paragraph mode should be used
+  if (initMobileParagraphMode(currentStoryPoint)) {
+    // Use mobile paragraph system
+    locationSubtitle.textContent = actualContent.speaker || '';
+    
+    dialoguePanel.classList.add("visible");
+    showMobileParagraph();
+    console.log('Education sub-content displayed (mobile mode):', educationSubPoint.title);
+    return;
+  }
+
+  // Desktop mode continues with existing system
   locationSubtitle.textContent = "";
   
   // Clear dialogue content
@@ -4937,18 +5699,20 @@ function showEducationSubContent(educationSubPoint) {
     dialogueEntry.appendChild(speakerElement);
   }
   
-  // Add text content
+  // Add text content with typewriter effect
   const textElement = document.createElement('div');
   textElement.className = 'section-text';
-  textElement.textContent = actualContent.text;
   dialogueEntry.appendChild(textElement);
   
-  // Add back to main option
-  const backElement = document.createElement('div');
-  backElement.className = 'section-text';
-  backElement.style.marginTop = '20px';
-  backElement.innerHTML = '[Back to Education overview](close)';
-  dialogueEntry.appendChild(backElement);
+  // Use typewriter system like main dialogues
+  typeWriterWithLinks(textElement, actualContent.text, 0, currentStoryPoint, () => {
+    // Add back to main option after text completes
+    const backElement = document.createElement('div');
+    backElement.className = 'section-text';
+    backElement.style.marginTop = '20px';
+    backElement.innerHTML = '[Back to Education overview](close)';
+    dialogueEntry.appendChild(backElement);
+  });
   
   dialogueTextContainer.appendChild(dialogueEntry);
   
@@ -4983,8 +5747,8 @@ function returnToStreetView() {
   
   // Phase 2: Apply smoother reverse zoom effect with cross-fade preparation
   setTimeout(() => {
-    backgroundContainer.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.4s ease';
-    interactivePoints.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    backgroundContainer.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.4s ease';
+    interactivePoints.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
     
     // Apply smoother zoom-out effect
     const zoomOutScale = 0.85;
@@ -5002,8 +5766,8 @@ function returnToStreetView() {
   // Phase 3: Reset zoom and start background cross-fade
   setTimeout(() => {
     // Smoothly reset transforms
-    backgroundContainer.style.transition = 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-    interactivePoints.style.transition = 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    backgroundContainer.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    interactivePoints.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
     backgroundContainer.style.transform = `translate(${currentX}px, ${currentY}px)`;
     interactivePoints.style.transform = `translate(${currentX}px, ${currentY}px)`;
     
