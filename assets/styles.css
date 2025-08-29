@@ -968,31 +968,43 @@ body.high-contrast .background-image.scene-active::after {
         position: relative;
     }
     
-    /* Mobile background - full height with draggable width */
+    /* Mobile background - full height with very wide draggable width */
     .background-container {
-        width: 350%; /* Wide enough for 7000px images without grey space */
+        width: 800%; /* Much wider for full image width access */
         height: 100vh; /* Full viewport height */
-        top: 0; /* Start from top */
-        left: -125%; /* Center the wider container */
+        top: 0; /* Align to top - don't push up over buttons */
+        left: -350%; /* Center the much wider container */
         overflow: visible; /* Allow dragging beyond bounds */
     }
     
     .background-image {
         width: 100%;
-        height: 100vh; /* Stretch to full screen height */
-        object-fit: cover; /* Cover entire area */
-        background-size: cover; /* Cover the container */
+        height: 100vh; /* Use viewport height */
+        object-fit: cover; /* Cover entire area for street view */
         background-position: center center;
         background-repeat: no-repeat;
-        transform: scale(1.2); /* Slightly higher scale to ensure no gaps */
-        transform-origin: center center;
-        min-height: 100vh; /* Ensure full height */
+        position: relative;
+    }
+    
+    /* Scene-specific mobile background - allow full width scrolling */
+    .background-image.scene-active {
+        background-size: auto 100vh !important; /* Full height, auto width for horizontal scrolling */
+        background-position: center center !important;
+        background-repeat: no-repeat !important;
+    }
+    
+    /* Ensure background image pseudo-element covers full width on mobile */
+    .background-image::before {
+        width: 100%;
+        height: 100%;
+        background-size: cover !important;
+        background-position: center center !important;
     }
     
     .dialogue-panel {
         width: calc(100% - 30px); /* Offset left and right */
-        height: 50vh; /* 1/4 smaller than previous 66.67vh */
-        max-height: 50vh; /* Prevent stretching beyond this */
+        height: 35vh; /* Increased size for better readability */
+        max-height: 35vh; /* Prevent stretching beyond this */
         bottom: 15px; /* Offset from bottom */
         left: 15px; /* Offset from left */
         top: auto;
@@ -1003,6 +1015,11 @@ body.high-contrast .background-image.scene-active::after {
         border-radius: 8px;
         overflow: hidden; /* Prevent content from stretching panel */
         box-sizing: border-box; /* Include borders in size calculation */
+    }
+    
+    /* Hide connector lines on mobile - they don't point correctly */
+    .dialogue-panel::before {
+        display: none !important;
     }
     .help-overlay {
         min-width: 90%;
@@ -1142,23 +1159,31 @@ body.high-contrast .background-image.scene-active::after {
     
     /* Tablet background - similar to mobile but less extreme */
     .background-container {
-        width: 350%; /* Wide enough for good draggability to match 7000px images */
-        height: 100vh; /* Full viewport height */
-        top: 0; /* Start from top */
-        left: -125%; /* Center the wider container */
+        width: 380%; /* Wide enough for good draggability to match 7000px images */
+        height: 105vh; /* Slightly taller to prevent gaps */
+        top: -2.5vh; /* Center vertically */
+        left: -140%; /* Center the wider container */
         overflow: visible; /* Allow dragging beyond bounds */
     }
     
     .background-image {
         width: 100%;
-        height: 100vh; /* Stretch to full screen height */
+        height: 100%; /* Fill container completely */
         object-fit: cover; /* Cover entire area */
         background-size: cover; /* Cover the container */
         background-position: center center;
         background-repeat: no-repeat;
-        transform: scale(1.2); /* Moderate zoom for tablet */
+        transform: scale(1.05); /* Moderate zoom for tablet */
         transform-origin: center center;
-        min-height: 100vh; /* Ensure full height */
+        min-height: 105vh; /* Match container height */
+    }
+    
+    /* Ensure background image pseudo-element covers full width on tablet */
+    .background-image::before {
+        width: 100%;
+        height: 100%;
+        background-size: cover !important;
+        background-position: center center !important;
     }
     
     .dialogue-panel {
@@ -1874,13 +1899,11 @@ body.high-contrast .spiral-logo svg {
         height: 26px;
     }
     
-    /* Back to street button - move to top left on mobile */
+    /* Back to street button - positioned dynamically by JavaScript on mobile */
     .back-to-street-button {
-        top: 20px;
-        left: 20px;
-        bottom: auto;
-        transform: none;
+        /* Position will be set by JavaScript based on dialogue location */
         padding: 10px 15px;
+        z-index: 1000; /* Ensure it stays above other elements */
         font-size: 14px;
     }
     

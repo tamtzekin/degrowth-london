@@ -2,8 +2,8 @@
   {
     "x": 52,
     "y": 62,
-    "mobileX": 25,
-    "mobileY": 35,
+    "mobileX": 52,
+    "mobileY": 64,
     "title": "Transport",
     "subtitle": "",
     "mainText": {
@@ -15,6 +15,8 @@
         "key": "networks",
         "x": 24,
         "y": 75,
+        "mobileX": 28, 
+        "mobileY": 73,
         "content": {
           "speaker": "Green Transport Networks",
           "text": "Cycle routes are no longer crammed on the roadside, but have space to wheel safely on smooth, well–drained surfaces. \n\nClearly delineated from the pedestrian walkways, these bike–paths are similarly lined with trees and subtly illuminated by lights which minimise disruption of nature.\n\nMore buses, bike routes and parks, and trains, and better transport time management all were essential steps in phasing cars out of London.\n\nIncorporating cycling lessons into schools and giving everyone access to a bike or motorised transport at bike—speed, saw cycling successfully replace cars as the primary form of transport."
@@ -24,6 +26,8 @@
         "key": "private_cars",
         "x": 95,
         "y": 90,
+        "mobileX": 86, 
+        "mobileY": 83.5,
         "content": {
           "speaker": "Beyond Private Cars",
           "text": "*Bus routes* weave beyond the city, ferrying commuters to their cars which are kept in car parks in the suburbs.\n\nBetter bus and walking routes mean less cars, and the ones that still exist are small.\n\nThere’s no pressure to buy cheap meat or processed snacks. No aisles of confusion or empty advertising. Food choices are clearer, healthier, and kinder.\n\nBy removing the profit motive from food supply chains, we returned value to both farmers and eaters. and electric, efficient and practical.\n\nIntelligent time management, such as staggering school years leaving times, makes better use of the existing buses we have."
@@ -33,15 +37,19 @@
         "key": "returned_people",
         "x": 54,
         "y": 64,
+        "mobileX": 53, 
+        "mobileY": 64,
         "content": {
           "speaker": "Reclaimed Spaces",
-          "text": "Transforming London’s old car—focused areas into *green spaces*, *vegetable gardens*, and *parks* was a collaborative project for local community groups including schools, community centres, and elderly homes.\n\n*Bike hubs* and workshops popped up in the place of petrol stations; wooden benches and colourful climbing frames in the place of roundabouts.\n\nResidents *co—designed* the new pedestrian, bike and work—road routes, with nationalised rail and bus fares keeping prices low in the place of cars."
+          "text": "Transforming London’s old car-focused areas into *green spaces*, *vegetable gardens*, and *parks* was a collaborative project for local community groups including schools, community centres, and elderly homes.\n\n*Bike hubs* and workshops popped up in the place of petrol stations; wooden benches and colourful climbing frames in the place of roundabouts.\n\nResidents *co-designed* the new pedestrian, bike and work-road routes, with nationalised rail and bus fares keeping prices low in the place of cars."
         }
       },
       {
         "key": "traffic_gone",
         "x": 0,
         "y": 70,
+        "mobileX": 7.5, 
+        "mobileY": 62,
         "content": {
           "speaker": "Traffic–free streets",
           "text": "Cities are carefully planned so roads for deliveries, buses and rubbish collection don’t dominate the cityscape.\n\nAs consumption and waste plummet, deliveries and rubbish collection operate at a reduced rate, creating space for more buses.\n\n*Traffic lights* are rare since there is no need for external enforcement between bikes."
@@ -53,8 +61,8 @@
   {
     "x": 72,
     "y": -5,
-    "mobileX": 70,
-    "mobileY": 15,
+    "mobileX": 69,
+    "mobileY": 4,
     "title": "Education",
     "subtitle": "",
     "mainText": {
@@ -66,6 +74,8 @@
         "key": "cooperation_first",
         "x": 8,
         "y": 82,
+        "mobileX": 18, 
+        "mobileY": 80,
         "content": {
           "speaker": "Cooperative learning",
           "text": "From their first day, students learn together. Classes use *sociocracy* and consensus for decision-making. Students co-manage shared resources, from school gardens to time in the workshop, learning care, fairness and mutual responsibility. Lessons in maths, geography, and citizenship come to life when children measure harvests, plan irrigation, or build structures together.\n\nMovement is part of the curriculum: not just for fitness, but for joy, play, and collaboration. The *science of wellbeing* is embedded throughout the day, and valued equally to academic growth."
@@ -75,6 +85,8 @@
         "key": "connected_knowledge",
         "x": 62.5,
         "y": 20,
+        "mobileX": 60.5, 
+        "mobileY": 24,
         "content": {
           "speaker": "Learning about the real world",
           "text": "Subjects are no longer silos. Education is multidisciplinary and grounded in the real world. A lesson in biology flows into economics, politics, and ethics. Students investigate the causes of pollution, then model cooperative economies that protect the commons.\n\nThey learn about markets and lobbying, ecological tipping points, and the power of collective action. Personal development is rooted in ecological and financial literacy, mental health, and civic participation."
@@ -84,6 +96,8 @@
         "key": "lifelong_education",
         "x": 65,
         "y": 70,
+        "mobileX": 63, 
+        "mobileY": 67,
         "content": {
           "speaker": "Education for Life",
           "text": "*Universities* have evolved into intergenerational hubs, where research, craft, politics and care intersect.\n\nDegree programs are flexible, shaped around planetary needs and community priorities, not fixed by outdated models.\n\nAcross all levels, education adapts, rooted in human complexity and ecological systems. Wellbeing, reciprocity, and care are no longer add–ons, but the foundation.\n\nThis is education for a world in repair: *alive, adaptive, and shared*."
@@ -95,19 +109,21 @@
   {
     "x": 51,
     "y": 13,
-    "mobileX": 15,
-    "mobileY": 25,
+    "mobileX": 51,
+    "mobileY": 23,
     "title": "Energy",
     "subtitle": "",
     "mainText": {
-      "speaker": "Clean Energy for All",
+      "speaker": "Clean energy",
       "text": "Rooftops, schools, car parks and even bus shelters are lined with [solar panels](energy_coops).\n\nHomes once cold and leaky are now warm and dry, fitted with heat pumps and high—performance insulation.\n\nEnergy bills have [dropped](fair_share). Mould is gone. People feel [safe](living_system) in their homes again."
     },
     "options": [
       {
         "key": "energy_coops",
-        "x": 30,
-        "y": 5,
+        "x": 69,
+        "y": 24,
+        "mobileX": 66, 
+        "mobileY": 27,
         "content": {
           "speaker": "Community energy",
           "text": "Everyone is a member of their *local energy cooperative*, benefiting from the energy we collectively generate and use.\n\nEveryone has access to affordable, renewable energy and we understand it as a collective responsibility: a resource cared for like the water we drink or the air we breathe.\n\nWhen energy prices spiked, people came together. Campaigners demanding affordable energy linked arms with those fighting to leave fossil fuels behind.\n\nThey made the case: no one should choose between heating and eating. Their movement grew strong enough to bring in the Mayor of London, and from there, a *citizens’ assembly* was formed."
@@ -115,8 +131,10 @@
       },
       {
         "key": "fair_share",
-        "x": 20,
-        "y": 15,
+        "x": 73,
+        "y": 80,
+        "mobileX": 69, 
+        "mobileY": 79,
         "content": {
           "speaker": "Fair share",
           "text": "The assembly agreed on an *equitable energy allowance*. The wealthiest in London who used the most energy, would reduce their consumption or be charged a premium for the extra energy they used.\n\nThe funds from this premium would be used to retrofit and insulate London’s leakiest homes, improving living standards and wellbeing at the same time.\n\nLocal authorities stepped up, changing planning rules to make way for *neighbourhood—owned energy networks*.\n\nThese flexible systems put power back in the hands of communities. People vote on decisions, share the benefits, and reinvest profits locally."
@@ -124,11 +142,13 @@
       },
       {
         "key": "living_system",
-        "x": 15,
-        "y": 8,
+        "x": 26,
+        "y": 60,
+        "mobileX": 30, 
+        "mobileY": 53,
         "content": {
-          "speaker": "Living Energy Systems",
-          "text": "Building new energy systems hasn’t been easy. The old grid creaks under the pressure, and demand from AI and data centres keeps rising.\n\nBut change is underway. Solar panels are being sourced from ethical supply chains.\n\nWorkers across Europe are shaping a *just energy transition*, one that doesn’t rely on exploitation or environmental harm.\n\nAnd still, the movement grows. Warm homes, cleaner air, and democratic control over local energy are no longer just ideas — they’re the new normal."
+          "speaker": "Living energy systems",
+          "text": "Building new energy systems hasn’t been easy. The old grid creaks under the pressure, and demand from AI and data centres keeps rising.\n\nBut change is underway. Solar panels are being sourced from ethical supply chains.\n\nWorkers across Europe are shaping a *just energy transition*, one that doesn’t rely on exploitation or environmental harm.\n\nAnd still, the movement grows. Warm homes, cleaner air, and democratic control over local energy are no longer just ideas - they’re the new normal."
         }
       }
     ]
@@ -137,8 +157,6 @@
   {
     "x": 30,
     "y": 60,
-    "mobileX": 25,
-    "mobileY": 60,
     "title": "Food",
     "subtitle": "",
     "mainText": {
@@ -159,6 +177,8 @@
         "key": "slow_food",
         "x": 87,
         "y": 62,
+        "mobileX": 81, 
+        "mobileY": 60,
         "content": {
           "speaker": "Slow food culture",
           "text": "Food isn’t rushed anymore. With slower lives and less work pressure, people have time to grow, cook, and preserve.\n\nJars of jam line windowsills. Leftovers are frozen, dried or pickled.\n\nCanning and fermenting are community rituals again, not chores."
@@ -168,6 +188,8 @@
         "key": "waste",
         "x": 67,
         "y": 54,
+        "mobileX": 64.5, 
+        "mobileY": 53,
         "content": {
           "speaker": "Circular Food System",
           "text": "Plastic packaging has all but disappeared. Glass jars, cloth bags, and simple containers are returned and reused.\n\nSome processing remains – milk is pasteurised, beans are dried – but the rest is done at home, together.\n\nFood waste is rare. What’s left is composted or *redistributed*: organised by councils, shared between neighbours, or offered freely in community fridges."
@@ -188,8 +210,8 @@
   {
     "x": 62,
     "y": 90,
-    "mobileX": 75,
-    "mobileY": 35,
+    "mobileX": 60,
+    "mobileY": 88,
     "title": "Governance",
     "subtitle": "",
     "mainText": {
@@ -229,8 +251,8 @@
         "x": 12,
         "y": 10,
         "content": {
-          "speaker": "Grassroots Transformation",
-          "text": "Power is distributed. Each community shapes its own priorities while contributing to a broader movement for justice, equity, and ecological repair.\n\nDegrowth means an abundance in the things that truly matter: connection, community, and care.\n\nWhen we dismantled the political systems of profit–driven destruction, we could cultivate spaces where people flourish, where the earth is healed, and justice is a daily practice.\n\n*Local action* is the heartbeat of this transformation.\n\nThrough these grassroots movements, we continue to build a world where everyone has a stake, where solidarity triumphs over division, and where the future is not dictated by markets but co–created and curated by the many."
+          "speaker": "Power is distributed",
+          "text": "Each community shapes its own priorities while contributing to a broader movement for justice, equity, and ecological repair.\n\nDegrowth means an abundance in the things that truly matter: connection, community, and care.\n\nWhen we dismantled the political systems of profit-driven destruction, we could cultivate spaces where people flourish, where the earth is healed, and justice is a daily practice.\n\n*Local action* is the heartbeat of this transformation.\n\nThrough these grassroots movements, we continue to build a world where everyone has a stake, where solidarity triumphs over division, and where the future is not dictated by markets but co-created and curated by the many."
         }
       }
     ]
@@ -239,12 +261,12 @@
   {
     "x": 84,
     "y": 52,
-    "mobileX": 70,
-    "mobileY": 70,
+    "mobileX": 78,
+    "mobileY": 36,
     "title": "Housing",
     "subtitle": "",
     "mainText": {
-      "speaker": "Homes for All",
+      "speaker": "Homes for all",
       "text": "Housing is [plentiful](ownership), owned and managed by [local residents](bottom_up_planning) in cooperation with the local authority.\n\nOur neighbourhoods [blossom](blossoming_neighbourhoods) with public art that celebrates our diversity and [heritage](place_based).\n\nOur built environment helps our spiritual, emotional and intellectual selves [flourish](diversity_care)."
     },
     "options": [

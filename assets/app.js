@@ -213,14 +213,19 @@ function createInteractivePoints() {
       handleCircleClick(point, pointElement, index),
     );
     
-    // Add hover event listeners for title display
+    // Add hover event listeners for title display (desktop only)
     pointElement.addEventListener("mouseenter", (e) => {
       // Disable edge scrolling while hovering over circle
       isHoveringCircle = true;
       stopEdgeScrolling(); // Stop any current scrolling immediately
-      // Add small delay to prevent flickering
-      clearTimeout(pointElement.hoverTimeout);
-      pointElement.hoverTimeout = setTimeout(() => showHoverTitle(e, point.title), 50);
+      
+      // Only show hover titles on desktop (not mobile)
+      const isMobile = window.innerWidth <= 480;
+      if (!isMobile) {
+        // Add small delay to prevent flickering
+        clearTimeout(pointElement.hoverTimeout);
+        pointElement.hoverTimeout = setTimeout(() => showHoverTitle(e, point.title), 50);
+      }
     });
     pointElement.addEventListener("mouseleave", () => {
       // Re-enable edge scrolling when leaving circle
@@ -269,6 +274,150 @@ function setupBackgroundDragControls() {
 }
 
 let hoverTitleElement = null;
+let objectOutlinesContainer = null;
+
+// Initialize object outlines container
+function initializeObjectOutlines() {
+  if (!objectOutlinesContainer) {
+    objectOutlinesContainer = document.createElement('div');
+    objectOutlinesContainer.id = 'objectOutlinesContainer';
+    objectOutlinesContainer.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 100;
+    `;
+    document.body.appendChild(objectOutlinesContainer);
+    console.log('Object outlines container initialized');
+  }
+}
+
+// Show object outline for a specific circle
+function showObjectOutline(circleTitle) {
+  hideObjectOutlines(); // Clear any existing outlines
+  
+  const outline = getObjectOutlineDefinition(circleTitle);
+  if (!outline) return;
+  
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.className = `object-outline ${circleTitle.toLowerCase()}-outline`;
+  svg.style.cssText = `
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 100;
+  `;
+  
+  svg.innerHTML = outline;
+  objectOutlinesContainer.appendChild(svg);
+  
+  console.log(`Showing object outline for: ${circleTitle}`);
+}
+
+// Hide all object outlines
+function hideObjectOutlines() {
+  if (objectOutlinesContainer) {
+    objectOutlinesContainer.innerHTML = '';
+  }
+}
+
+// Get SVG path definition for specific objects
+function getObjectOutlineDefinition(circleTitle) {
+  const outlines = {
+    'Governance': `
+      <path d="M45% 58% L58% 60% L58% 75% L45% 73% Z" 
+            stroke="#f9c1ce" 
+            stroke-width="3" 
+            fill="none" 
+            vector-effect="non-scaling-stroke"
+            stroke-dasharray="8,4"
+            opacity="0.8">
+        <animate attributeName="stroke-dashoffset" 
+                 values="0;12" 
+                 dur="1s" 
+                 repeatCount="indefinite"/>
+      </path>
+    `,
+    'Transport': `
+      <path d="M48% 60% L68% 62% L65% 75% L45% 73% Z" 
+            stroke="#f9c1ce" 
+            stroke-width="3" 
+            fill="none" 
+            vector-effect="non-scaling-stroke"
+            stroke-dasharray="6,3"
+            opacity="0.8">
+        <animate attributeName="stroke-dashoffset" 
+                 values="0;9" 
+                 dur="0.8s" 
+                 repeatCount="indefinite"/>
+      </path>
+    `,
+    'Energy': `
+      <ellipse cx="51%" cy="18%" rx="8%" ry="6%" 
+               stroke="#f9c1ce" 
+               stroke-width="3" 
+               fill="none" 
+               vector-effect="non-scaling-stroke"
+               stroke-dasharray="10,5"
+               opacity="0.8">
+        <animate attributeName="stroke-dashoffset" 
+                 values="0;15" 
+                 dur="1.2s" 
+                 repeatCount="indefinite"/>
+      </ellipse>
+    `,
+    'Food': `
+      <path d="M25% 55% L45% 58% L42% 70% L28% 67% Z" 
+            stroke="#f9c1ce" 
+            stroke-width="3" 
+            fill="none" 
+            vector-effect="non-scaling-stroke"
+            stroke-dasharray="7,4"
+            opacity="0.8">
+        <animate attributeName="stroke-dashoffset" 
+                 values="0;11" 
+                 dur="0.9s" 
+                 repeatCount="indefinite"/>
+      </path>
+    `,
+    'Housing': `
+      <rect x="75%" y="45%" width="15%" height="12%" 
+            stroke="#f9c1ce" 
+            stroke-width="3" 
+            fill="none" 
+            vector-effect="non-scaling-stroke"
+            stroke-dasharray="8,3"
+            opacity="0.8">
+        <animate attributeName="stroke-dashoffset" 
+                 values="0;11" 
+                 dur="1s" 
+                 repeatCount="indefinite"/>
+      </rect>
+    `,
+    'Education': `
+      <path d="M68% 8% L85% 10% L83% 22% L66% 20% Z" 
+            stroke="#f9c1ce" 
+            stroke-width="3" 
+            fill="none" 
+            vector-effect="non-scaling-stroke"
+            stroke-dasharray="9,4"
+            opacity="0.8">
+        <animate attributeName="stroke-dashoffset" 
+                 values="0;13" 
+                 dur="1.1s" 
+                 repeatCount="indefinite"/>
+      </path>
+    `
+  };
+  
+  return outlines[circleTitle] || null;
+}
 
 function showHoverTitle(event, title) {
   // Don't show title if the circle is already selected
@@ -365,16 +514,27 @@ function setupEventListeners() {
       }
     }
     
-    // Reset map position when clicking off a selected circle (but NOT in scene mode)
+    // Reset map position when clicking off a selected circle (but NOT in scene mode or on mobile)
+    const isMobile = window.innerWidth <= 480;
     if (
       !e.target.closest(".point") &&
       !dialoguePanel.contains(e.target) &&
       !e.target.classList.contains("interactive-text") &&
       !e.target.closest(".interactive-text") &&
       currentStoryPoint !== null &&
-      !isSceneMode  // Don't reset when in scene mode
+      !isSceneMode &&  // Don't reset when in scene mode
+      !isMobile  // Don't reset map position on mobile - stay where user positioned it
     ) {
       resetMapPosition();
+      hideDialogue();
+    } else if (
+      !e.target.closest(".point") &&
+      !dialoguePanel.contains(e.target) &&
+      !e.target.classList.contains("interactive-text") &&
+      !e.target.closest(".interactive-text") &&
+      currentStoryPoint !== null
+    ) {
+      // On mobile or in scene mode, just hide dialogue without resetting position
       hideDialogue();
     }
   });
@@ -549,33 +709,64 @@ function endDrag() {
   document.documentElement.style.setProperty('--dragging', '0');
 }
 
-// Calculate precise drag limits to see exactly to the image edges (no grey space)
+// Calculate precise drag limits based on actual image size, not assumed aspect ratio
 function calculateImageDragLimits() {
-  const renderedImageHeight = window.innerHeight;
-  const renderedImageWidth = renderedImageHeight * 3.5; // 7000x2000 aspect ratio
+  const isMobile = window.innerWidth <= 480;
   const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  
+  // On mobile, don't assume aspect ratio - let CSS background-size: auto 100vh determine width
+  // The actual rendered width will be determined by the image's natural aspect ratio
+  let renderedImageWidth;
+  
+  if (isMobile) {
+    // On mobile: Calculate actual rendered image width based on natural aspect ratio
+    // Images are sized to fill viewport height (background-size: auto 100vh)
+    // Most scene images are ~7000x2000px (3.5:1 ratio)
+    const naturalAspectRatio = 3.5; // Typical ratio of scene images
+    const renderedImageHeight = viewportHeight;
+    renderedImageWidth = renderedImageHeight * naturalAspectRatio;
+  } else {
+    // Desktop: keep original calculation for backward compatibility
+    const renderedImageHeight = viewportHeight;
+    renderedImageWidth = renderedImageHeight * 3.5; // 7000x2000 aspect ratio
+  }
   
   const halfImageWidth = renderedImageWidth / 2;
   const halfViewportWidth = viewportWidth / 2;
-  // This allows dragging just enough to see from left edge to right edge of the image
-  // Temporarily add extra margin to ensure we can see the full width
-  const maxDragDistance = Math.max(0, halfImageWidth - halfViewportWidth + 200); // +200px extra margin
   
-  // Debug logging
-  console.log('Drag limits debug:', {
-    viewportSize: `${viewportWidth}x${renderedImageHeight}`,
-    renderedImageSize: `${renderedImageWidth}x${renderedImageHeight}`,
-    halfImage: halfImageWidth,
-    halfViewport: halfViewportWidth,
-    maxDragDistance: maxDragDistance,
-    canSeeFullWidth: maxDragDistance > 0 ? 'Yes' : 'No'
-  });
+  // Calculate precise drag limits to show exactly to image edges (no grey space)
+  let maxDragDistance;
   
-  const isMobile = window.innerWidth <= 480;
+  if (isMobile) {
+    // On mobile: Allow dragging exactly to image edges, no more, no less
+    maxDragDistance = Math.max(0, halfImageWidth - halfViewportWidth);
+  } else {
+    // Desktop: keep some extra margin for safety
+    const extraMargin = 200;
+    maxDragDistance = Math.max(0, halfImageWidth - halfViewportWidth + extraMargin);
+  }
+  
+  // Debug logging  
+  if (isMobile) {
+    console.log('🔍 MOBILE DRAG LIMITS DEBUG:', {
+      viewportSize: `${viewportWidth}x${viewportHeight}`,
+      renderedImageWidth: renderedImageWidth,
+      calculatedImageSize: `${renderedImageWidth}x${viewportHeight}`,
+      halfImage: halfImageWidth,
+      halfViewport: halfViewportWidth,
+      maxDragDistance: maxDragDistance,
+      maxDragDistanceInScreens: (maxDragDistance / viewportWidth).toFixed(1) + 'x screens',
+      finalMaxX: maxDragDistance,
+      finalMaxY: 0
+    });
+  }
   
   return {
     maxX: maxDragDistance,
-    maxY: isMobile ? window.innerHeight * 0.05 : window.innerHeight * 0.1
+    // On mobile: NO vertical dragging since images should fill viewport height exactly
+    // On desktop: allow some vertical movement  
+    maxY: isMobile ? 0 : window.innerHeight * 0.1  // 0px on mobile (no grey space) vs 10% on desktop
   };
 }
 
@@ -829,10 +1020,14 @@ function enterSceneMode(sceneType) {
   currentSceneType = sceneType;
   
   // Keep using the existing street view containers but change the background
-  // Hide street view circles
+  // Fade out street view circles
   const streetCircles = document.querySelectorAll('.point:not(.scene-circle)');
   streetCircles.forEach(circle => {
-    circle.style.display = 'none';
+    circle.style.transition = 'opacity 0.8s ease-out';
+    circle.style.opacity = '0';
+    setTimeout(() => {
+      circle.style.display = 'none';
+    }, 800);
   });
   
   // Load the correct scene image with smooth crossfade transition
@@ -846,10 +1041,21 @@ function enterSceneMode(sceneType) {
     console.log(`✅ Starting crossfade to scene: ${imagePath}`);
   }
   
-  // Create scene-specific circles after entering scene mode
+  // Create scene-specific circles after crossfade begins
   setTimeout(() => {
     createSceneSpecificCircles(currentStoryPoint);
-  }, 100);
+    // Fade in scene circles
+    setTimeout(() => {
+      const sceneCircles = document.querySelectorAll('.scene-circle');
+      sceneCircles.forEach(circle => {
+        circle.style.opacity = '0';
+        circle.style.transition = 'opacity 0.8s ease-in';
+        setTimeout(() => {
+          circle.style.opacity = '1';
+        }, 50);
+      });
+    }, 100);
+  }, 800); // Wait for street circles to fade out
 }
 
 // Exit scene mode - return to street view
@@ -861,14 +1067,28 @@ function exitSceneMode() {
   currentStoryPoint = null; // Reset story point when exiting scene
   isHoveringCircle = false; // Reset hover state to ensure edge scrolling works
   
-  // Remove scene circles
-  document.querySelectorAll('.scene-circle').forEach(circle => circle.remove());
-  
-  // Show street view circles again
-  const streetCircles = document.querySelectorAll('.point:not(.scene-circle)');
-  streetCircles.forEach(circle => {
-    circle.style.display = 'block';
+  // Fade out scene circles first
+  const sceneCircles = document.querySelectorAll('.scene-circle');
+  sceneCircles.forEach(circle => {
+    circle.style.transition = 'opacity 0.6s ease-out';
+    circle.style.opacity = '0';
   });
+  
+  // Remove scene circles after fade and show street circles
+  setTimeout(() => {
+    sceneCircles.forEach(circle => circle.remove());
+    
+    // Show and fade in street view circles
+    const streetCircles = document.querySelectorAll('.point:not(.scene-circle)');
+    streetCircles.forEach(circle => {
+      circle.style.display = 'block';
+      circle.style.opacity = '0';
+      circle.style.transition = 'opacity 0.8s ease-in';
+      setTimeout(() => {
+        circle.style.opacity = '1';
+      }, 50);
+    });
+  }, 600);
   
   // Restore street view background with smooth crossfade
   const isNightMode = document.body.classList.contains('high-contrast');
@@ -1243,8 +1463,9 @@ function handleCircleClick(point, pointElement, index) {
     pointElements.forEach((el) => el.classList.remove("selected"));
     pointElement.classList.add("selected");
     
+    const isMobile = window.innerWidth <= 480;
     const dimmingOverlay = document.getElementById('dimmingOverlay');
-    if (dimmingOverlay && isMapView && !skipDimmingOverlay) {
+    if (dimmingOverlay && isMapView && !skipDimmingOverlay && !isMobile) {
       dimmingOverlay.classList.add('active');
       
       setTimeout(() => {
@@ -1371,14 +1592,21 @@ function createSceneCircle(option, index, parentPoint) {
   // Add default pulse animation only when not selected
   circle.style.animation = 'pulse 4s infinite ease-in-out';
   
-  // Use coordinates from story-data if available, otherwise fallback to index-based positioning
+  // Use coordinates from story-data, with mobile-specific overrides if available
   let percentX, percentY;
+  const isMobile = window.innerWidth <= 480;
   
-  if (option.x !== undefined && option.y !== undefined) {
-    // Use coordinates from the story-data
+  // Check for mobile-specific coordinates first, then desktop coordinates, then fallback
+  if (isMobile && option.mobileX !== undefined && option.mobileY !== undefined) {
+    // Use mobile-specific coordinates
+    percentX = option.mobileX;
+    percentY = option.mobileY;
+    console.log(`Using mobile coordinates for ${option.key}: ${percentX}, ${percentY}`);
+  } else if (option.x !== undefined && option.y !== undefined) {
+    // Use desktop coordinates from the story-data
     percentX = option.x;
     percentY = option.y;
-    console.log(`Using story-data coordinates for ${option.key}: ${percentX}, ${percentY}`);
+    console.log(`Using desktop coordinates for ${option.key}: ${percentX}, ${percentY}`);
   } else {
     // Fallback to spread positions if coordinates are not defined - more visible spread
     const positions = [
@@ -1433,7 +1661,11 @@ function createSceneCircle(option, index, parentPoint) {
     stopEdgeScrolling();
     
     // Center the map so the circle is mostly in the centre and won't clash with dialogue
-    centerSceneCircleWithDialogueBoundary(circle);
+    const isMobile = window.innerWidth <= 480;
+    if (!isMobile) {
+      // Only center on desktop - mobile users can position themselves via dragging
+      centerSceneCircleWithDialogueBoundary(circle);
+    }
     
     // Temporarily disable edge scrolling to prevent movement during dialogue
     isHoveringCircle = true;
@@ -1444,16 +1676,20 @@ function createSceneCircle(option, index, parentPoint) {
     }, 400);
   });
   
-  // Add hover listeners for edge scrolling control and title display
+  // Add hover listeners for edge scrolling control and title display (desktop only)
   circle.addEventListener('mouseenter', (e) => {
     // Stop edge scrolling while hovering over scene circle
     isHoveringCircle = true;
     stopEdgeScrolling();
     
-    // Show hover title using speaker data, converted to title case
-    const speakerTitle = option.content?.speaker || option.key;
-    const titleCaseTitle = toTitleCase(speakerTitle);
-    circle.hoverTimeout = setTimeout(() => showHoverTitle(e, titleCaseTitle), 50);
+    // Only show hover titles on desktop (not mobile)
+    const isMobile = window.innerWidth <= 480;
+    if (!isMobile) {
+      // Show hover title using speaker data, converted to title case
+      const speakerTitle = option.content?.speaker || option.key;
+      const titleCaseTitle = toTitleCase(speakerTitle);
+      circle.hoverTimeout = setTimeout(() => showHoverTitle(e, titleCaseTitle), 50);
+    }
   });
   
   circle.addEventListener('mouseleave', () => {
@@ -1499,8 +1735,8 @@ function positionDialogueToAvoidCircle(circleElement) {
   const isMobile = window.innerWidth <= 480;
   const isTablet = window.innerWidth > 480 && window.innerWidth <= 768;
   
-  // Skip repositioning for mobile/tablet as they already position at bottom
-  if (isMobile || isTablet) return;
+  // Skip repositioning for tablet as they already position at bottom  
+  if (isTablet) return;
   
   const dialoguePanel = document.getElementById('dialoguePanel');
   if (!dialoguePanel) return;
@@ -1563,27 +1799,41 @@ function positionDialogueToAvoidCircle(circleElement) {
   }
   
   if (hasCollision && bestPosition) {
-    switch (bestPosition.side) {
-      case 'left':
-        dialoguePanel.style.right = 'auto';
-        dialoguePanel.style.left = '20px';
-        dialoguePanel.style.top = '20%';
+    if (isMobile) {
+      // On mobile, only move to top if there's collision (dialogue stays full width)
+      if (bestPosition.side === 'top') {
+        // Position below the spiral logo and day/night toggle (both at ~20px from top)
+        // Spiral logo is 90px height, day/night toggle is 60px height  
+        // Add extra space to clear both elements
+        dialoguePanel.style.top = '120px'; // 90px (logo height) + 30px margin
         dialoguePanel.style.bottom = 'auto';
-        break;
-      case 'top':
-        dialoguePanel.style.top = '20px';
-        dialoguePanel.style.bottom = 'auto';
-        break;
-      case 'right':
-        dialoguePanel.style.right = '20px';
-        dialoguePanel.style.left = 'auto';
-        dialoguePanel.style.top = '20%';
-        dialoguePanel.style.bottom = 'auto';
-        break;
-      case 'bottom':
-        dialoguePanel.style.top = 'auto';
-        dialoguePanel.style.bottom = '20px';
-        break;
+        console.log('Mobile dialogue moved to top (below UI elements) to avoid circle collision');
+      }
+      // For other positions, keep default bottom positioning on mobile
+    } else {
+      // Desktop positioning logic
+      switch (bestPosition.side) {
+        case 'left':
+          dialoguePanel.style.right = 'auto';
+          dialoguePanel.style.left = '20px';
+          dialoguePanel.style.top = '20%';
+          dialoguePanel.style.bottom = 'auto';
+          break;
+        case 'top':
+          dialoguePanel.style.top = '20px';
+          dialoguePanel.style.bottom = 'auto';
+          break;
+        case 'right':
+          dialoguePanel.style.right = '20px';
+          dialoguePanel.style.left = 'auto';
+          dialoguePanel.style.top = '20%';
+          dialoguePanel.style.bottom = 'auto';
+          break;
+        case 'bottom':
+          dialoguePanel.style.top = 'auto';
+          dialoguePanel.style.bottom = '20px';
+          break;
+      }
     }
     
     console.log(`Dialogue repositioned to ${bestPosition.side} side to avoid covering circles`);
@@ -1634,8 +1884,9 @@ function showDialogue(point, pointElement) {
   // Add dimming overlay effect when circle is selected (only in map view, not 360° view)
   // Skip dimming overlay for all scenes with background image switches
   const skipDimmingOverlay = point.title === "Education" || point.title === "Food" || point.title === "Energy" || point.title === "Transport";
+  const isMobile = window.innerWidth <= 480;
   const dimmingOverlay = document.getElementById('dimmingOverlay');
-  if (dimmingOverlay && isMapView && !skipDimmingOverlay) {
+  if (dimmingOverlay && isMapView && !skipDimmingOverlay && !isMobile) {
     dimmingOverlay.classList.add('active');
     
     // Wait for map positioning to be established before starting spotlight
@@ -1788,6 +2039,9 @@ function showMainText(point) {
 
   dialoguePanel.classList.add("visible");
   dialogueTextContainer.scrollTop = 0;
+  
+  // Update back button visibility on mobile
+  updateBackButtonVisibility();
 }
 
 function showSection(point, optionKey) {
@@ -1843,6 +2097,9 @@ function showSection(point, optionKey) {
 
   dialoguePanel.classList.add("visible");
   dialogueTextContainer.scrollTop = 0;
+  
+  // Update back button visibility on mobile
+  updateBackButtonVisibility();
   
   // Mark interactive text link as visited (since user has clicked and engaged with it)
   // This is done after content creation so visited class is applied to newly created elements
@@ -2272,6 +2529,9 @@ function renderParsedText(element, parts, point) {
 function hideDialogue() {
   dialoguePanel.classList.remove("visible");
   
+  // Update back button visibility on mobile
+  updateBackButtonVisibility();
+  
   // Reset dialogue position for next use
   resetDialoguePosition();
   
@@ -2501,7 +2761,7 @@ function reopenDialogue() {
   console.log('reopenDialogue called - functionality moved to tab click handler');
 }
 
-// Show back to street view button for 360° views
+// Show back to street view button with smart mobile positioning
 function showBackToStreetButton() {
   console.log('showBackToStreetButton called');
   // Remove any existing button first
@@ -2517,6 +2777,9 @@ function showBackToStreetButton() {
     </svg>
     Back to Street View
   `;
+  
+  // Position button based on dialogue box location on mobile
+  positionBackButtonSmartly(backButton);
   
   // Add click handler to return to street view
   backButton.addEventListener('click', (e) => {
@@ -2537,6 +2800,54 @@ function showBackToStreetButton() {
   // Add to body
   document.body.appendChild(backButton);
   console.log('Back to street button added to body');
+}
+
+// Position back button smartly to avoid dialogue box on mobile
+function positionBackButtonSmartly(backButton) {
+  const isMobile = window.innerWidth <= 480;
+  
+  if (!isMobile) {
+    // Desktop: keep default positioning (CSS handles this)
+    return;
+  }
+  
+  // Mobile: check dialogue box state and hide button if dialogue is open
+  const dialoguePanel = document.getElementById('dialoguePanel');
+  const isDialogueVisible = dialoguePanel && dialoguePanel.classList.contains('visible');
+  
+  if (isDialogueVisible) {
+    // Hide button when dialogue is open
+    backButton.style.display = 'none';
+    console.log('Mobile: Back button hidden (dialogue is open)');
+  } else {
+    // Show button when dialogue is closed, positioned at bottom center
+    backButton.style.display = 'flex';
+    backButton.style.position = 'fixed';
+    backButton.style.bottom = '20px';
+    backButton.style.left = '50%';
+    backButton.style.transform = 'translateX(-50%)';
+    backButton.style.top = 'auto';
+    console.log('Mobile: Back button shown at bottom (no dialogue)');
+  }
+}
+
+// Update back button visibility based on dialogue state (mobile only)
+function updateBackButtonVisibility() {
+  const backButton = document.getElementById('backToStreetButton');
+  const isMobile = window.innerWidth <= 480;
+  
+  if (!backButton || !isMobile) return;
+  
+  const dialoguePanel = document.getElementById('dialoguePanel');
+  const isDialogueVisible = dialoguePanel && dialoguePanel.classList.contains('visible');
+  
+  if (isDialogueVisible) {
+    backButton.style.display = 'none';
+    console.log('Mobile: Back button hidden (dialogue opened)');
+  } else {
+    backButton.style.display = 'flex';
+    console.log('Mobile: Back button shown (dialogue closed)');
+  }
 }
 
 // Hide back to street view button
