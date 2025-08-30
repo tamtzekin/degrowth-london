@@ -660,6 +660,18 @@ function setupEventListeners() {
     showHelpButtonAfterFirstClose();
     // Start music when user interacts (closes help overlay)
     startMusicAfterUserInteraction();
+    
+    // Prevent immediate dragging after help overlay closes
+    window.helpOverlayJustClosed = true;
+    
+    // Ensure container is not in dragging state
+    isDragging = false;
+    container.classList.remove("dragging");
+    
+    setTimeout(() => {
+      window.helpOverlayJustClosed = false;
+    }, 300); // 300ms delay
+    
     console.log('✅ Help overlay closed successfully');
   }
   
@@ -790,7 +802,8 @@ function setupEventListeners() {
 function startDrag(e) {
   if (
     e.target.classList.contains("point") ||
-    e.target.closest(".dialogue-panel")
+    e.target.closest(".dialogue-panel") ||
+    window.helpOverlayJustClosed
   )
     return;
   isDragging = true;
@@ -802,7 +815,8 @@ function startDrag(e) {
 function startDragTouch(e) {
   if (
     e.target.classList.contains("point") ||
-    e.target.closest(".dialogue-panel")
+    e.target.closest(".dialogue-panel") ||
+    window.helpOverlayJustClosed
   )
     return;
   
@@ -1745,11 +1759,11 @@ function handleCircleClick(point, pointElement, index) {
         // Show the main dialogue for this scene
         setTimeout(() => {
           showDialogue(point, pointElement);
-        }, 200);
+        }, 100);
         
-      }, 300); // Time for background to change
-    }, 400); // During zoom animation
-  }, 100);
+      }, 150); // Time for background to change
+    }, 200); // During zoom animation
+  }, 50);
 }
 
 // Create scene-specific circle points based on story data
@@ -2014,7 +2028,7 @@ function positionDialogueToAvoidCircle(circleElement) {
           dialoguePanel.style.bottom = 'auto';
           break;
         case 'top':
-          dialoguePanel.style.top = '20px';
+          dialoguePanel.style.top = '70px';
           dialoguePanel.style.bottom = 'auto';
           break;
         case 'right':
@@ -3492,6 +3506,9 @@ function showMobileParagraph() {
   dialoguePanel.classList.add('dynamic-height');
   dialoguePanel.classList.add('mobile-paragraph-mode');
   
+  // Ensure expanded mobile class is removed (leftover from old swipe system)
+  dialoguePanel.classList.remove('mobile-expanded');
+  
   // Reset to natural sizing - let it grow dynamically
   dialoguePanel.style.height = 'auto';
   dialoguePanel.style.minHeight = 'auto';
@@ -3829,7 +3846,7 @@ function setDialoguePosition(position, isMobile = false) {
     // Mobile positioning: top or bottom
     if (position === 'top' || position === 'mobile-top') {
       panel.classList.add('dialogue-top');
-      panel.style.top = '20px';
+      panel.style.top = '70px';
       panel.style.bottom = 'auto';
     } else if (position === 'bottom' || position === 'mobile-bottom') {
       panel.classList.add('dialogue-bottom');
@@ -6151,6 +6168,10 @@ function toTitleCase(str) {
 window.addEventListener("load", () => {
   // Initialize cached DOM elements for performance
   initCachedElements();
+  
+  // Ensure container starts in proper state (not dragging)
+  isDragging = false;
+  container.classList.remove("dragging");
   
   // Apply mobile-specific optimizations
   applyMobileOptimizations();

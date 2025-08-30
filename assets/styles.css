@@ -37,7 +37,7 @@ body {
     height: 120%;
     top: -10%;
     left: -125%; /* Adjusted to center the wider container */
-    transition: transform 0.15s ease-out, opacity 0.5s ease-in-out;
+    transition: transform 0.15s ease-out, opacity 0.2s ease-in-out;
 }
 
 /* Disable all transitions and hide pseudo-elements during dragging to prevent flickering */
@@ -445,7 +445,7 @@ body.high-contrast .background-image.scene-active::after {
 /* Improved dialogue panel */
 .dialogue-panel {
     position: fixed;
-    top: 70px;
+    /* top: 70px; */
     right: 0;
     width: 450px;
     height: 60vh;
@@ -613,8 +613,17 @@ body.high-contrast .background-image.scene-active::after {
     color: #ffffff; /* Pure white for speakers */
 }
 
-.location-title, .location-subtitle {
+.location-title {
     color: #ffffff; /* Pure white for location info */
+}
+
+.location-subtitle, .subtitle {
+    color: #f9c1ce;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.9em;
+    margin-bottom: 8px;
 }
 .dialogue-speaker {
     color: #f9c1ce;
@@ -1030,7 +1039,7 @@ body.high-contrast .background-image.scene-active::after {
         max-height: 35vh; /* Prevent stretching beyond this */
         bottom: 25px; /* Offset from bottom - increased to clear gradient */
         left: 15px; /* Offset from left */
-        top: auto;
+        /* top: 70px; */
         border-left: 2px solid rgba(249, 193, 206, 0.4);
         border-top: 2px solid rgba(249, 193, 206, 0.4);
         border-right: 2px solid rgba(249, 193, 206, 0.4);
@@ -1344,6 +1353,17 @@ body.high-contrast .background-image.scene-active::after {
         overflow: visible; /* No scrolling for single paragraphs */
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth scroll area growth */
     }
+
+    /* Hide "click to skip" text in mobile dialogue system */
+    .dialogue-text-container.typing::before {
+        display: none !important;
+    }
+
+    /* Ensure subtitle is visible in mobile */
+    .location-subtitle {
+        display: block !important;
+        visibility: visible !important;
+    }
     
 }
 
@@ -1603,10 +1623,9 @@ body.high-contrast .background-image.scene-active::after {
 }
 
 .dialogue-panel.dialogue-top {
-    top: 50px;
+    /* top: 70px; */
     bottom: auto;
     transform: translateY(-100%);
-    padding-top: 50px;
 }
 
 .dialogue-panel.dialogue-top.visible {
@@ -1616,8 +1635,7 @@ body.high-contrast .background-image.scene-active::after {
 /* Ensure mobile top dialogues respect header space */
 @media (max-width: 480px) {
     .dialogue-panel.dialogue-top {
-        top: 50px;
-        padding-top: 50px;
+        top: 70px;
     }
 }
 
@@ -1653,8 +1671,6 @@ body.high-contrast .background-image.scene-active::after {
 .day-night-toggle:hover {
     /* background: rgba(255, 255, 255, 1); */
     border-color: #f9c1ce; /* Pink border on hover in day mode */
-    transform: translateX(-50%) scale(1.1);
-    box-shadow: 0 5px 16px rgba(0, 0, 0, 0.25);
 }
 
 .day-night-toggle svg {
@@ -1674,8 +1690,6 @@ body.high-contrast .day-night-toggle svg {
 }
 
 .day-night-toggle:hover svg {
-    stroke-width: 3;
-    transform: scale(1.1);
     stroke: #f9c1ce; /* Pink on hover */
 }
 
@@ -1947,12 +1961,12 @@ body.high-contrast .day-night-toggle svg {
 }
 
 body.high-contrast .day-night-toggle:hover {
-    border-color: #ffffff; /* White border on hover in night mode */
+    border-color: #f9c1ce; /* Pink border on hover in night mode */
 }
 
 body.high-contrast .day-night-toggle:hover svg {
-    fill: #ffffff; /* White icon on hover in night mode */
-    stroke: #ffffff;
+    fill: #f9c1ce; /* Pink icon on hover in night mode */
+    stroke: #f9c1ce;
 }
 
 /* Point circles in high contrast mode */
@@ -2231,8 +2245,8 @@ body.high-contrast .spiral-logo svg {
     .day-night-toggle {
         width: 50px;
         height: 50px;
-        top: 20px;
-        right: 75px; /* Move left to make space for help button */
+        top: 0px;
+        right: 45px;
         left: auto;
         transform: none;
     }
@@ -2246,8 +2260,8 @@ body.high-contrast .spiral-logo svg {
         width: 50px;
         height: 50px;
         font-size: 20px;
-        top: 20px;
-        right: 20px;
+        top: 0px;
+        right: 0px;
     }
     
     /* Mobile help close button with better touch responsiveness */
