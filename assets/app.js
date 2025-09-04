@@ -2094,7 +2094,7 @@ function positionDialogueToAvoidCircle(circleElement) {
           dialoguePanel.style.bottom = 'auto';
           break;
         case 'top':
-          dialoguePanel.style.top = '70px';
+          // Don't override CSS positioning for desktop - let CSS handle centering
           dialoguePanel.style.bottom = 'auto';
           break;
         case 'right':
@@ -3921,7 +3921,7 @@ function setDialoguePosition(position, isMobile = false) {
       panel.style.top = 'auto';
     }
   } else {
-    // Desktop positioning: left or right
+    // Desktop positioning: left, right, or top
     if (position === 'left' || position === 'desktop-left') {
       panel.classList.add('dialogue-left');
       panel.style.left = '20px';
@@ -3930,6 +3930,13 @@ function setDialoguePosition(position, isMobile = false) {
       panel.classList.add('dialogue-right');
       panel.style.right = '20px';
       panel.style.left = 'auto';
+    } else if (position === 'top' || position === 'desktop-top') {
+      panel.classList.add('dialogue-top');
+      // Let CSS handle the positioning (15vh for centered positioning)
+      panel.style.top = '';
+      panel.style.bottom = 'auto';
+      panel.style.left = 'auto';
+      panel.style.right = '0';
     }
   }
   

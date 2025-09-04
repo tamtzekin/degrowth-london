@@ -454,7 +454,7 @@ body.high-contrast .background-image.scene-active::after {
 /* Improved dialogue panel */
 .dialogue-panel {
     position: fixed;
-    /* top: 70px; */
+    top: 20vh; /* Default centered position for desktop */
     right: 0;
     width: 450px;
     height: 60vh;
@@ -1143,7 +1143,7 @@ body.high-contrast .background-image.scene-active::after {
         box-sizing: border-box;
     }
     .dialogue-header {
-        padding: 15px 0 15px 20px; /* More balanced padding for center alignment */
+        padding: 15px 0 5px 20px; /* Reduced bottom padding to close gap with mobile-paragraph-container */
         display: flex;
         align-items: center; /* Vertically center the content */
         min-height: 50px; /* Ensure enough height for proper centering */
@@ -1204,7 +1204,7 @@ body.high-contrast .background-image.scene-active::after {
     /* Mobile paragraph dialogue system styles */
     .mobile-paragraph-container {
         position: relative;
-        padding: 15px 0;
+        padding: 5px 0;
     }
     
     /* Ensure mobile paragraph text uses same styling as desktop */
@@ -1638,7 +1638,7 @@ body.high-contrast .background-image.scene-active::after {
 }
 
 .dialogue-panel.dialogue-top {
-    /* top: 70px; */
+    top: 15vh; /* More centered position instead of flush to top */
     bottom: auto;
     transform: translateY(-100%);
 }
