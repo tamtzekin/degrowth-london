@@ -454,7 +454,7 @@ body.high-contrast .background-image.scene-active::after {
 /* Improved dialogue panel */
 .dialogue-panel {
     position: fixed;
-    top: 20vh; /* Default centered position for desktop */
+    top: 70vh;
     right: 0;
     width: 450px;
     height: 60vh;
