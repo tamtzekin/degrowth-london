@@ -864,8 +864,8 @@ body.high-contrast .background-image.scene-active::after {
     fill: currentColor;
 }
 
-/* Enhanced gradient fade */
-.dialogue-scroll-area::after {
+/* Enhanced gradient fade - attached to dialogue panel for consistent positioning */
+.dialogue-panel::after {
     content: "";
     position: absolute;
     bottom: 0;
@@ -875,6 +875,7 @@ body.high-contrast .background-image.scene-active::after {
     background: linear-gradient(transparent, rgba(249, 193, 206, 0.3));
     pointer-events: none;
     z-index: 10;
+    border-radius: 0 0 16px 16px; /* Match dialogue panel border radius */
 }
 
 /* Help overlay */

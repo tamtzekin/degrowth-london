@@ -559,52 +559,53 @@ function setupEventListeners() {
   container.addEventListener("touchstart", startDragTouch, { passive: false });
   container.addEventListener("touchmove", dragTouch, { passive: false });
   container.addEventListener("touchend", endDrag);
-
-  // Auto-close intro popup when clicking on map or interacting with points
-  container.addEventListener("click", (e) => {
-    // Close dialogue when clicking on map area
-    if (
-      dialoguePanel.classList.contains("visible") &&
-      !dialoguePanel.contains(e.target) &&
-      !e.target.closest(".point") &&
-      !e.target.classList.contains("interactive-text") &&
-      !e.target.closest(".interactive-text")
-    ) {
-      // Close welcome message or scene dialogue
-      if (currentStoryPoint === null || isSceneMode) {
-        hideDialogue();
-      }
-    }
-    
-    // Reset map position when clicking off a selected circle (but NOT in scene mode or on mobile)
+  
+  // Mobile-specific touch handler for closing dialogue
+  container.addEventListener("touchend", (e) => {
     const isMobile = window.innerWidth <= 480;
-    if (
-      !e.target.closest(".point") &&
-      !dialoguePanel.contains(e.target) &&
-      !e.target.classList.contains("interactive-text") &&
-      !e.target.closest(".interactive-text") &&
-      currentStoryPoint !== null &&
-      !isSceneMode &&  // Don't reset when in scene mode
-      !isMobile  // Don't reset map position on mobile - stay where user positioned it
-    ) {
-      // Don't reset map position - stay in same place after dialogue closes
-      // resetMapPosition();
-      hideDialogue();
-    } else if (
-      !e.target.closest(".point") &&
-      !dialoguePanel.contains(e.target) &&
-      !e.target.classList.contains("interactive-text") &&
-      !e.target.closest(".interactive-text") &&
-      currentStoryPoint !== null
-    ) {
-      // On mobile or in scene mode, just hide dialogue without resetting position
+    if (!isMobile) return;
+    
+    const target = e.changedTouches ? e.changedTouches[0].target : e.target;
+    const clickedOutsideDialogue = !dialoguePanel.contains(target) && 
+                                   !target.closest(".point") && 
+                                   !target.classList.contains("interactive-text") && 
+                                   !target.closest(".interactive-text");
+    
+    // Close dialogue on mobile single tap outside dialogue
+    if (dialoguePanel.classList.contains("visible") && clickedOutsideDialogue && !wasDragging) {
+      console.log('Mobile touchend - closing dialogue');
+      
       if (isMobileParagraphMode) {
-        // For mobile paragraph mode, close dialogue with animation regardless of completion state
-        console.log('Mobile: Outside click - closing dialogue');
         closeMobileDialogueWithAnimation();
       } else {
         hideDialogue();
       }
+      e.preventDefault();
+      e.stopPropagation(); // Prevent any subsequent click events
+    }
+  });
+
+  // Auto-close intro popup when clicking on map or interacting with points
+  container.addEventListener("click", (e) => {
+    const isMobile = window.innerWidth <= 480;
+    
+    // On mobile, prevent click events to avoid double-triggering with touch events
+    if (isMobile) {
+      e.preventDefault();
+      return;
+    }
+    
+    const clickedOutsideDialogue = !dialoguePanel.contains(e.target) && 
+                                   !e.target.closest(".point") && 
+                                   !e.target.classList.contains("interactive-text") && 
+                                   !e.target.closest(".interactive-text");
+    
+    // Close dialogue when clicking outside on desktop only
+    if (dialoguePanel.classList.contains("visible") && clickedOutsideDialogue) {
+      console.log('Outside click detected - closing dialogue (desktop)');
+      hideDialogue();
+      
+      // Don't reset map position - keep current view
     }
   });
 
@@ -851,6 +852,21 @@ function dragTouch(e) {
   // Calculate new position - 1:1 movement with touch for smooth dragging
   const deltaX = (touch.clientX - startX) - currentX;
   const deltaY = (touch.clientY - startY) - currentY;
+  
+  // Close dialogue on mobile when user drags the map
+  const isMobile = window.innerWidth <= 480;
+  if (isMobile && dialoguePanel.classList.contains("visible")) {
+    const dragDistance = Math.abs(deltaX) + Math.abs(deltaY);
+    if (dragDistance > 20) { // Close after minimal drag movement
+      console.log('Mobile drag detected - closing dialogue');
+      
+      if (isMobileParagraphMode) {
+        closeMobileDialogueWithAnimation();
+      } else {
+        hideDialogue();
+      }
+    }
+  }
   
   // Apply mobile sensitivity multiplier to the delta, not absolute position
   const mobileSensitivity = 1.3; // Slightly more responsive
