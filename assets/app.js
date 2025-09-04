@@ -1434,13 +1434,13 @@ function getSceneImagePath(sceneType, isNightMode) {
     case 'Food':
       return isNightMode ? 'assets/images/Market-Night.jpg' : 'assets/images/Market-Day.jpg';
     case 'Education':
-      return isNightMode ? 'assets/images/Education-Night.jpg' : 'assets/images/Rooftop-Day.jpg';
+      return isNightMode ? 'assets/images/Rooftop-Night.jpg' : 'assets/images/Rooftop-Day.jpg';
     case 'Energy':
-      return isNightMode ? 'assets/images/Energy-Night.jpg' : 'assets/images/Panels-Day.jpg';
+      return isNightMode ? 'assets/images/Panels-Night.jpg' : 'assets/images/Panels-Day.jpg';
     case 'Transport':
       return isNightMode ? 'assets/images/Transport-Night.jpg' : 'assets/images/Transport-Day.jpg';
     case 'Governance':
-      return isNightMode ? 'assets/images/Energy-Night.jpg' : 'assets/images/Panels-Day.jpg';
+      return isNightMode ? 'assets/images/Panels-Night.jpg' : 'assets/images/Panels-Day.jpg';
     case 'Housing':
       return isNightMode ? 'assets/images/Transport-night.jpg' : 'assets/images/Transport-Day.jpg';
     default:
