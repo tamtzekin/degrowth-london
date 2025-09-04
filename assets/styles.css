@@ -19,11 +19,20 @@ body {
     overflow: hidden;
     user-select: none;
     letter-spacing: 1.75px;
+    box-sizing: border-box;
+}
+
+/* Constrain viewport to match image aspect ratio (2.33:1 for 5950x2550 images) - desktop only */
+@media (min-width: 769px) {
+    body {
+        max-width: calc(100vh * 2.33);
+        margin: 0 auto;
+    }
 }
 
 .visual-novel-container {
     position: relative;
-    width: 100vw;
+    width: 100%;
     height: 100vh;
     cursor: grab;
 }
@@ -68,7 +77,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: url("/assets/images/full-day-2D.jpg") center/cover;
+    background: url("/assets/images/Full-Day.jpg") center/cover;
     z-index: 1;
 }
 
@@ -81,7 +90,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: url("images/full-night-2D.jpg") center center;
+    background: url("images/Full-Night.jpg") center center;
     background-size: auto 100%;
     background-repeat: no-repeat;
     opacity: 0;
@@ -1363,6 +1372,12 @@ body.high-contrast .background-image.scene-active::after {
     .location-subtitle {
         display: block !important;
         visibility: visible !important;
+        color: #f9c1ce !important;
+        font-weight: bold !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        font-size: 0.9em !important;
+        margin-bottom: 8px !important;
     }
     
 }
@@ -1886,6 +1901,142 @@ body.high-contrast .help-overlay {
 
 body.high-contrast .help-item {
     color: #ffffff;
+}
+
+/* Credits overlay styles - based on help overlay */
+.credits-overlay {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(153, 111, 105, 0.8);
+    backdrop-filter: blur(15px);
+    border-radius: 16px;
+    padding: 30px;
+    min-width: 400px;
+    max-width: 500px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    z-index: 10000;
+    opacity: 1;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: auto;
+}
+
+.credits-overlay.hidden {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+    pointer-events: none;
+}
+
+.credits-content {
+    width: 100%;
+}
+
+.credits-title {
+    color: #ffffff;
+    font-size: 1.8em;
+    font-weight: bold;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.credits-section {
+    margin-bottom: 16px;
+}
+
+.credits-role {
+    color: #f9c1ce;
+    font-size: 1.1em;
+    font-weight: bold;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.credits-name, .credits-contributors {
+    color: #ffffff;
+    font-size: 1em;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.credits-close {
+    align-self: center;
+    margin-top: 20px;
+    padding: 8px 20px;
+    border: 2px solid #ece1e0;
+    background: transparent;
+    color: #ece1e0;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: "QuestaSansLight", sans-serif;
+    font-size: 0.9em;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
+}
+
+.credits-close:hover {
+    border-color: #f9c1ce;
+    color: #f9c1ce;
+    background: rgba(249, 193, 206, 0.1);
+}
+
+/* Credits overlay mobile responsiveness */
+@media (max-width: 480px) {
+    .credits-overlay {
+        min-width: 90%;
+        padding: 20px;
+    }
+    
+    .credits-title {
+        font-size: 1.5em;
+    }
+    
+    .credits-role {
+        font-size: 1em;
+    }
+}
+
+/* Credits overlay tablet responsiveness */
+@media (min-width: 481px) and (max-width: 768px) {
+    .credits-overlay {
+        min-width: 85%;
+        padding: 25px;
+    }
+}
+
+/* Credits overlay high contrast mode */
+body.high-contrast .credits-overlay {
+    background: rgba(0, 0, 0, 0.95);
+    border: 2px solid #f2f2f2;
+}
+
+body.high-contrast .credits-title,
+body.high-contrast .credits-name,
+body.high-contrast .credits-contributors {
+    color: #ffffff;
+}
+
+body.high-contrast .credits-role {
+    color: #f9c1ce;
+}
+
+body.high-contrast .credits-close {
+    color: #ffffff;
+    border-color: #ffffff;
+    background: transparent;
+}
+
+body.high-contrast .credits-close:hover {
+    color: #f9c1ce;
+    border-color: #f9c1ce;
+    background: rgba(249, 193, 206, 0.4);
 }
 
 body.high-contrast .help-icon svg {

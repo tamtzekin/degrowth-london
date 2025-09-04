@@ -71,7 +71,7 @@ const backgroundContainer = document.getElementById("backgroundContainer");
 const interactivePoints = document.getElementById("interactivePoints");
 const dialoguePanel = document.getElementById("dialoguePanel");
 const locationTitle = document.getElementById("locationTitle");
-// locationSubtitle removed - using only subtitle class now
+const locationSubtitle = document.getElementById("locationSubtitle");
 const dialogueTextContainer = document.getElementById("dialogueTextContainer");
 const helpOverlay = document.getElementById("helpOverlay");
 const helpClose = document.getElementById("helpClose");
@@ -89,7 +89,7 @@ function initializeScrollableStreetView() {
     const isNightMode = document.body.classList.contains('high-contrast');
     
     // Set the default street view image with scrollable sizing
-    const defaultImagePath = isNightMode ? 'assets/images/full-night-2D.jpg' : 'assets/images/full-day-2D.jpg';
+    const defaultImagePath = isNightMode ? 'assets/images/Full-Night.jpg' : 'assets/images/Full-Day.jpg';
     
     // Apply the default street background with scrollable width
     backgroundImage.style.backgroundImage = `url(${defaultImagePath})`;
@@ -883,27 +883,80 @@ function endDrag() {
   document.documentElement.style.setProperty('--dragging', '0');
 }
 
+// Cache for image aspect ratios
+window.imageAspectRatios = {};
+
+// Preload and cache aspect ratios for all images
+function cacheImageDimensions() {
+  const allImages = [
+    'assets/images/Full-Day.jpg',
+    'assets/images/Full-Night.jpg',
+    'assets/images/Market-Day.jpg',
+    'assets/images/Market-Night.jpg',
+    'assets/images/Rooftop-Day.jpg',
+    'assets/images/Rooftop-Night.jpg',
+    'assets/images/Transport-Day.jpg',
+    'assets/images/Transport-Night.jpg',
+    'assets/images/Panels-Day.jpg',
+    'assets/images/Panels-Night.jpg'
+  ];
+  
+  console.log('📐 Preloading image dimensions...');
+  
+  allImages.forEach(imagePath => {
+    const img = new Image();
+    img.onload = function() {
+      const aspectRatio = this.naturalWidth / this.naturalHeight;
+      window.imageAspectRatios[imagePath] = aspectRatio;
+      console.log('📐 Cached aspect ratio for', imagePath.split('/').pop(), ':', aspectRatio.toFixed(3), `(${this.naturalWidth}x${this.naturalHeight})`);
+    };
+    img.onerror = function() {
+      console.warn('⚠️ Failed to load image for dimension caching:', imagePath);
+    };
+    img.src = imagePath;
+  });
+}
+
 // Calculate precise drag limits based on actual image size, not assumed aspect ratio
 function calculateImageDragLimits() {
   const isMobile = window.innerWidth <= 480;
-  const viewportWidth = window.innerWidth;
+  // Use actual container width (may be constrained by CSS max-width)
+  const container = document.querySelector('.visual-novel-container');
+  const viewportWidth = container ? container.offsetWidth : window.innerWidth;
   const viewportHeight = window.innerHeight;
   
-  // On mobile, don't assume aspect ratio - let CSS background-size: auto 100vh determine width
-  // The actual rendered width will be determined by the image's natural aspect ratio
+  // Get current background image URL to look up its cached aspect ratio
+  const backgroundImage = document.querySelector('.background-image');
+  let naturalAspectRatio = 2.33; // fallback ratio for new 5950x2550 images
+  
+  if (backgroundImage) {
+    const computedStyle = window.getComputedStyle(backgroundImage);
+    const backgroundImageUrl = computedStyle.backgroundImage;
+    const imgSrc = backgroundImageUrl.match(/url\(['"]?([^'"]+)['"]?\)/);
+    
+    if (imgSrc && imgSrc[1]) {
+      // Check if we have a cached aspect ratio for this image
+      const imagePath = imgSrc[1];
+      if (window.imageAspectRatios[imagePath]) {
+        naturalAspectRatio = window.imageAspectRatios[imagePath];
+        console.log('📐 Using cached aspect ratio:', naturalAspectRatio, 'for', imagePath.split('/').pop());
+      } else {
+        console.log('⚠️ No cached aspect ratio for', imagePath.split('/').pop(), '- using fallback:', naturalAspectRatio);
+      }
+    }
+  }
+  
+  // Calculate actual rendered image width based on natural aspect ratio
   let renderedImageWidth;
   
   if (isMobile) {
-    // On mobile: Calculate actual rendered image width based on natural aspect ratio
-    // Images are sized to fill viewport height (background-size: auto 100vh)
-    // Most scene images are ~7000x2000px (3.5:1 ratio)
-    const naturalAspectRatio = 3.5; // Typical ratio of scene images
+    // On mobile: Images are sized to fill viewport height (background-size: auto 100vh)
     const renderedImageHeight = viewportHeight;
     renderedImageWidth = renderedImageHeight * naturalAspectRatio;
   } else {
-    // Desktop: keep original calculation for backward compatibility
+    // Desktop: same calculation
     const renderedImageHeight = viewportHeight;
-    renderedImageWidth = renderedImageHeight * 3.5; // 7000x2000 aspect ratio
+    renderedImageWidth = renderedImageHeight * naturalAspectRatio;
   }
   
   const halfImageWidth = renderedImageWidth / 2;
@@ -1269,7 +1322,7 @@ function exitSceneMode() {
   
   // Restore street view background with smooth crossfade
   const isNightMode = document.body.classList.contains('high-contrast');
-  const streetImagePath = isNightMode ? 'assets/images/full-night-2D.jpg' : 'assets/images/full-day-2D.jpg';
+  const streetImagePath = isNightMode ? 'assets/images/Full-Night.jpg' : 'assets/images/Full-Day.jpg';
   
   const backgroundImage = document.querySelector('.background-image');
   if (backgroundImage) {
@@ -1303,7 +1356,7 @@ function swapDayNightImage() {
     targetImagePath = getSceneImagePath(currentStoryPoint.title, isNightMode);
   } else {
     // We're in street view - get street image
-    targetImagePath = isNightMode ? 'assets/images/full-night-2D.jpg' : 'assets/images/full-day-2D.jpg';
+    targetImagePath = isNightMode ? 'assets/images/Full-Night.jpg' : 'assets/images/Full-Day.jpg';
   }
   
   // Smooth fade transition
@@ -1359,6 +1412,19 @@ function createSmoothImageTransition(backgroundElement, targetImagePath) {
     backgroundElement.style.backgroundImage = `url(${targetImagePath})`;
     fadeOverlay.remove();
     console.log(`🌅 Fade transition completed: ${targetImagePath}`);
+    
+    // Recalculate drag limits with the new image's dimensions
+    setTimeout(() => {
+      const newLimits = calculateImageDragLimits();
+      console.log('📐 Updated drag limits for new image:', newLimits);
+      
+      // Constrain current position to new limits
+      currentX = Math.max(-newLimits.maxX, Math.min(newLimits.maxX, currentX));
+      currentY = Math.max(-newLimits.maxY, Math.min(newLimits.maxY, currentY));
+      
+      // Update position with new constraints
+      updateBackgroundPosition();
+    }, 100); // Small delay to ensure image is fully set
   }, 1600); // Slightly longer than transition duration
 }
 
@@ -1366,19 +1432,19 @@ function createSmoothImageTransition(backgroundElement, targetImagePath) {
 function getSceneImagePath(sceneType, isNightMode) {
   switch (sceneType) {
     case 'Food':
-      return isNightMode ? 'assets/images/food-night-2D.jpg' : 'assets/images/food-day-2D.jpg';
+      return isNightMode ? 'assets/images/Market-Night.jpg' : 'assets/images/Market-Day.jpg';
     case 'Education':
-      return isNightMode ? 'assets/images/education-night-2D.jpg' : 'assets/images/education-day-2D.jpg';
+      return isNightMode ? 'assets/images/Education-Night.jpg' : 'assets/images/Rooftop-Day.jpg';
     case 'Energy':
-      return isNightMode ? 'assets/images/energy-night-2D.jpg' : 'assets/images/energy-day-2D.jpg';
+      return isNightMode ? 'assets/images/Energy-Night.jpg' : 'assets/images/Panels-Day.jpg';
     case 'Transport':
-      return isNightMode ? 'assets/images/transport-night-2D.jpg' : 'assets/images/transport-day-2D.jpg';
+      return isNightMode ? 'assets/images/Transport-Night.jpg' : 'assets/images/Transport-Day.jpg';
     case 'Governance':
-      return isNightMode ? 'assets/images/energy-night-2D.jpg' : 'assets/images/energy-day-2D.jpg';
+      return isNightMode ? 'assets/images/Energy-Night.jpg' : 'assets/images/Panels-Day.jpg';
     case 'Housing':
-      return isNightMode ? 'assets/images/transport-night-2D.jpg' : 'assets/images/transport-day-2D.jpg';
+      return isNightMode ? 'assets/images/Transport-night.jpg' : 'assets/images/Transport-Day.jpg';
     default:
-      return isNightMode ? 'assets/images/energy-night-2D.jpg' : 'assets/images/energy-day-2D.jpg';
+      return isNightMode ? 'assets/images/Panels-Night.jpg' : 'assets/images/Panels-Day.jpg';
   }
 }
 
@@ -2051,6 +2117,7 @@ function positionDialogueToAvoidCircle(circleElement) {
 function showDialogue(point, pointElement) {
   currentStoryPoint = point;
   locationTitle.textContent = point.title;
+  locationSubtitle.textContent = point.mainText?.speaker || "";
   
   // Check for dialogue-circle collision and reposition if needed
   if (pointElement) {
@@ -2326,7 +2393,7 @@ function showSection(point, optionKey) {
   
   // Update location title and subtitle 
   locationTitle.textContent = point.title; // Use main section title
-  // Speaker content will be shown via subtitle class in dialogue entry
+  locationSubtitle.textContent = option.content?.speaker || "";
 
   // Check if mobile paragraph mode should be used for section content
   if (initMobileParagraphMode({ ...point, mainText: option.content })) {
@@ -4128,24 +4195,24 @@ function loadSinglePanoramaImage(point) {
   
   switch (point.title) {
     case 'Education':
-      dayImagePath = 'assets/images/education-day-2D.jpg';
-      nightImagePath = 'assets/images/education-night-2D.jpg';
+      dayImagePath = 'assets/images/Rooftop-Day.jpg';
+      nightImagePath = 'assets/images/Rooftop-Night.jpg';
       break;
     case 'Energy':
-      dayImagePath = 'assets/images/energy-day-2D.jpg';
-      nightImagePath = 'assets/images/energy-night-2D.jpg';
+      dayImagePath = 'assets/images/Panels-Day.jpg';
+      nightImagePath = 'assets/images/Panels-Night.jpg';
       break;
     case 'Transport':
-      dayImagePath = 'assets/images/transport-day-2D.jpg';
-      nightImagePath = 'assets/images/transport-night-2D.jpg';
+      dayImagePath = 'assets/images/Transport-Day.jpg';
+      nightImagePath = 'assets/images/Transport-Night.jpg';
       break;
     case 'Food':
-      dayImagePath = 'assets/images/food-day-2D.jpg';
-      nightImagePath = 'assets/images/food-night-2D.jpg';
+      dayImagePath = 'assets/images/Market-Day.jpg';
+      nightImagePath = 'assets/images/Market-Night.jpg';
       break;
     default:
-      dayImagePath = 'assets/images/energy-day-2D.jpg';
-      nightImagePath = 'assets/images/energy-night-2D.jpg';
+      dayImagePath = 'assets/images/Full-Day.jpg';
+      nightImagePath = 'assets/images/Full-Night.jpg';
       console.log(`No specific scene image for ${point.title}, using energy scene`);
       break;
   }
@@ -5131,7 +5198,7 @@ function showPanoramaDialogue(point) {
   
   currentStoryPoint = point;
   locationTitle.textContent = point.title;
-  // Point subtitle now handled via subtitle class in dialogue entry
+  locationSubtitle.textContent = point.mainText?.speaker || "";
 
   // Mark this point as visited
   visitedContent.add(point.title);
@@ -5964,7 +6031,7 @@ function returnToStreetView() {
       const isNightMode = document.body.classList.contains('high-contrast');
       
       // Set the default street view image with scrollable sizing
-      const defaultImagePath = isNightMode ? 'assets/images/full-night-2D.jpg' : 'assets/images/full-day-2D.jpg';
+      const defaultImagePath = isNightMode ? 'assets/images/Full-Night.jpg' : 'assets/images/Full-Day.jpg';
       
       // Apply the default street background with cross-fade using overlay technique
       const fadeOverlay = document.createElement('div');
@@ -6172,6 +6239,9 @@ window.addEventListener("load", () => {
   // Ensure container starts in proper state (not dragging)
   isDragging = false;
   container.classList.remove("dragging");
+  
+  // Cache image dimensions for proper drag limits
+  cacheImageDimensions();
   
   // Apply mobile-specific optimizations
   applyMobileOptimizations();

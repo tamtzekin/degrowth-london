@@ -39,7 +39,7 @@
             <!-- Spiral Logo in top left -->
             <div class="spiral-logo">
                 <svg
-                    viewBox="0 -15 180 180"
+                    viewBox="0 0 135 135"
                     fill="pink"
                     xmlns="http://www.w3.org/2000/svg"
                     preserveAspectRatio="xMidYMid meet"
@@ -60,6 +60,10 @@
                             <div
                                 class="location-title"
                                 id="locationTitle"
+                            ></div>
+                            <div
+                                class="location-subtitle"
+                                id="locationSubtitle"
                             ></div>
                         </div>
                         <div class="dialogue-header-controls">
@@ -156,6 +160,37 @@
               </div>
 
                 <button class="help-close" id="helpClose">OK</button>
+            </div>
+
+            <!-- Credits overlay -->
+            <div class="credits-overlay hidden" id="creditsOverlay">
+                <div class="credits-content">
+                    <h2 class="credits-title">Credits</h2>
+                    
+                    <div class="credits-section">
+                        <h3 class="credits-role">Design</h3>
+                        <p class="credits-name">Natalia</p>
+                    </div>
+                    
+                    <div class="credits-section">
+                        <h3 class="credits-role">Web Development</h3>
+                        <p class="credits-name">Justin Tam</p>
+                    </div>
+                    
+                    <div class="credits-section">
+                        <h3 class="credits-role">Editing</h3>
+                        <p class="credits-name">Zoe Rasbash</p>
+                    </div>
+                    
+                    <div class="credits-section">
+                        <h3 class="credits-role">Text by</h3>
+                        <p class="credits-contributors">
+                            All the contributor names
+                        </p>
+                    </div>
+                    
+                    <button class="credits-close" id="creditsClose">OK</button>
+                </div>
             </div>
         </div>
 
