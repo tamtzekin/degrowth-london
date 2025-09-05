@@ -454,7 +454,7 @@ body.high-contrast .background-image.scene-active::after {
 /* Improved dialogue panel */
 .dialogue-panel {
     position: fixed;
-    top: 70vh;
+    top: 25vh;
     right: 0;
     width: 450px;
     height: 60vh;
@@ -1047,6 +1047,7 @@ body.high-contrast .background-image.scene-active::after {
         width: calc(100% - 30px); /* Offset left and right */
         height: 35vh; /* Increased size for better readability */
         max-height: 35vh; /* Prevent stretching beyond this */
+        top: 70vh;
         bottom: 25px; /* Offset from bottom - increased to clear gradient */
         left: 15px; /* Offset from left */
         /* top: 70px; */
@@ -1205,7 +1206,7 @@ body.high-contrast .background-image.scene-active::after {
     /* Mobile paragraph dialogue system styles */
     .mobile-paragraph-container {
         position: relative;
-        padding: 5px 0;
+        padding: 10px 0;
     }
     
     /* Ensure mobile paragraph text uses same styling as desktop */
