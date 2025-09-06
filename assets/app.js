@@ -566,14 +566,29 @@ function setupEventListeners() {
     if (!isMobile) return;
     
     const target = e.changedTouches ? e.changedTouches[0].target : e.target;
+    const isUIElement = target.closest('#helpButton') || 
+                       target.closest('#contrastToggle') || 
+                       target.closest('#textSpeedToggle') ||
+                       target.closest('.help-overlay') ||
+                       target.closest('.point');
+    
     const clickedOutsideDialogue = !dialoguePanel.contains(target) && 
-                                   !target.closest(".point") && 
-                                   !target.classList.contains("interactive-text") && 
-                                   !target.closest(".interactive-text");
+                                   !target.closest(".interactive-text") && 
+                                   !target.closest(".interactive-text") &&
+                                   !isUIElement;
+    
+    console.log('📱 Mobile TOUCHEND - dialogue check:', {
+      dialogueVisible: dialoguePanel.classList.contains("visible"),
+      clickedOutsideDialogue,
+      wasDragging,
+      target: target.tagName + (target.id ? '#' + target.id : ''),
+      isUIElement,
+      timeStamp: e.timeStamp
+    });
     
     // Close dialogue on mobile single tap outside dialogue
     if (dialoguePanel.classList.contains("visible") && clickedOutsideDialogue && !wasDragging) {
-      console.log('Mobile touchend - closing dialogue');
+      console.log('📱 Mobile touchend - closing dialogue');
       
       if (isMobileParagraphMode) {
         closeMobileDialogueWithAnimation();
@@ -589,10 +604,41 @@ function setupEventListeners() {
   container.addEventListener("click", (e) => {
     const isMobile = window.innerWidth <= 480;
     
-    // On mobile, prevent click events to avoid double-triggering with touch events
+    console.log('📱 Container CLICK event fired:', {
+      isMobile,
+      target: e.target.tagName + (e.target.id ? '#' + e.target.id : ''),
+      timeStamp: e.timeStamp,
+      type: e.type,
+      preventDefault: e.defaultPrevented,
+      closestUIElement: {
+        helpButton: !!e.target.closest('#helpButton'),
+        contrastToggle: !!e.target.closest('#contrastToggle'),
+        textSpeedToggle: !!e.target.closest('#textSpeedToggle'),
+        helpOverlay: !!e.target.closest('.help-overlay'),
+        dialoguePanel: !!e.target.closest('.dialogue-panel'),
+        point: !!e.target.closest('.point')
+      }
+    });
+    
+    // On mobile, only prevent click events for map area clicks, allow UI element clicks
     if (isMobile) {
-      e.preventDefault();
-      return;
+      const isUIElement = e.target.closest('#helpButton') || 
+                         e.target.closest('#contrastToggle') || 
+                         e.target.closest('#textSpeedToggle') ||
+                         e.target.closest('.help-overlay') ||
+                         e.target.closest('.dialogue-panel') ||
+                         e.target.closest('.point');
+      
+      console.log('📱 Mobile UI check:', { isUIElement, willPrevent: !isUIElement });
+      
+      if (!isUIElement) {
+        // Only prevent map area clicks that would close dialogues
+        console.log('📱 Preventing container click event (map area)');
+        e.preventDefault();
+        return;
+      } else {
+        console.log('📱 Allowing container click event (UI element)');
+      }
     }
     
     const clickedOutsideDialogue = !dialoguePanel.contains(e.target) && 
@@ -628,7 +674,7 @@ function setupEventListeners() {
     const isHelpButton = e.target.id === 'helpButton' || e.target.closest('#helpButton');
     
     console.log('Document click - Help overlay check:', {
-      target: e.target.tagName + (e.target.id ? '#' + e.target.id : '') + (e.target.className ? '.' + e.target.className.split(' ')[0] : ''),
+      target: e.target.tagName + (e.target.id ? '#' + e.target.id : '') + (e.target.className && typeof e.target.className === 'string' ? '.' + e.target.className.split(' ')[0] : ''),
       isHelpOverlayVisible,
       isTargetInOverlay,
       isTargetInDialogue,
@@ -714,11 +760,48 @@ function setupEventListeners() {
   
   // Help button event listener to reopen help overlay
   const helpButton = document.getElementById("helpButton");
-  helpButton.addEventListener("click", () => {
-    console.log('❓ Help button clicked - showing overlay');
+  helpButton.addEventListener("click", (e) => {
+    console.log('❓ Help button CLICK event fired:', {
+      isMobile: window.innerWidth <= 480,
+      target: e.target,
+      timeStamp: e.timeStamp,
+      type: e.type,
+      touches: e.touches?.length || 'N/A',
+      preventDefault: e.defaultPrevented
+    });
     helpOverlay.classList.remove("hidden");
     // Add active state to help button
     helpButton.classList.add('active');
+  });
+  
+  // Also add touch event logging to help button
+  helpButton.addEventListener("touchstart", (e) => {
+    console.log('❓ Help button TOUCHSTART event fired:', {
+      timeStamp: e.timeStamp,
+      touches: e.touches.length,
+      target: e.target
+    });
+  });
+  
+  helpButton.addEventListener("touchend", (e) => {
+    console.log('❓ Help button TOUCHEND event fired:', {
+      timeStamp: e.timeStamp,
+      touches: e.touches.length,
+      changedTouches: e.changedTouches.length,
+      target: e.target,
+      preventDefault: e.defaultPrevented
+    });
+    
+    // Handle the help button directly on touchend for mobile to avoid double-tap
+    const isMobile = window.innerWidth <= 480;
+    if (isMobile) {
+      console.log('❓ Opening help overlay via TOUCHEND (mobile)');
+      e.preventDefault(); // Prevent subsequent click event
+      
+      // Execute the same logic as the click handler
+      helpOverlay.classList.remove("hidden");
+      helpButton.classList.add('active');
+    }
   });
   
   // Check if help button should be shown on page load
@@ -770,6 +853,15 @@ function setupEventListeners() {
   let isHighContrast = false;
 
   contrastToggle.addEventListener("click", (e) => {
+    console.log('🌙 Day/Night toggle CLICK event fired:', {
+      isMobile: window.innerWidth <= 480,
+      target: e.target,
+      timeStamp: e.timeStamp,
+      type: e.type,
+      touches: e.touches?.length || 'N/A',
+      preventDefault: e.defaultPrevented,
+      stopPropagation: 'called'
+    });
     e.stopPropagation(); // Prevent event bubbling
     
     // Play light switch sound effect
@@ -795,6 +887,54 @@ function setupEventListeners() {
                     <path d="M12 0.5v3M12 20.5v3M3.5 3.5l2.12 2.12M17.88 17.88l2.12 2.12M0.5 12h3M20.5 12h3M3.5 20.5l2.12-2.12M17.88 6.12l2.12-2.12"/>
                 </svg>
             `;
+    }
+  });
+  
+  // Also add touch event logging to day/night toggle
+  contrastToggle.addEventListener("touchstart", (e) => {
+    console.log('🌙 Day/Night toggle TOUCHSTART event fired:', {
+      timeStamp: e.timeStamp,
+      touches: e.touches.length,
+      target: e.target
+    });
+  });
+  
+  contrastToggle.addEventListener("touchend", (e) => {
+    console.log('🌙 Day/Night toggle TOUCHEND event fired:', {
+      timeStamp: e.timeStamp,
+      touches: e.touches.length,
+      changedTouches: e.changedTouches.length,
+      target: e.target,
+      preventDefault: e.defaultPrevented
+    });
+    
+    // Handle the toggle directly on touchend for mobile to avoid double-tap
+    const isMobile = window.innerWidth <= 480;
+    if (isMobile) {
+      console.log('🌙 Executing day/night toggle via TOUCHEND (mobile)');
+      e.preventDefault(); // Prevent subsequent click event
+      
+      // Execute the same logic as the click handler
+      playLightSwitchSound();
+      isHighContrast = !isHighContrast;
+      document.body.classList.toggle("high-contrast", isHighContrast);
+      swapDayNightImage();
+      
+      // Update the SVG icon
+      if (isHighContrast) {
+        contrastToggle.innerHTML = `
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+                  </svg>
+              `;
+      } else {
+        contrastToggle.innerHTML = `
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="5"/>
+                      <path d="M12 0.5v3M12 20.5v3M3.5 3.5l2.12 2.12M17.88 17.88l2.12 2.12M0.5 12h3M20.5 12h3M3.5 20.5l2.12-2.12M17.88 6.12l2.12-2.12"/>
+                  </svg>
+              `;
+      }
     }
   });
 
