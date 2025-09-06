@@ -6155,7 +6155,7 @@ function initializeMusic() {
     return;
   }
   
-  backgroundMusic = new Audio("assets/sound/06-julian.mp3");
+  backgroundMusic = new Audio("assets/sound/london_soundscape.mp3");
   backgroundMusic.loop = true;
   backgroundMusic.volume = 0.3; // Set to a comfortable level
 
