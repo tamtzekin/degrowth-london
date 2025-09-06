@@ -47,6 +47,9 @@ body {
     top: -10%;
     left: -125%; /* Adjusted to center the wider container */
     transition: transform 0.15s ease-out, opacity 0.2s ease-in-out;
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
 }
 
 /* Disable all transitions and hide pseudo-elements during dragging to prevent flickering */
@@ -68,6 +71,9 @@ body {
     height: 100%;
     object-fit: cover;
     position: relative;
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
 }
 
 .background-image::before {
@@ -127,6 +133,9 @@ body.high-contrast .background-image.scene-active::after {
     height: 100%;
     pointer-events: none;
     transition: opacity 0.5s ease-in-out;
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
 }
 
 /* Connection lines between points */

@@ -1046,12 +1046,12 @@ function updateBackgroundPosition() {
     }
     
     if (cachedElements.backgroundContainer) {
-      cachedElements.backgroundContainer.style.transform = `translate(${currentX}px, ${currentY}px)`;
+      cachedElements.backgroundContainer.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
     }
 
     // Move points with the background using the same transform
     if (cachedElements.interactivePoints) {
-      cachedElements.interactivePoints.style.transform = `translate(${currentX}px, ${currentY}px)`;
+      cachedElements.interactivePoints.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
     }
     
     // Update spotlight position when map moves (but not during active dragging to prevent jankiness)
@@ -1180,8 +1180,8 @@ function centerSceneCircleOnScreen(circleElement) {
   currentY = Math.max(-maxY, Math.min(maxY, currentY));
   
   // Add smooth transition for camera movement
-  backgroundContainer.style.transition = "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
-  interactivePoints.style.transition = "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+  backgroundContainer.style.transition = "transform 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+  interactivePoints.style.transition = "transform 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
   
   // Update background position to center on the circle
   updateBackgroundPosition();
@@ -1240,8 +1240,8 @@ function centerSceneCircleWithDialogueBoundary(circleElement) {
   currentY = Math.max(-maxY, Math.min(maxY, currentY));
   
   // Add smooth transition for camera movement
-  backgroundContainer.style.transition = "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
-  interactivePoints.style.transition = "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+  backgroundContainer.style.transition = "transform 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+  interactivePoints.style.transition = "transform 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
   
   // Update background position to center on the circle
   updateBackgroundPosition();
@@ -1270,7 +1270,7 @@ function enterSceneMode(sceneType) {
     circle.style.opacity = '0';
     setTimeout(() => {
       circle.style.display = 'none';
-    }, 400); // Reduced from 800ms to match faster animation
+    }, 600); // Smooth fade out timing
   });
   
   // Load the correct scene image with smooth crossfade transition
@@ -1386,11 +1386,11 @@ function waitForImageTransition(imagePath, callback) {
   img.onload = () => {
     console.log('✅ Scene image loaded:', imagePath);
     // Wait additional time for crossfade animation to complete
-    setTimeout(callback, 400);
+    setTimeout(callback, 1200);
   };
   img.onerror = () => {
     console.warn('⚠️ Scene image failed to load, continuing anyway:', imagePath);
-    setTimeout(callback, 400);
+    setTimeout(callback, 1200);
   };
   img.src = imagePath;
 }
@@ -1406,26 +1406,33 @@ function createSmoothImageTransition(backgroundElement, targetImagePath) {
     width: 100%;
     height: 100%;
     background-image: url(${targetImagePath});
-    background-size: auto 100%;
+    background-size: auto 105%;
     background-position: center center;
     background-repeat: no-repeat;
     opacity: 0;
     z-index: 3;
     pointer-events: none;
-    transition: opacity 1.5s ease-in-out;
+    transition: opacity 2.5s cubic-bezier(0.25, 0.46, 0.45, 0.94), background-size 3.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   `;
   
   // Add overlay to background container
   backgroundElement.parentElement.appendChild(fadeOverlay);
   
-  // Start the fade-in transition
+  // Start the fade-in and zoom transition
   setTimeout(() => {
     fadeOverlay.style.opacity = '1';
-  }, 50);
+    fadeOverlay.style.backgroundSize = 'auto 100%'; // Slow zoom from 105% to 100%
+    
+    // Simultaneously fade out the existing background for better crossfade
+    backgroundElement.style.transition = 'opacity 2.0s ease-out';
+    backgroundElement.style.opacity = '0.3';
+  }, 100);
   
   // After transition completes, update the main background and remove overlay
   setTimeout(() => {
     backgroundElement.style.backgroundImage = `url(${targetImagePath})`;
+    backgroundElement.style.opacity = '1'; // Restore full opacity
+    backgroundElement.style.transition = ''; // Reset transition
     fadeOverlay.remove();
     console.log(`🌅 Fade transition completed: ${targetImagePath}`);
     
@@ -1441,7 +1448,7 @@ function createSmoothImageTransition(backgroundElement, targetImagePath) {
       // Update position with new constraints
       updateBackgroundPosition();
     }, 100); // Small delay to ensure image is fully set
-  }, 1600); // Slightly longer than transition duration
+  }, 3700); // Slightly longer than transition duration
 }
 
 // Get the appropriate image path for a scene
@@ -1608,10 +1615,9 @@ function handleEdgeScrolling(e) {
     // Set timeout to detect when mouse stops moving
     mouseStopTimeout = setTimeout(() => {
       isMouseMoving = false;
-      // Stop scrolling immediately when mouse stops
-      targetScrollVelocityX = 0;
-      targetScrollVelocityY = 0;
-    }, 100); // delay to detect mouse stop
+      // Gradually slow down scrolling when mouse stops (don't set to 0 immediately)
+      // The scrolling animation loop will handle the gradual deceleration
+    }, 400); // stop edgescroll after mouse stops moving
   }
   
   // Only scroll if mouse is actively moving
@@ -1637,7 +1643,7 @@ function handleEdgeScrolling(e) {
     const smoothFactor = scrollFactor;
     
     // Calculate velocity based on direction and smooth factor (reversed for intuitive movement)
-    const maxSpeed = 12.0; // Much faster scrolling for snappier movement
+    const maxSpeed = 7.0;
     targetScrollVelocityX = -relativeX * smoothFactor * maxSpeed;
     targetScrollVelocityY = -relativeY * smoothFactor * maxSpeed;
   } else {
@@ -1670,6 +1676,17 @@ function startEdgeScrolling() {
     // Much faster acceleration for snappier response
     const acceleration = 0.4; // Increased for snappier edge scrolling
     const bounceMultiplier = 1.0; // No bounce effect
+    
+    // If mouse stopped moving, gradually reduce target velocities for smooth deceleration
+    if (!isMouseMoving) {
+      const decelerationRate = 0.92; // Gradual slowdown (lower = slower deceleration)
+      targetScrollVelocityX *= decelerationRate;
+      targetScrollVelocityY *= decelerationRate;
+      
+      // Set to zero when very small to avoid infinite tiny movements
+      if (Math.abs(targetScrollVelocityX) < 0.01) targetScrollVelocityX = 0;
+      if (Math.abs(targetScrollVelocityY) < 0.01) targetScrollVelocityY = 0;
+    }
     
     const deltaX = targetScrollVelocityX - currentScrollVelocityX;
     const deltaY = targetScrollVelocityY - currentScrollVelocityY;
@@ -1792,8 +1809,8 @@ function handleCircleClick(point, pointElement, index) {
     pointElement.classList.add('zooming');
     
     // Apply zoom transform to background and points
-    backgroundContainer.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-    interactivePoints.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    backgroundContainer.style.transition = 'transform 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    interactivePoints.style.transition = 'transform 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
     
     const zoomScale = 1.5; // Zoom level
     
@@ -1802,7 +1819,7 @@ function handleCircleClick(point, pointElement, index) {
     const finalX = Math.max(-maxX * zoomScale, Math.min(maxX * zoomScale, currentX + targetX));
     const finalY = Math.max(-maxY * zoomScale, Math.min(maxY * zoomScale, currentY + targetY));
     
-    const newTransform = `translate(${finalX}px, ${finalY}px) scale(${zoomScale})`;
+    const newTransform = `translate3d(${finalX}px, ${finalY}px, 0) scale(${zoomScale})`;
     
     backgroundContainer.style.transform = newTransform;
     interactivePoints.style.transform = newTransform;
@@ -1829,8 +1846,8 @@ function handleCircleClick(point, pointElement, index) {
         pointElement.classList.remove('zooming');
         
         // Reset transforms to normal
-        backgroundContainer.style.transform = `translate(${currentX}px, ${currentY}px)`;
-        interactivePoints.style.transform = `translate(${currentX}px, ${currentY}px)`;
+        backgroundContainer.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+        interactivePoints.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
         
         // Add scene-specific circles based on the story data
         createSceneSpecificCircles(point);
@@ -2278,8 +2295,8 @@ function centerPointOnScreen(pointElement) {
   currentY = Math.max(-maxY, Math.min(maxY, currentY));
 
   // Add smooth transition for camera movement
-  backgroundContainer.style.transition = "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
-  interactivePoints.style.transition = "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+  backgroundContainer.style.transition = "transform 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+  interactivePoints.style.transition = "transform 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
 
   updateBackgroundPosition();
 
@@ -3284,8 +3301,8 @@ function resetMapPosition() {
   currentY = 0;
   
   // Add smooth transition for camera movement
-  backgroundContainer.style.transition = "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
-  interactivePoints.style.transition = "transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+  backgroundContainer.style.transition = "transform 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+  interactivePoints.style.transition = "transform 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
   
   updateBackgroundPosition();
   
@@ -4151,7 +4168,7 @@ function setupFlatPanoramaControls() {
     
     // Move panorama horizontally (1:1 with mouse movement)
     currentTransformX = deltaX;
-    panoramaContainer.style.transform = `translateX(calc(-100% + ${currentTransformX}px))`;
+    panoramaContainer.style.transform = `translate3d(calc(-100% + ${currentTransformX}px), 0, 0)`;
     
     // Update circle positions
     updateFlatPanoramaCircles(currentTransformX);
@@ -4185,7 +4202,7 @@ function setupFlatPanoramaControls() {
     
     // Move panorama horizontally (1:1 with touch movement)
     currentTransformX = deltaX;
-    panoramaContainer.style.transform = `translateX(calc(-100% + ${currentTransformX}px))`;
+    panoramaContainer.style.transform = `translate3d(calc(-100% + ${currentTransformX}px), 0, 0)`;
     
     // Update circle positions
     updateFlatPanoramaCircles(currentTransformX);
@@ -4916,7 +4933,7 @@ function createTestPanoramaCircle(pointData, index) {
   circleElement.style.background = 'radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.2), rgba(0, 0, 0, 0.1))';
   circleElement.style.border = `${circleElement.style.borderWidth} dashed #e8e8e8`;
   circleElement.style.borderRadius = '50%';
-  circleElement.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+  circleElement.style.transition = 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)';
   circleElement.style.boxShadow = `
     inset 5px 5px 15px rgba(255, 255, 255, 0.3),
     inset -5px -5px 15px rgba(0, 0, 0, 0.4),
@@ -5993,13 +6010,13 @@ function returnToStreetView() {
   
   // Phase 2: Apply smoother reverse zoom effect with cross-fade preparation
   setTimeout(() => {
-    backgroundContainer.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.4s ease';
-    interactivePoints.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    backgroundContainer.style.transition = 'transform 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 1.2s ease';
+    interactivePoints.style.transition = 'transform 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
     
     // Apply smoother zoom-out effect
     const zoomOutScale = 0.85;
-    backgroundContainer.style.transform = `translate(${currentX}px, ${currentY}px) scale(${zoomOutScale})`;
-    interactivePoints.style.transform = `translate(${currentX}px, ${currentY}px) scale(${zoomOutScale})`;
+    backgroundContainer.style.transform = `translate3d(${currentX}px, ${currentY}px, 0) scale(${zoomOutScale})`;
+    interactivePoints.style.transform = `translate3d(${currentX}px, ${currentY}px, 0) scale(${zoomOutScale})`;
     
     // Start fading out current background for cross-fade
     const backgroundImage = backgroundContainer.querySelector('.background-image');
@@ -6012,10 +6029,10 @@ function returnToStreetView() {
   // Phase 3: Reset zoom and start background cross-fade
   setTimeout(() => {
     // Smoothly reset transforms
-    backgroundContainer.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-    interactivePoints.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-    backgroundContainer.style.transform = `translate(${currentX}px, ${currentY}px)`;
-    interactivePoints.style.transform = `translate(${currentX}px, ${currentY}px)`;
+    backgroundContainer.style.transition = 'transform 1.0s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    interactivePoints.style.transition = 'transform 1.0s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    backgroundContainer.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+    interactivePoints.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
     
     // Remove scene circles from DOM
     sceneCircles.forEach(circle => circle.remove());
