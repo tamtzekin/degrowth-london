@@ -138,8 +138,9 @@ body.high-contrast .background-image.scene-active::after {
     backface-visibility: hidden;
 }
 
-/* Connection lines between points */
+/* Connection lines between points - HIDDEN */
 .connection-lines {
+    display: none; /* Hide pink connection lines as requested */
     position: absolute;
     top: 0;
     left: 0;
@@ -429,8 +430,9 @@ body.high-contrast .background-image.scene-active::after {
     }
 }
 
-/* Connection lines between points */
+/* Connection lines between points - HIDDEN */
 .connection-lines {
+    display: none; /* Hide pink connection lines as requested */
     position: absolute;
     top: 0;
     left: 0;
@@ -441,6 +443,7 @@ body.high-contrast .background-image.scene-active::after {
 }
 
 .simple-line {
+    display: none; /* Hide pink connection lines as requested */
     position: absolute;
     background: #9d6e6d;
     opacity: 0.8;
@@ -609,7 +612,7 @@ body.high-contrast .background-image.scene-active::after {
 }
 
 /* Improved text legibility across all text */
-.section-text, .dialogue-speaker, .location-title, .location-subtitle, .help-item {
+.section-text, .dialogue-speaker, .location-title, .help-item {
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 0 6px rgba(0, 0, 0, 0.25);
     font-weight: 400;
 }
@@ -635,7 +638,7 @@ body.high-contrast .background-image.scene-active::after {
     color: #ffffff; /* Pure white for location info */
 }
 
-.location-subtitle, .subtitle {
+.subtitle {
     color: #f9c1ce;
     font-weight: bold;
     text-transform: uppercase;
@@ -819,17 +822,16 @@ body.high-contrast .background-image.scene-active::after {
 /* Hover title for circle points */
 .hover-title {
     position: fixed;
-    background: rgba(26, 26, 26, 0.95);
-    color: rgba(249, 193, 206, 0.7);
+    background: rgba(153, 111, 105, 0.9);
+    color: #ffffff;
     padding: 12px 20px;
     border-radius: 8px;
     font-size: 28px;
     font-weight: bold;
-    text-shadow: 0 0 10px rgba(249, 193, 206, 0.3);
-    border: 2px solid rgba(249, 193, 206, 0.2);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 0 6px rgba(0, 0, 0, 0.25);
+    border: 2px solid rgba(217, 195, 194, 0.5);
     box-shadow: 
-        0 4px 20px rgba(0, 0, 0, 0.4),
-        0 0 15px rgba(249, 193, 206, 0.15),
+        0 15px 40px rgba(0, 0, 0, 0.4),
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
     z-index: 9999;
     pointer-events: none;
@@ -837,6 +839,7 @@ body.high-contrast .background-image.scene-active::after {
     opacity: 0;
     transform: scale(0.8) translateY(10px);
     transition: all 0.2s ease-out;
+    backdrop-filter: blur(20px);
 }
 
 .hover-title.visible {
@@ -1002,6 +1005,81 @@ body.high-contrast .background-image.scene-active::after {
     justify-content: center;
 }
 
+/* Separate intro overlay - appears first */
+.intro-overlay {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(153, 111, 105, 0.9);
+    backdrop-filter: blur(20px);
+    border-radius: 16px;
+    padding: 40px;
+    z-index: 10001; /* Higher than help overlay */
+    transition: all 0.4s ease;
+    border: 2px solid rgba(217, 195, 194, 0.5);
+    min-width: 425px;
+    max-width: 525px;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    pointer-events: auto;
+}
+
+.intro-overlay.hidden {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+    pointer-events: none;
+}
+
+.intro-content {
+    width: 100%;
+}
+
+.intro-text {
+    margin-bottom: 30px;
+}
+
+.intro-text p {
+    color: #ece1e0;
+    font-size: 1.2em;
+    line-height: 1.65;
+    margin-bottom: 18px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 0 6px rgba(0, 0, 0, 0.25);
+    font-weight: 400;
+    text-align: left;
+}
+
+.intro-text p:last-child {
+    margin-bottom: 0;
+}
+
+.intro-continue {
+    align-self: center;
+    padding: 15px 35px;
+    border: 2px solid rgba(249, 193, 206, 0.7);
+    background: rgba(249, 193, 206, 0.3);
+    color: #f9c1ce;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: inherit;
+    font-size: 1.1em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    min-width: 150px;
+}
+
+.intro-continue:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: #ffffff;
+    color: #ffffff;
+    transform: translateY(-2px);
+}
+
 /* Mobile responsive */
 @media (max-width: 480px) {
     /* Fix viewport stretching */
@@ -1109,25 +1187,49 @@ body.high-contrast .background-image.scene-active::after {
         }
     }
     .help-overlay {
-        min-width: 90%;
-        padding: 20px;
+        min-width: 92%;
+        padding: 15px;
+        gap: 8px;
     }
     
     .help-item {
-        font-size: 1.1em;
-        margin-bottom: 12px;
+        font-size: 0.95em;
+        margin-bottom: 8px;
     }
     
     .help-icon {
-        width: 58px; /* Scaled up proportionally from 28px */
-        height: 58px;
-        margin-right: 32px; /* Scaled up proportionally from 16px */
+        width: 40px;
+        height: 40px;
+        margin-right: 20px;
     }
     
     .help-close {
-        font-size: 1.3em; /* Scale up text */
-        min-width: 105px; /* Scale up min-width proportionally */
-        margin-top: 16px; /* Scale up margin */
+        font-size: 1.1em;
+        min-width: 80px;
+        margin-top: 10px;
+        padding: 12px 25px;
+    }
+    
+    .intro-overlay {
+        min-width: 92%;
+        max-width: 92%;
+        padding: 20px;
+    }
+    
+    .intro-text {
+        margin-bottom: 20px;
+    }
+    
+    .intro-text p {
+        font-size: 1.0em;
+        margin-bottom: 15px;
+        line-height: 1.5;
+    }
+    
+    .intro-continue {
+        font-size: 1.0em;
+        padding: 15px 30px;
+        min-width: 120px;
     }
 
     .ui-overlay {
@@ -1187,12 +1289,6 @@ body.high-contrast .background-image.scene-active::after {
         font-size: 1.1em;
     }
     
-    .spiral-logo {
-        width: 40px;
-        height: 60px;
-        top: -5px;
-        left: 5px;
-    }
     
     /* Mobile panorama points - smaller for better mobile experience */
     .panorama-point.interactive-link {
@@ -1380,16 +1476,7 @@ body.high-contrast .background-image.scene-active::after {
     }
 
     /* Ensure subtitle is visible in mobile */
-    .location-subtitle {
-        display: block !important;
-        visibility: visible !important;
-        color: #f9c1ce !important;
-        font-weight: bold !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.5px !important;
-        font-size: 0.9em !important;
-        margin-bottom: 8px !important;
-    }
+    /* location-subtitle removed */
     
 }
 
@@ -1493,6 +1580,23 @@ body.high-contrast .background-image.scene-active::after {
         min-width: 252px; /* Scale up min-width proportionally */
         margin-top: 16px; /* Scale up margin */
     }
+    
+    .intro-overlay {
+        min-width: 85%;
+        max-width: 85%;
+        padding: 30px;
+    }
+    
+    .intro-text p {
+        font-size: 1.1em;
+        margin-bottom: 18px;
+        line-height: 1.65;
+    }
+    
+    .intro-continue {
+        font-size: 1.05em;
+        padding: 16px 32px;
+    }
     .point {
         width: 130px;
         height: 130px;
@@ -1587,14 +1691,12 @@ body.high-contrast .background-image.scene-active::after {
         font-size: 1.3em;
     }
     
-    .location-subtitle {
-        font-size: 1.2em;
-    }
+    /* location-subtitle removed */
     .spiral-logo {
-        width: 80px;
-        height: 80px;
-        top: -8px;
-        left: 8px;
+        width: 60px;
+        height: 60px;
+        top: 10px;
+        right: 10px;
     }
 }
 
@@ -1608,8 +1710,9 @@ body.high-contrast .background-image.scene-active::after {
         height: 104px;
     }
     .spiral-logo {
-        width: 100px;
-        height: 100px;
+        width: 60px;
+        height: 60px;
+        right: 160px;
     }
 }
 
@@ -1622,8 +1725,9 @@ body.high-contrast .background-image.scene-active::after {
         height: 130px;
     }
     .spiral-logo {
-        width: 120px;
-        height: 120px;
+        width: 60px;
+        height: 60px;
+        right: 160px;
     }
 }
 
@@ -1639,7 +1743,7 @@ body.high-contrast .background-image.scene-active::after {
 }
 
 .dialogue-panel.dialogue-right {
-    right: 0;
+    right: 20px;
     left: auto;
     transform: translateX(100%);
 }
@@ -1691,7 +1795,7 @@ body.high-contrast .background-image.scene-active::after {
     align-items: center;
     justify-content: center;
     z-index: 6000; /* Above dialogue panels */
-    padding: 15px;
+    padding: 0; /* Remove padding for better centering */
 }
 
 .day-night-toggle:hover {
@@ -1728,7 +1832,7 @@ body.high-contrast .day-night-toggle:hover svg {
 .help-button {
     position: fixed;
     top: 10px;
-    right: 10px;
+    right: 163px;
     width: 60px;
     height: 60px;
     background: transparent;
@@ -1740,7 +1844,7 @@ body.high-contrast .day-night-toggle:hover svg {
     align-items: center;
     justify-content: center;
     z-index: 6000; /* Above dialogue panels */
-    padding: 15px;
+    padding: 0; /* Remove padding for better centering */
     font-family: 'Raleway', sans-serif;
 }
 
@@ -1914,8 +2018,41 @@ body.high-contrast .help-item {
     color: #ffffff;
 }
 
-/* Credits overlay styles - based on help overlay */
-.credits-overlay {
+body.high-contrast .intro-overlay {
+    background: rgba(0, 0, 0, 0.95);
+    border: 2px solid #f2f2f2;
+}
+
+body.high-contrast .intro-text p {
+    color: #f9c1ce;
+}
+
+body.high-contrast .intro-continue {
+    color: #ffffff;
+    border-color: #ffffff;
+    background: transparent;
+}
+
+body.high-contrast .intro-continue:hover {
+    color: #f9c1ce;
+    border-color: #f9c1ce;
+    background: rgba(249, 193, 206, 0.4);
+}
+
+/* Keep dark hover title styling in night mode */
+body.high-contrast .hover-title {
+    background: rgba(26, 26, 26, 0.95);
+    color: rgba(249, 193, 206, 0.7);
+    border: 2px solid rgba(249, 193, 206, 0.2);
+    text-shadow: 0 0 10px rgba(249, 193, 206, 0.3);
+    box-shadow: 
+        0 4px 20px rgba(0, 0, 0, 0.4),
+        0 0 15px rgba(249, 193, 206, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Imprint overlay styles - based on help overlay */
+.imprint-overlay {
     position: fixed;
     top: 50%;
     left: 50%;
@@ -1924,16 +2061,127 @@ body.high-contrast .help-item {
     backdrop-filter: blur(15px);
     border-radius: 16px;
     padding: 30px;
-    min-width: 400px;
-    max-width: 500px;
+    min-width: 500px;
+    max-width: 600px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    text-align: center;
+    text-align: left;
     z-index: 10000;
     opacity: 1;
     transition: opacity 0.3s ease, transform 0.3s ease;
     pointer-events: auto;
+    border: 2px solid rgba(217, 195, 194, 0.5);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.imprint-overlay.hidden {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+    pointer-events: none;
+}
+
+.imprint-content {
+    width: 100%;
+}
+
+.imprint-title {
+    color: #ffffff;
+    font-size: 1.8em;
+    font-weight: bold;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    text-align: center;
+}
+
+.imprint-section {
+    margin-bottom: 16px;
+}
+
+.imprint-role {
+    color: #f9c1ce;
+    font-size: 1.1em;
+    font-weight: bold;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+}
+
+.imprint-name {
+    color: #ffffff;
+    font-size: 1em;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.imprint-close {
+    align-self: center;
+    margin-top: 20px;
+    padding: 8px 20px;
+    border: 2px solid #ece1e0;
+    background: transparent;
+    color: #ece1e0;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: inherit;
+    font-size: 1em;
+}
+
+.imprint-close:hover {
+    border-color: #f9c1ce;
+    color: #f9c1ce;
+    background: rgba(249, 193, 206, 0.1);
+}
+
+/* Imprint overlay mobile responsiveness */
+@media (max-width: 480px) {
+    .imprint-overlay {
+        min-width: 90%;
+        padding: 20px;
+    }
+    
+    .imprint-title {
+        font-size: 1.5em;
+    }
+    
+    .imprint-role {
+        font-size: 1em;
+    }
+}
+
+/* Imprint overlay tablet responsiveness */
+@media (min-width: 481px) and (max-width: 768px) {
+    .imprint-overlay {
+        min-width: 85%;
+        padding: 25px;
+    }
+}
+
+/* High contrast mode support for imprint overlay */
+body.high-contrast .imprint-overlay {
+    background: rgba(0, 0, 0, 0.95);
+    border: 2px solid #f2f2f2;
+}
+
+body.high-contrast .imprint-title,
+body.high-contrast .imprint-name {
+    color: #ffffff;
+}
+
+body.high-contrast .imprint-role {
+    color: #f9c1ce;
+}
+
+body.high-contrast .imprint-close {
+    color: #ffffff;
+    border-color: #ffffff;
+    background: transparent;
+}
+
+body.high-contrast .imprint-close:hover {
+    color: #f9c1ce;
+    border-color: #f9c1ce;
+    background: rgba(249, 193, 206, 0.4);
 }
 
 .credits-overlay.hidden {
@@ -2150,24 +2398,30 @@ body.high-contrast .panorama-point:hover {
 }
 .spiral-logo {
     position: fixed;
-    top: -15px;
-    left: 10px;
-    width: 90px;
-    height: 90px;
+    top: 10px;
+    right: 10px; /* Move to rightmost position */
+    width: 60px;
+    height: 60px;
     z-index: 2000;
     opacity: 0.8;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.3s ease, transform 0.2s ease;
     overflow: visible;
+    cursor: pointer;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .spiral-logo svg {
-    width: 100%;
-    height: 100%;
+    width: 45px;
+    height: 45px;
     transition: fill 4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .spiral-logo:hover {
     opacity: 1;
+    transform: scale(1.1);
 }
 
 /* Pink spiral logo in dark mode */
@@ -2407,10 +2661,14 @@ body.high-contrast .spiral-logo svg {
     .day-night-toggle {
         width: 50px;
         height: 50px;
-        top: 0px;
+        top: 5px;
         right: 45px;
         left: auto;
         transform: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
     }
     
     .day-night-toggle svg {
@@ -2422,8 +2680,27 @@ body.high-contrast .spiral-logo svg {
         width: 50px;
         height: 50px;
         font-size: 20px;
-        top: 0px;
+        top: 5px;
+        right: 95px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+    }
+    
+    .spiral-logo {
+        width: 50px;
+        height: 50px;
+        top: 5px;
         right: 0px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .spiral-logo svg {
+        width: 35px;
+        height: 35px;
     }
     
     /* Mobile help close button with better touch responsiveness */

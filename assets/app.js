@@ -71,10 +71,12 @@ const backgroundContainer = document.getElementById("backgroundContainer");
 const interactivePoints = document.getElementById("interactivePoints");
 const dialoguePanel = document.getElementById("dialoguePanel");
 const locationTitle = document.getElementById("locationTitle");
-const locationSubtitle = document.getElementById("locationSubtitle");
+// locationSubtitle removed
 const dialogueTextContainer = document.getElementById("dialogueTextContainer");
 const helpOverlay = document.getElementById("helpOverlay");
 const helpClose = document.getElementById("helpClose");
+const introOverlay = document.getElementById("introOverlay");
+const introContinue = document.getElementById("introContinue");
 const panoramaContainer = document.getElementById("panoramaContainer");
 const panoramaCanvas = document.getElementById("panoramaCanvas");
 const panoramaOverlay = document.getElementById("panoramaOverlay");
@@ -757,6 +759,48 @@ function setupEventListeners() {
     computed: window.getComputedStyle(helpClose),
     parent: helpClose.parentElement
   });
+
+  // Setup intro overlay functionality
+  function closeIntroOverlay() {
+    console.log('🎬 Closing intro overlay and showing help overlay');
+    
+    // Hide intro overlay
+    introOverlay.classList.add("hidden");
+    
+    // Show help overlay
+    helpOverlay.classList.remove("hidden");
+    
+    console.log('✅ Intro overlay closed, help overlay shown');
+  }
+  
+  // Multiple event listeners for intro continue button to ensure it works
+  introContinue.addEventListener("click", (e) => {
+    console.log('✅ Intro continue button clicked via click event');
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    closeIntroOverlay();
+  });
+  
+  introContinue.addEventListener("touchend", (e) => {
+    console.log('✅ Intro continue button touched via touchend event');
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    closeIntroOverlay();
+  });
+  
+  introContinue.addEventListener("mouseup", (e) => {
+    console.log('✅ Intro continue button clicked via mouseup event');
+    e.preventDefault();
+    e.stopPropagation();
+    closeIntroOverlay();
+  });
+  
+  console.log('Intro overlay setup complete:', {
+    introOverlay: introOverlay,
+    introContinue: introContinue
+  });
   
   // Help button event listener to reopen help overlay
   const helpButton = document.getElementById("helpButton");
@@ -809,6 +853,52 @@ function setupEventListeners() {
   if (hasClosedBefore) {
     helpButton.classList.add('show');
   }
+  
+  // Imprint overlay functionality
+  const spiralLogo = document.querySelector('.spiral-logo');
+  const imprintOverlay = document.getElementById('imprintOverlay');
+  const imprintClose = document.getElementById('imprintClose');
+  
+  // Spiral logo click handler to open imprint overlay
+  spiralLogo.addEventListener("click", (e) => {
+    console.log('🌀 Spiral logo CLICK event fired:', {
+      isMobile: window.innerWidth <= 480,
+      target: e.target,
+      timeStamp: e.timeStamp,
+      type: e.type
+    });
+    imprintOverlay.classList.remove("hidden");
+  });
+  
+  // Spiral logo touch handler for mobile
+  spiralLogo.addEventListener("touchend", (e) => {
+    const isMobile = window.innerWidth <= 480;
+    if (isMobile) {
+      console.log('🌀 Opening imprint overlay via TOUCHEND (mobile)');
+      e.preventDefault(); // Prevent subsequent click event
+      imprintOverlay.classList.remove("hidden");
+    }
+  });
+  
+  // Imprint close button handler
+  imprintClose.addEventListener("click", (e) => {
+    console.log('✅ Closing imprint overlay');
+    e.preventDefault();
+    e.stopPropagation();
+    imprintOverlay.classList.add("hidden");
+  });
+  
+  // Close imprint overlay when clicking outside it
+  document.addEventListener("click", (e) => {
+    const isImprintOverlayVisible = !imprintOverlay.classList.contains("hidden");
+    const isTargetInOverlay = imprintOverlay.contains(e.target);
+    const isSpiralLogo = e.target.closest('.spiral-logo');
+    
+    if (isImprintOverlayVisible && !isTargetInOverlay && !isSpiralLogo) {
+      console.log('✅ Closing imprint overlay (outside click)');
+      imprintOverlay.classList.add("hidden");
+    }
+  });
   
   // Update help text for touchscreen devices
   updateHelpTextForDevice();
@@ -1171,17 +1261,23 @@ function updateBackgroundPosition() {
     
     // Remove any transitions during active dragging for instant response
     if (isDragging) {
-      backgroundContainer.style.transition = 'none !important';
-      interactivePoints.style.transition = 'none !important';
+      backgroundContainer.style.transition = 'none';
+      interactivePoints.style.transition = 'none';
       // Also ensure background image and all child elements have no transitions
       const backgroundImage = backgroundContainer?.querySelector('.background-image');
       if (backgroundImage) {
-        backgroundImage.style.transition = 'none !important';
+        backgroundImage.style.transition = 'none';
       }
       // Remove transitions from all pseudo-elements by setting CSS variable
       document.documentElement.style.setProperty('--dragging', '1');
     } else {
-      // Restore transitions when not dragging
+      // Restore smooth transitions when not dragging for better edge scrolling
+      backgroundContainer.style.transition = 'transform 0.1s ease-out';
+      interactivePoints.style.transition = 'transform 0.1s ease-out';
+      const backgroundImage = backgroundContainer?.querySelector('.background-image');
+      if (backgroundImage) {
+        backgroundImage.style.transition = '';
+      }
       document.documentElement.style.setProperty('--dragging', '0');
     }
     
@@ -2290,7 +2386,7 @@ function positionDialogueToAvoidCircle(circleElement) {
 function showDialogue(point, pointElement) {
   currentStoryPoint = point;
   locationTitle.textContent = point.title;
-  locationSubtitle.textContent = point.mainText?.speaker || "";
+  // locationSubtitle removed
   
   // Check for dialogue-circle collision and reposition if needed
   if (pointElement) {
@@ -2566,7 +2662,7 @@ function showSection(point, optionKey) {
   
   // Update location title and subtitle 
   locationTitle.textContent = point.title; // Use main section title
-  locationSubtitle.textContent = option.content?.speaker || "";
+  // locationSubtitle removed
 
   // Check if mobile paragraph mode should be used for section content
   if (initMobileParagraphMode({ ...point, mainText: option.content })) {
@@ -3493,7 +3589,7 @@ function setupDialogueSkipListener() {
 }
 
 function playSkipSound() {
-  // Create a soft wooden click sound using Web Audio API
+  // Create a high-pitched marimba-like wooden click sound using Web Audio API
   if (
     typeof AudioContext !== "undefined" ||
     typeof webkitAudioContext !== "undefined"
@@ -3501,51 +3597,63 @@ function playSkipSound() {
     const audioContext = new (window.AudioContext ||
       window.webkitAudioContext)();
 
-    // Create a softer wooden click with natural wood resonance
+    // Create a higher-pitched marimba-like wooden sound with natural resonance
     const oscillator1 = audioContext.createOscillator();
     const oscillator2 = audioContext.createOscillator();
+    const oscillator3 = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
     const filterNode = audioContext.createBiquadFilter();
 
     oscillator1.connect(filterNode);
     oscillator2.connect(filterNode);
+    oscillator3.connect(filterNode);
     filterNode.connect(gainNode);
     gainNode.connect(audioContext.destination);
 
-    // Set up filter for softer, more natural wood tone
-    filterNode.type = "lowpass";
-    filterNode.frequency.setValueAtTime(600, audioContext.currentTime);
-    filterNode.Q.setValueAtTime(2, audioContext.currentTime);
+    // Set up filter for bright marimba-like resonance
+    filterNode.type = "bandpass";
+    filterNode.frequency.setValueAtTime(800, audioContext.currentTime);
+    filterNode.Q.setValueAtTime(3, audioContext.currentTime);
 
-    // Lower fundamental frequency for softer click
-    oscillator1.frequency.setValueAtTime(120, audioContext.currentTime);
+    // Higher fundamental frequency for marimba-like tone
+    oscillator1.frequency.setValueAtTime(440, audioContext.currentTime); // A4 note
     oscillator1.frequency.exponentialRampToValueAtTime(
-      80,
-      audioContext.currentTime + 0.06,
+      220,
+      audioContext.currentTime + 0.12,
     );
     
-    // Gentler attack frequency for soft click
-    oscillator2.frequency.setValueAtTime(350, audioContext.currentTime);
+    // Harmonic overtone for richer marimba sound
+    oscillator2.frequency.setValueAtTime(880, audioContext.currentTime); // A5 note (octave)
     oscillator2.frequency.exponentialRampToValueAtTime(
-      200,
-      audioContext.currentTime + 0.03,
-    );
-
-    // Softer volume with quick attack and smooth decay
-    gainNode.gain.setValueAtTime(0.04, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(
-      0.005,
+      440,
       audioContext.currentTime + 0.08,
     );
 
-    // Use sine for smoother, more natural wood tone
-    oscillator1.type = "sine";
-    oscillator2.type = "triangle";
+    // Higher harmonic for bright attack
+    oscillator3.frequency.setValueAtTime(1320, audioContext.currentTime); // E6 note
+    oscillator3.frequency.exponentialRampToValueAtTime(
+      660,
+      audioContext.currentTime + 0.04,
+    );
+
+    // Quick attack with natural decay for wood resonance
+    gainNode.gain.setValueAtTime(0.06, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(
+      0.003,
+      audioContext.currentTime + 0.15,
+    );
+
+    // Use triangle and sine for warm marimba-like wood tone
+    oscillator1.type = "triangle";
+    oscillator2.type = "sine";
+    oscillator3.type = "triangle";
     
     oscillator1.start(audioContext.currentTime);
     oscillator2.start(audioContext.currentTime);
-    oscillator1.stop(audioContext.currentTime + 0.08);
-    oscillator2.stop(audioContext.currentTime + 0.04);
+    oscillator3.start(audioContext.currentTime);
+    oscillator1.stop(audioContext.currentTime + 0.15);
+    oscillator2.stop(audioContext.currentTime + 0.12);
+    oscillator3.stop(audioContext.currentTime + 0.06);
   }
 }
 
@@ -3845,12 +3953,7 @@ function calculateOptimalDialogueHeight(textContent, isMobile = false, isTablet 
   locationTitle.className = 'location-title';
   locationTitle.textContent = currentStoryPoint?.title || 'Sample Title';
   
-  const locationSubtitle = document.createElement('div');
-  locationSubtitle.className = 'location-subtitle';
-  locationSubtitle.textContent = currentStoryPoint?.mainText?.speaker || '';
-  
   dialogueHeader.appendChild(locationTitle);
-  dialogueHeader.appendChild(locationSubtitle);
   
   const textContainer = document.createElement('div');
   textContainer.className = 'dialogue-text-container';
@@ -4097,12 +4200,12 @@ function setDialoguePosition(position, isMobile = false) {
     // Desktop positioning: left or right
     if (position === 'left' || position === 'desktop-left') {
       panel.classList.add('dialogue-left');
-      panel.style.left = '20px';
-      panel.style.right = 'auto';
+      panel.style.setProperty('left', '20px', 'important');
+      panel.style.setProperty('right', 'auto', 'important');
     } else if (position === 'right' || position === 'desktop-right') {
       panel.classList.add('dialogue-right');
-      panel.style.right = '20px';
-      panel.style.left = 'auto';
+      panel.style.setProperty('right', '20px', 'important');
+      panel.style.setProperty('left', 'auto', 'important');
     }
   }
   
@@ -5009,7 +5112,7 @@ function showMainDialogueContent(storyPoint) {
   
   // Update title
   locationTitle.textContent = storyPoint.title;
-  locationSubtitle.textContent = storyPoint.subtitle || "";
+  // locationSubtitle removed
   
   console.log('Displayed main dialogue content for:', storyPoint.title);
 }
@@ -5371,7 +5474,7 @@ function showPanoramaDialogue(point) {
   
   currentStoryPoint = point;
   locationTitle.textContent = point.title;
-  locationSubtitle.textContent = point.mainText?.speaker || "";
+  // locationSubtitle removed
 
   // Mark this point as visited
   visitedContent.add(point.title);

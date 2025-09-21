@@ -39,8 +39,10 @@
             <!-- Spiral Logo in top left -->
             <div class="spiral-logo">
                 <svg
-                    viewBox="0 0 135 135"
-                    fill="pink"
+                    viewBox="0 27 95 90"
+                    fill="white"
+                    stroke="white"
+                    stroke-width="0.5"
                     xmlns="http://www.w3.org/2000/svg"
                     preserveAspectRatio="xMidYMid meet"
                 >
@@ -60,10 +62,6 @@
                             <div
                                 class="location-title"
                                 id="locationTitle"
-                            ></div>
-                            <div
-                                class="location-subtitle"
-                                id="locationSubtitle"
                             ></div>
                         </div>
                         <div class="dialogue-header-controls">
@@ -123,8 +121,19 @@
                 </svg>
             </button>
 
-            <!-- Help overlay with SVG icons -->
-            <div class="help-overlay" id="helpOverlay">
+            <!-- Intro overlay that appears first -->
+            <div class="intro-overlay" id="introOverlay">
+                <div class="intro-content">
+                    <div class="intro-text">
+                        <p>For too long, degrowth has remained shackled to words on a page and daydreams in revolutionary minds. We wanted to bring the political vision of degrowth to life, to actualise the beauty of these ideas, and to stimulate our imaginaries of a socially and ecologically just future.</p>
+                        <p>This walk-through world exhibits a typical neighbourhood in London, accompanied by written inputs from London residents asking – <strong>how did we get here? Where are we? What did it take to reach this new resting place?</strong></p>
+                    </div>
+                    <button class="intro-continue" id="introContinue">Continue</button>
+                </div>
+            </div>
+
+            <!-- Help overlay that appears after intro -->
+            <div class="help-overlay hidden" id="helpOverlay">
                 <div class="help-item">
                     <svg class="help-icon" viewBox="0 0 24 24" fill="none">
                         <path
@@ -162,34 +171,37 @@
                 <button class="help-close" id="helpClose">OK</button>
             </div>
 
-            <!-- Credits overlay -->
-            <div class="credits-overlay hidden" id="creditsOverlay">
-                <div class="credits-content">
-                    <h2 class="credits-title">Credits</h2>
+            <!-- Imprint overlay -->
+            <div class="imprint-overlay hidden" id="imprintOverlay">
+                <div class="imprint-content">
+                    <h2 class="imprint-title">Imprint</h2>
                     
-                    <div class="credits-section">
-                        <h3 class="credits-role">Design</h3>
-                        <p class="credits-name">Natalia</p>
+                    <div class="imprint-section">
+                        <h3 class="imprint-role">Design and programming:</h3>
+                        <p class="imprint-name">Justin Tam, Natalia Podgorska</p>
                     </div>
                     
-                    <div class="credits-section">
-                        <h3 class="credits-role">Web Development</h3>
-                        <p class="credits-name">Justin Tam</p>
+                    <div class="imprint-section">
+                        <h3 class="imprint-role">Degrowth London co-ordinators:</h3>
+                        <p class="imprint-name">Jack Ainsworth, Zoe Miller, Sheridan Kates</p>
                     </div>
                     
-                    <div class="credits-section">
-                        <h3 class="credits-role">Editing</h3>
-                        <p class="credits-name">Zoe Rasbash</p>
+                    <div class="imprint-section">
+                        <h3 class="imprint-role">Written input contributors:</h3>
+                        <p class="imprint-name">Grace Murray, Isabel Dally, Lily Paulson, Octavia Hamilton, Rozita Leetham, Sonal Patel</p>
                     </div>
                     
-                    <div class="credits-section">
-                        <h3 class="credits-role">Text by</h3>
-                        <p class="credits-contributors">
-                            All the contributor names
-                        </p>
+                    <div class="imprint-section">
+                        <h3 class="imprint-role">Editing:</h3>
+                        <p class="imprint-name">Zoe Rasbash</p>
                     </div>
                     
-                    <button class="credits-close" id="creditsClose">OK</button>
+                    <div class="imprint-section">
+                        <h3 class="imprint-role">Funded generously by:</h3>
+                        <p class="imprint-name">the Lipman-Miliband Trust</p>
+                    </div>
+                    
+                    <button class="imprint-close" id="imprintClose">OK</button>
                 </div>
             </div>
         </div>

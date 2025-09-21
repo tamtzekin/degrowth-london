@@ -23,7 +23,7 @@
         "mobileY": 76,
         "content": {
           "speaker": "Green Transport Networks",
-          "text": "Cycle routes are no longer crammed on the roadside, but have space to wheel safely on smooth, well–drained surfaces. \n\nClearly delineated from the pedestrian walkways, these bike–paths are similarly lined with trees and subtly illuminated by lights which minimise disruption of nature.\n\nMore buses, bike routes and parks, and trains, and better transport time management all were essential steps in phasing cars out of London.\n\nIncorporating cycling lessons into schools and giving everyone access to a bike or motorised transport at bike–speed, saw cycling successfully replace cars as the primary form of transport."
+          "text": "*Cycle routes* are no longer crammed on the roadside, but have space to wheel safely on smooth, well–drained surfaces. \n\nClearly delineated from the pedestrian walkways, these bike–paths are similarly lined with trees and subtly illuminated by lights which minimise disruption of nature.\n\nMore buses, bike routes and parks, and trains, and better transport time management all were essential steps in phasing cars out of London.\n\nIncorporating *cycling lessons* into schools and giving everyone access to a bike or motorised transport at bike–speed, saw cycling successfully replace cars as the primary form of transport."
         },
         "dialoguePosition": {
           "desktop": "right",
@@ -39,7 +39,7 @@
         "mobileY": 59,
         "content": {
           "speaker": "Beyond Private Cars",
-          "text": "*Bus routes* weave beyond the city, ferrying commuters to their cars which are kept in car parks in the suburbs.\n\nBetter bus and walking routes mean less cars, and the ones that still exist are small.\n\nThere’s no pressure to buy cheap meat or processed snacks. No aisles of confusion or empty advertising. Food choices are clearer, healthier, and kinder.\n\nBy removing the profit motive from food supply chains, we returned value to both farmers and eaters. and electric, efficient and practical.\n\nIntelligent time management, such as staggering school years leaving times, makes better use of the existing buses we have."
+          "text": "*Bus routes* weave beyond the city, ferrying commuters to their cars which are kept in car parks in the suburbs. \n\nBetter bus and walking routes mean less cars, and the ones that still exist are small and electric, efficient and practical.\n\nIntelligent time management, such as staggering school years leaving times, makes better use of the existing buses we have."
         },
         "dialoguePosition": {
           "mobile": "top"
@@ -53,7 +53,7 @@
         "mobileX": 66.5, 
         "mobileY": 65,
         "content": {
-          "speaker": "Reclaimed Spaces",
+          "speaker": "Reclaimed spaces",
           "text": "Transforming London’s old car-focused areas into *green spaces*, *vegetable gardens*, and *parks* was a collaborative project for local community groups including schools, community centres, and elderly homes.\n\n*Bike hubs* and workshops popped up in the place of petrol stations; wooden benches and colourful climbing frames in the place of roundabouts.\n\nResidents *co-designed* the new pedestrian, bike and work-road routes, with nationalised rail and bus fares keeping prices low in the place of cars."
         },
         "dialoguePosition": {
@@ -278,132 +278,118 @@
     "y": 78,
     "mobileX": 72,
     "mobileY": 75,
-    "title": "Governance",
+    "title": "Democracy",
     "subtitle": "",
     "mainText": {
-      "speaker": "",
-      "text": "*Democracy* is formed from the people for the people, built on the strong foundation of [community power](citizens_assemblies).\n\nInstead of distant politicians and corporate elites, decision–making is [rooted](decentralised_connected) in the neighbourhood.\n\n*Policy* is now pro–active, initiated by residents to serve each other.\n\nPeople gather in community halls, parks, and libraries to shape the future [together](joy).\n\nThe streets, homes and spaces of London [belong to the people](local_power) again, it is no longer a playground for the uber–rich."
+      "speaker": "Community power",
+      "text": "Built upon the foundations of true community power, democracy is formed from the [people’s decisions](horizontal_decisionmaking), for the people.\n\nGovernance is no longer dictated by distant politicians or corporate elites but shaped collectively by those who live and breathe their neighbourhoods everyday.\n\nDegrowth has reformed the bureaucratic political processes of the past, policy is now pro-active, initiated by [residents](radical_participation) to serve fellow residents.\n\nCitizens’ assemblies have been created in every community giving people the direct power to allocate resources, shape development and reclaim control over their own futures.\n\nLondon is no longer a [playground](power_is_shared) for the super–rich, its streets, homes and open spaces belong to the people once more."
     },
     "options": [
       {
-        "key": "citizens_assemblies",
+        "key": "horizontal_decisionmaking",
         "x": 22,
         "y": 2,
         "content": {
-          "speaker": "Citizens assemblies",
-          "text": "Top–down power structures have been replaced by grassroots assemblies in which autonomous social circles established by locals interlink across neighbourhoods to cover policy topics relevant to their people and area.\n\nCitizens' assemblies meet every month, open to all. Young people vote at 16, and everyone is invited into the conversation, whatever their age, background or experience.\n\nPolicies are shaped by lived experience and guided by common needs.\n\nPeople don't vote and walk away: they stay, they listen, they help shape consensus.\n\nThrough sociocracy and other shared decision–making methods, power is no longer about winning – it's about understanding."
+          "speaker": "Horizontal decision-making",
+          "text": "We reject the concentration of hierarchical power in the hands of the few. Instead, we embrace sociocracy and ‘decision-making’ methods to create policy whereevery voice matters and every decision is built upon collective consent.\n\nTop-down power structures have been replaced by grassroots assemblies in which autonomous social circles established by locals interlink across neighbourhoods to cover policy topics relevant to their people and area.\n\nThis bottom-up approach establishes the equality of individuals. Democracy is not ‘one man, one vote’ butrather a group of individuals discussing together until a consensus has been met.\n\nThese local assemblies have transformed the two-party political binary and first-past-the-post system which historically served a capitalist hierarchy."
         },
         "dialoguePosition": {
-          "desktop": "right",
+          "desktop": "left",
           "mobile": "top"
         }
       },
 
       {
-        "key": "decentralised_connected",
+        "key": "radical_participation",
         "x": 15,
         "y": 8,
         "content": {
-          "speaker": "Decentralised and connected",
-          "text": "Neighbourhoods now run on interlinked circles of trust. Autonomous groups cover topics from transport to land use to health.\n\nThese circles connect and share, creating a network of self–governance rooted in care and cooperation.\n\nThe old systems of hierarchy and first–past–the–post are gone, replaced by fluid, participatory forms of democracy."
-        }
-      },
-
-      {
-        "key": "joy",
-        "x": 25,
-        "y": 0,
-        "content": {
-          "speaker": "Community Democracy",
-          "text": "Politics feels different now. It’s not about division or spectacle but community. Assembly meetings are also moments of connection: neighbours catching up, sharing food, talking about real things. Disagreements aren’t seen as threats but invitations to listen more closely."
-        }
-      },
-
-      {
-        "key": "local_power",
-        "x": 12,
-        "y": 10,
-        "content": {
-          "speaker": "Power is distributed",
-          "text": "Each community shapes its own priorities while contributing to a broader movement for justice, equity, and ecological repair.\n\nDegrowth means an abundance in the things that truly matter: connection, community, and care.\n\nWhen we dismantled the political systems of profit-driven destruction, we could cultivate spaces where people flourish, where the earth is healed, and justice is a daily practice.\n\n*Local action* is the heartbeat of this transformation.\n\nThrough these grassroots movements, we continue to build a world where everyone has a stake, where solidarity triumphs over division, and where the future is not dictated by markets but co-created and curated by the many."
+          "speaker": "Radical participation",
+          "text": "The age of majority which restricts the voting age and political input from those under 16 years of age has been overturned.\n\nAll people of all ages and backgrounds are encouraged to participate in policy-making and political discussion. Everyone is listened to; even the youngest’s dreams are involved infuture decisions.\n\nPolitics holds a positive and joyous public perception. Community policy is trusted and valued, and the decision-making process isrespected, even enjoyable.\n\nPolitical debate has turned into communityconversation which is less binary, more open, personal and flowing between neighbours and friends who listen and catch-up with each other during monthly citizens’ assemblies."
         },
         "dialoguePosition": {
           "desktop": "left",
-          "mobile": "bottom"
+          "mobile": "top"
+        }
+      },
+
+      {
+        "key": "power_is_shared",
+        "x": 15,
+        "y": 8,
+        "content": {
+          "speaker": "Power is shared",
+          "text": "In this world, power is not hoarded but shared, and disagreements are not battles but opportunities for dialogue, empathy and understanding.\n\nDecentralised community assemblies have the freedom to shape their own spheres, ensuring that democracy is not just an ideal but a lived reality in every corner of society. Degrowth is not about scarcity - it is about abundance in the things that truly matter: connection, community, and care.\n\nBecause we have dismantled political systems of profit-driven destruction, we have cultivated spaces where people flourish and grow, where the earth is healed, and where justice is not an aspiration but a daily practice.\n\nLocal action is not just a stepping stone, it is the heartbeat of sustainable transformation. Through these grassroots movements, we continue to build a world where everyone has a stake, where solidarity triumphs over division, and where the future is not dictated by markets but co-created and curated by the many."
+        },
+        "dialoguePosition": {
+          "desktop": "left",
+          "mobile": "top"
         }
       }
     ]
   },
   
   {
-    "x": 81,
-    "y": 39,
+    "x": 80,
+    "y": 20,
     "mobileX": 76.5,
     "mobileY": 41,
-    "title": "Housing",
+    "title": "Neighbourhoods",
     "subtitle": "",
     "mainText": {
-      "speaker": "Homes for all",
-      "text": "Housing is [plentiful](ownership), owned and managed by [local residents](bottom_up_planning) in cooperation with the local authority.\n\nOur neighbourhoods [blossom](blossoming_neighbourhoods) with public art that celebrates our diversity and [heritage](place_based).\n\nOur built environment helps our spiritual, emotional and intellectual selves [flourish](diversity_care)."
+      "speaker": "Convivial neighbourhoods",
+      "text": "London is now a thriving hub of interweaving neighbourhoods where housing is plentiful and owned and managed by local residents in cooperation with the local authority.\n\nOur homes are beautiful, spacious, full of natural light and our neighbourhoods are full and public art that celebrates our diversity and heritage.\n\nWe live in homes that support our whole humanity – our built environment helps our spiritual, emotional and intellectual selves grow.\n\nOur housing operates synergistically with our transport and food systems.\n\nPublic green and open spaces encourage community and nature connection – community food growing schemes, hedgerows and fruit trees lining pathways through the heart of the city, canal systems and wetlands integrated into our neighbourhoods.\n\nCommunity space is integrated into neighbourhoods and block; there’s free, sheltered and indoor space like fire pits with awnings orcommunal living rooms etc.\n\nThere’s meeting spaces for community groups and hyper-localised public services like libraries, medical centres, and places of worship."
     },
-    "options": [
-      {
-        "key": "blossoming_neighbourhoods",
-        "x": 85,
-        "y": 20,
-        "content": {
-          "speaker": "Connected Neighborhoods",
-          "text": "Housing is *synergised* with transport and food systems. Public green spaces encourage community and nature connection through community food growing schemes, canal systems and wetlands integrated into our neighbourhoods.\n\nWe realised how housing is an essential part of our *stewardship of the earth* and our creation of strong community bonds.\n\n*Community space* is everywhere; there’s free, sheltered and indoor space like fire pits with awnings or communal living rooms and meeting spaces for hyper–local public services like libraries, medical centres, and places of worship."
-        }
-      },
+    "dialoguePosition": {
+      "desktop": "left",
+      "mobile": "bottom"
+    }
+  },
 
-      {
-        "key": "bottom_up_planning",
-        "x": 75,
-        "y": 30,
-        "content": {
-          "speaker": "Resident–led planning",
-          "text": "Instead of reactionary solutions and raw deals with corporations intensifying gentrification, the council invested in *large community engagement and tenant participation* teams working with residents and local businesses to manage their local area.\n\n*Compulsory purchase orders* were issued against oligarch landlords and policy now bans absentee business owners holding data servers and empty office blocks and multiple holiday homes."
-        },
-        "dialoguePosition": {
-          "desktop": "right",
-          "mobile": "bottom"
-        }
-      },
+  {
+    "x": 29.5,
+    "y": 12,
+    "mobileX": 33.5,
+    "mobileY": 17,
+    "title": "Community diversity",
+    "subtitle": "",
+    "mainText": {
+      "speaker": "",
+      "text": "Community groups and campaigns came together with local people across differences and made the change happen.\n\nInstead of reactionary solutions and raw deals with corporations leading to gentrification, the council supported.\n\nInstead of investing in development teams and public private partnerships they invested in large community engagement & tenant participation teams that learn how to effectively support residents & local businesses to steward & manage their local areas.\n\nCompulsory purchase orders were issued against oligarch landlords and policy now bans absentee business owners holding data servers and empty office blocks and multiple holiday homes.\n\nUnique housing systems grew out of the heritage of each place – boaters and tourists and students and locals and immigrants.\n\nSelf-build and retrofitting movements were encouraged to thrive to uplift existing housing stock in line with planetary boundaries (think solarpunk & no demolition).\n\nLondon’s neighbourhoods now house whole diverse intermixed communities, made up of people from all different classes, ethnic and religious backgrounds, ages and cultures.\n\nWe have integrated specialised and supported housing for those who are more vulnerable, like supported temporary accommodation for care-leavers or refugees or the homeless, or a high supply of housing built for the needs of those who are disabled.\n\nThere is plentiful short-term housing that is integrated into local neighbourhoods for example sustainable tourism and cultural exchange or student housing."
+    }
+  },
 
-      {
-        "key": "place_based",
-        "x": 90,
-        "y": 25,
-        "content": {
-          "speaker": "Heritage & Identity",
-          "text": "Unique housing systems grew out of the *heritage* of each place: locals, students, immigrants and even tourists.\n\nSelf–build and *retrofitting* movements thrive through residents upskilling each other.\n\nOur housing supports a broader *decentralisation* of the economy – less brain–drain and stronger local connections.\n\nLondon is now less expensive, and has strengthened rural economies in return. We see this within and between the neighbourhoods of London itself."
-        }
-      },
-      
-      {
-        "key": "diversity_care",
-        "x": 80,
-        "y": 35,
-        "content": {
-          "speaker": "Diverse & Welcoming",
-          "text": "London’s neighbourhoods house *diverse* intermixed communities, with folks from all classes, ethnic and religious backgrounds, ages and cultures.\n\nMany forms of integrated support housing are available to those of us who need it: like care–leavers, refugees, disabled folks or temporarily unhoused people.\n\nShort–term housing is integrated into local neighbourhoods; for sustainable tourism, cultural exchange or student housing."
-        }
-      },
+  {
+    "x": 15,
+    "y": 80,
+    "mobileX": 22,
+    "mobileY": 80,
+    "title": "Rural-urban exchange",
+    "subtitle": "",
+    "mainText": {
+      "speaker": "",
+      "text": "London’s systems support a national system change. Our housing supports a decentralisation of the economy – less brain–drain and stronger local connections – makes London less expensive & strengthens rural economies in return – and this is replicated in how London’s pockets interact with each other.\n\nHousing and wider land rights campaigns came together with the right to roam and the right to grow necessarily coming forward as part of a more equitable stewardship of how we inhabit space (think trespass and diggers)."
+    },
+    "dialoguePosition": {
+      "desktop": "right",
+      "mobile": "bottom"
+    }
+  },
 
-      {
-        "key": "ownership",
-        "x": 82,
-        "y": 15,
-        "content": {
-          "speaker": "Flexible Living Arrangements",
-          "text": "Housing structures are a lot more fluid. Communal and intergenerational housing is also the norm, set up for community and queering of the nuclear family and extended family structures.\n\nIt is synergetic with nurseries and volunteer schemes in homes for the elderly, creative studios built in housing communities, and housing coops where folks grow food together.\n\nAs part of a broader mobilisation for *land rights*, housing activists worked with the right to roam and the right to grow to deepen our equitable approach to stewarding space.\n\n*We are still learning*: on how to retrieve building materials from villages that disappeared when the sea–levels rose, and how to manage housing supply for climate refugees.\n\nWe are learning to build houses of living trees from English Oaks and learning about limestone coral reefs that have become the foundations of Venice's floating buildings.\n\nWe are adapting and creating as we go."
-        },
-        "dialoguePosition": {
-          "desktop": "left",
-          "mobile": "top"
-        }
-      }
-    ]
+  {
+    "x": 42.5,
+    "y": 25,
+    "mobileX": 44.5,
+    "mobileY": 29,
+    "title": "Built environment",
+    "subtitle": "",
+    "mainText": {
+      "speaker": "",
+      "text": "Everything operates on a diversity of approaches and ownership and rental structures - but housing structures are a lot more fluid.\n\nCommunal and intergenerational housing is also the norm, intentionally set up for community – a queering of the nuclear family and embracing extended family structures\n\nThis is often synergetic with nurseries or youth hostels with volunteer schemes in homes for the elderly – creative studios in purpose built housing communities – or housing coops for groups of families and individuals that grow food together.\n\nOf course, we have ongoing challenges. We are learning how to retrieve building materials from sunken villages when the sea-levels rose and how to manage our housing supple for people fleeing from climate disaster in other parts of the world.\n\nWe are learning to build houses of living trees from English Oaks and learning about limestone coral reefs that have become the foundations of Venice’s floating buildings. We are adapting and creating as we go."
+    },
+    "dialoguePosition": {
+      "desktop": "right",
+      "mobile": "bottom"
+    }
   }
 ]
