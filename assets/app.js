@@ -2388,10 +2388,10 @@ function showDialogue(point, pointElement) {
   locationTitle.textContent = point.title;
   // locationSubtitle removed
   
-  // Check for dialogue-circle collision and reposition if needed
-  if (pointElement) {
-    setTimeout(() => positionDialogueToAvoidCircle(pointElement), 100);
-  }
+  // Disabled automatic positioning - use only manual dialoguePosition from story-data.json
+  // if (pointElement) {
+  //   setTimeout(() => positionDialogueToAvoidCircle(pointElement), 100);
+  // }
 
   // Hide minimized tab when showing dialogue
   hideMinimizedDialogueTab();
@@ -3407,7 +3407,7 @@ function showBackToStreetButton() {
     <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
       <path d="M8 1l-1.5 1.5L11 7H1v2h10l-4.5 4.5L8 15l7-7z" transform="rotate(180 8 8)"/>
     </svg>
-    Back to Street View
+    GO TO STREET
   `;
   
   // Position button based on dialogue box location on mobile

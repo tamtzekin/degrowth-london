@@ -276,13 +276,17 @@
   {
     "x": 78,
     "y": 78,
-    "mobileX": 72,
-    "mobileY": 75,
+    "mobileX": 76,
+    "mobileY": 73,
     "title": "Democracy",
     "subtitle": "",
     "mainText": {
       "speaker": "Community power",
-      "text": "Built upon the foundations of true community power, democracy is formed from the [people’s decisions](horizontal_decisionmaking), for the people.\n\nGovernance is no longer dictated by distant politicians or corporate elites but shaped collectively by those who live and breathe their neighbourhoods everyday.\n\nDegrowth has reformed the bureaucratic political processes of the past, policy is now pro-active, initiated by [residents](radical_participation) to serve fellow residents.\n\nCitizens’ assemblies have been created in every community giving people the direct power to allocate resources, shape development and reclaim control over their own futures.\n\nLondon is no longer a [playground](power_is_shared) for the super–rich, its streets, homes and open spaces belong to the people once more."
+      "text": "Built upon the foundations of true community power, democracy is formed from the [people’s decisions](horizontal_decisionmaking), for the people.\n\nGovernance is no longer dictated by distant politicians or corporate elites but shaped collectively by those who live and breathe their neighbourhoods everyday.\n\nDegrowth has reformed the bureaucratic political processes of the past, policy is now pro–active, initiated by [residents](radical_participation) to serve fellow residents.\n\nCitizens’ assemblies have been created in every community giving people the direct power to allocate resources, shape development and reclaim control over their own futures.\n\nLondon is no longer a [playground](power_is_shared) for the super–rich, its streets, homes and open spaces belong to the people once more."
+    },
+    "dialoguePosition": {
+      "desktop": "left",
+      "mobile": "top"
     },
     "options": [
       {
@@ -368,11 +372,11 @@
     "subtitle": "",
     "mainText": {
       "speaker": "",
-      "text": "London’s systems support a national system change. Our housing supports a decentralisation of the economy – less brain–drain and stronger local connections – makes London less expensive & strengthens rural economies in return – and this is replicated in how London’s pockets interact with each other.\n\nHousing and wider land rights campaigns came together with the right to roam and the right to grow necessarily coming forward as part of a more equitable stewardship of how we inhabit space (think trespass and diggers)."
+      "text": "London’s systems support a national system change. Our housing supports a decentralisation of the economy.\n\nLess brain–drain and stronger local connections make London less expensive & strengthens rural economies in return.\n\nThis is replicated in how London’s pockets interact with each other.\n\nHousing and wider land rights campaigns came together with the right to roam and the right to grow necessarily coming forward as part of a more equitable stewardship of how we inhabit space (think trespass and diggers)."
     },
     "dialoguePosition": {
       "desktop": "right",
-      "mobile": "bottom"
+      "mobile": "top"
     }
   },
 
