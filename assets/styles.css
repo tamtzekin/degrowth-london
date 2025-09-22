@@ -963,6 +963,29 @@ body.high-contrast .background-image.scene-active::after {
     flex-shrink: 0;
 }
 
+/* Pink text demo */
+.pink-text-demo {
+    color: #f9c1ce;
+    font-size: 0.8em;
+    text-decoration: underline dotted;
+    cursor: pointer;
+    width: auto;
+    height: auto;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Desktop/mobile text variants */
+.desktop-text {
+    display: inline;
+}
+
+.mobile-text {
+    display: none;
+}
+
 .help-icon svg {
     fill: #ece1e0;
     stroke: #ece1e0;
@@ -1063,8 +1086,9 @@ body.high-contrast .background-image.scene-active::after {
 }
 
 .intro-text strong {
-    color: #f9c1ce;
-    font-weight: 400;
+    font-weight: 600;
+    color: #e8e8e8;
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.1);
     padding: 2px 4px;
 }
 
@@ -1213,6 +1237,15 @@ body.high-contrast .background-image.scene-active::after {
         width: 40px;
         height: 40px;
         margin-right: 20px;
+    }
+    
+    /* Show TAP instead of CLICK on mobile */
+    .desktop-text {
+        display: none;
+    }
+    
+    .mobile-text {
+        display: inline;
     }
     
     .help-close {
@@ -2058,6 +2091,7 @@ body.high-contrast .intro-text p {
 
 body.high-contrast .intro-text strong {
     color: #ffffff;
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.3);
 }
 
 body.high-contrast .intro-continue {
