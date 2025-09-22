@@ -698,6 +698,36 @@ function setupEventListeners() {
     }
   }, true); // Use capture phase to ensure we catch clicks first
 
+  // Auto-close intro overlay when clicking anywhere except intro overlay (same pattern as help overlay)
+  document.addEventListener("click", (e) => {
+    const isIntroOverlayVisible = introOverlay && introOverlay.classList.contains('visible');
+    const isTargetInIntroOverlay = introOverlay && introOverlay.contains(e.target);
+    const isTargetInDialogue = dialoguePanel.contains(e.target);
+    const isIntroContinueButton = e.target.id === 'introContinue' || e.target.closest('#introContinue');
+    
+    console.log('Document click - Intro overlay check:', {
+      target: e.target.tagName + (e.target.id ? '#' + e.target.id : '') + (e.target.className && typeof e.target.className === 'string' ? '.' + e.target.className.split(' ')[0] : ''),
+      isIntroOverlayVisible,
+      isTargetInIntroOverlay,
+      isTargetInDialogue,
+      isIntroContinueButton,
+      currentTime: Date.now()
+    });
+    
+    // Close intro overlay when clicking outside it
+    if (
+      isIntroOverlayVisible &&
+      !isTargetInIntroOverlay &&
+      !isTargetInDialogue &&
+      !isIntroContinueButton  // Don't close if clicking continue button itself
+    ) {
+      console.log('✅ Closing intro overlay via outside click');
+      e.preventDefault();
+      e.stopPropagation();
+      closeIntroOverlay();
+    }
+  }, true); // Use capture phase to ensure we catch clicks first
+
   // Centralized function to close help overlay
   function closeHelpOverlay() {
     console.log('✅ Closing help overlay');
@@ -760,15 +790,33 @@ function setupEventListeners() {
     parent: helpClose.parentElement
   });
 
+  
+  // Setup intro close handlers (removed - using global click handler like help overlay)
+  
+  
   // Setup intro overlay functionality
   function closeIntroOverlay() {
     console.log('🎬 Closing intro overlay and showing help overlay');
     
-    // Hide intro overlay
-    introOverlay.classList.add("hidden");
+    // Hide intro overlay with slide animation, then remove from DOM
+    introOverlay.classList.remove("visible");
     
-    // Show help overlay
-    helpOverlay.classList.remove("hidden");
+    // Prevent immediate dragging after intro overlay closes (same pattern as help overlay)
+    window.introOverlayJustClosed = true;
+    
+    // Ensure container is not in dragging state
+    isDragging = false;
+    container.classList.remove("dragging");
+    
+    setTimeout(() => {
+      window.introOverlayJustClosed = false;
+    }, 300); // 300ms delay - same as help overlay
+    
+    // Remove from DOM and show help overlay after animation completes
+    setTimeout(() => {
+      introOverlay.remove();
+      helpOverlay.classList.remove("hidden");
+    }, 300); // Match CSS transition duration
     
     console.log('✅ Intro overlay closed, help overlay shown');
   }
@@ -1031,12 +1079,24 @@ function setupEventListeners() {
 }
 
 function startDrag(e) {
-  if (
-    e.target.classList.contains("point") ||
-    e.target.closest(".dialogue-panel") ||
-    window.helpOverlayJustClosed
-  )
+  if (e.target.classList.contains("point") || e.target.closest(".dialogue-panel")) {
+    console.log('🛑 Drag blocked: point or dialogue panel');
     return;
+  }
+  if (window.helpOverlayJustClosed) {
+    console.log('🛑 Drag blocked: help overlay just closed');
+    return;
+  }
+  if (window.introOverlayJustClosed) {
+    console.log('🛑 Drag blocked: intro overlay just closed');
+    return;
+  }
+  if (introOverlay && introOverlay.classList.contains('visible')) {
+    console.log('🛑 Drag blocked: intro overlay is visible');
+    return;
+  }
+  
+  console.log('✅ Starting drag - intro overlay visible:', introOverlay?.classList.contains('visible'));
   isDragging = true;
   container.classList.add("dragging");
   startX = e.clientX - currentX;
@@ -1044,12 +1104,24 @@ function startDrag(e) {
 }
 
 function startDragTouch(e) {
-  if (
-    e.target.classList.contains("point") ||
-    e.target.closest(".dialogue-panel") ||
-    window.helpOverlayJustClosed
-  )
+  if (e.target.classList.contains("point") || e.target.closest(".dialogue-panel")) {
+    console.log('🛑 Touch drag blocked: point or dialogue panel');
     return;
+  }
+  if (window.helpOverlayJustClosed) {
+    console.log('🛑 Touch drag blocked: help overlay just closed');
+    return;
+  }
+  if (window.introOverlayJustClosed) {
+    console.log('🛑 Touch drag blocked: intro overlay just closed');
+    return;
+  }
+  if (introOverlay && introOverlay.classList.contains('visible')) {
+    console.log('🛑 Touch drag blocked: intro overlay is visible');
+    return;
+  }
+  
+  console.log('✅ Starting touch drag - intro overlay visible:', introOverlay?.classList.contains('visible'));
   
   isDragging = true;
   container.classList.add("dragging");
@@ -1095,6 +1167,24 @@ function dragTouch(e) {
       } else {
         hideDialogue();
       }
+    }
+  }
+  
+  // Close intro overlay on mobile when user drags the map
+  if (isMobile && introOverlay && introOverlay.classList.contains('visible')) {
+    const dragDistance = Math.abs(deltaX) + Math.abs(deltaY);
+    if (dragDistance > 20) { // Close after minimal drag movement
+      console.log('Mobile drag detected - closing intro overlay');
+      closeIntroOverlay();
+    }
+  }
+  
+  // Close help overlay on mobile when user drags the map
+  if (isMobile && helpOverlay && !helpOverlay.classList.contains('hidden')) {
+    const dragDistance = Math.abs(deltaX) + Math.abs(deltaY);
+    if (dragDistance > 20) { // Close after minimal drag movement
+      console.log('Mobile drag detected - closing help overlay');
+      closeHelpOverlay();
     }
   }
   
@@ -1830,7 +1920,16 @@ function handleEdgeScrolling(e) {
   }
   
   // Disable scrolling when help overlay is open
-  if (cachedElements.helpOverlay && !cachedElements.helpOverlay.classList.contains('hidden')) return;
+  if (cachedElements.helpOverlay && !cachedElements.helpOverlay.classList.contains('hidden')) {
+    console.log('🛑 Edge scrolling blocked: help overlay is open');
+    return;
+  }
+  
+  // Disable scrolling when intro overlay is open
+  if (introOverlay && introOverlay.classList.contains('visible')) {
+    console.log('🛑 Edge scrolling blocked: intro overlay is open');
+    return;
+  }
   
   const mouseX = e.clientX;
   const mouseY = e.clientY;
@@ -6508,6 +6607,17 @@ function toTitleCase(str) {
 
 // Note: Panorama click handling now done via HTML overlay elements directly
 
+// Initialize intro overlay - simple single box for both mobile and desktop (GLOBAL SCOPE)
+function initializeIntroOverlay() {
+  console.log('🎬 Initializing intro overlay');
+  
+  // Simply show the overlay - CSS handles mobile/desktop positioning
+  introOverlay.classList.add("visible");
+  
+  console.log('✅ Intro overlay is now visible:', introOverlay.classList.contains('visible'));
+  console.log('✅ Help overlay is hidden:', helpOverlay.classList.contains('hidden'));
+}
+
 window.addEventListener("load", () => {
   // Initialize cached DOM elements for performance
   initCachedElements();
@@ -6531,6 +6641,11 @@ window.addEventListener("load", () => {
       isHoveringDialogue = false;
     });
   }
+  
+  // Show intro overlay with slide-in animation
+  setTimeout(() => {
+    initializeIntroOverlay();
+  }, 100); // Small delay to ensure DOM is ready
   
   initialize();
 });
