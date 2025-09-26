@@ -3121,6 +3121,15 @@ function typeWriterParts(
       element.appendChild(
         document.createTextNode(currentPart.content.charAt(charIndex)),
       );
+      
+      // Continuously resize dialogue as text appears (mobile only)
+      const isMobile = window.innerWidth <= 480;
+      if (isMobile && !isExpandedMobileView) {
+        if (charIndex % 3 === 0) {
+          resizeMobileDialogueToContentContinuous();
+        }
+      }
+      
       currentTypingTimeout = setTimeout(
         () =>
           typeWriterParts(
@@ -4154,18 +4163,83 @@ function resizeMobileDialogueToContent(preCalculatedHeight = null) {
   // Add dynamic height class to override CSS constraints
   dialoguePanel.classList.add('dynamic-height');
   
-  // Apply the new height with smooth transition for paragraph changes
-  dialoguePanel.style.transition = 'height 0.3s ease-out';
-  dialoguePanel.style.height = `${newHeight}px`;
-  dialoguePanel.style.minHeight = `${newHeight}px`;
-  dialoguePanel.style.maxHeight = `${newHeight}px`;
+  // Check if this is a bottom positioned dialogue
+  const isBottomPositioned = dialoguePanel.classList.contains('dialogue-bottom');
   
-  console.log('Mobile: Dialogue height set to', newHeight + 'px');
+  console.log('Mobile: Resizing dialogue - Bottom positioned:', isBottomPositioned, 'New height:', newHeight + 'px');
+  
+  // Apply smooth transition for height only
+  dialoguePanel.style.transition = 'height 0.3s ease-out';
+  
+  if (isBottomPositioned) {
+    // For bottom positioned dialogue, we need to grow upward
+    // Store the current bottom position before changing height
+    const currentBottom = parseInt(window.getComputedStyle(dialoguePanel).bottom) || 20;
+    
+    // Use fixed height for smooth stretching animation
+    dialoguePanel.style.height = `${newHeight}px`;
+    dialoguePanel.style.minHeight = 'auto';
+    dialoguePanel.style.maxHeight = 'none';
+    dialoguePanel.style.bottom = `${currentBottom}px`; // Keep bottom anchored
+    
+    console.log('Mobile: Bottom dialogue height set to:', newHeight + 'px', 'bottom:', currentBottom + 'px');
+  } else {
+    // For top positioned dialogue, grow downward (existing behavior)
+    dialoguePanel.style.height = `${newHeight}px`;
+    dialoguePanel.style.minHeight = 'auto';
+    dialoguePanel.style.maxHeight = 'none';
+    
+    console.log('Mobile: Top dialogue height set to:', newHeight + 'px');
+  }
+  
+  // Adjust gradient height dynamically - make it proportional to dialogue height
+  const gradientHeight = Math.min(80, Math.max(60, newHeight * 0.15)); // 15% of dialogue height, between 60-80px
+  dialoguePanel.style.setProperty('--gradient-height', `${gradientHeight}px`);
   
   // Remove transition after animation completes
   setTimeout(() => {
     dialoguePanel.style.transition = '';
   }, 300);
+}
+
+function resizeMobileDialogueToContentContinuous() {
+  const isMobile = window.innerWidth <= 480;
+  if (!isMobile) return;
+  
+  // Skip resizing if in expanded view
+  if (isExpandedMobileView) return;
+  
+  // Calculate required height based on current content
+  const contentHeight = dialogueTextContainer.scrollHeight;
+  const headerHeight = 90;
+  const padding = 60;
+  const maxHeight = window.innerHeight * 0.8;
+  const minHeight = window.innerHeight * 0.2;
+  const newHeight = Math.max(minHeight, Math.min(maxHeight, contentHeight + headerHeight + padding));
+  
+  // Add dynamic height class if not already present
+  if (!dialoguePanel.classList.contains('dynamic-height')) {
+    dialoguePanel.classList.add('dynamic-height');
+  }
+  
+  // Check if this is a bottom positioned dialogue
+  const isBottomPositioned = dialoguePanel.classList.contains('dialogue-bottom');
+  
+  dialoguePanel.style.transition = 'height 0.3s ease-out';
+  
+  if (isBottomPositioned) {
+    // For bottom positioned dialogue, keep bottom anchored
+    const currentBottom = parseInt(window.getComputedStyle(dialoguePanel).bottom) || 20;
+    dialoguePanel.style.height = `${newHeight}px`;
+    dialoguePanel.style.bottom = `${currentBottom}px`;
+  } else {
+    // For top positioned dialogue
+    dialoguePanel.style.height = `${newHeight}px`;
+  }
+  
+  // Adjust gradient height dynamically
+  const gradientHeight = Math.min(80, Math.max(60, newHeight * 0.15));
+  dialoguePanel.style.setProperty('--gradient-height', `${gradientHeight}px`);
 }
 
 function resizeDialogueToContent() {

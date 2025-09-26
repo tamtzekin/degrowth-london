@@ -883,11 +883,12 @@ body.high-contrast .background-image.scene-active::after {
     bottom: 0;
     left: 0;
     right: 0;
-    height: 60px;
+    height: var(--gradient-height, 60px); /* Use dynamic height or fallback to 60px */
     background: linear-gradient(transparent, rgba(249, 193, 206, 0.3));
     pointer-events: none;
     z-index: 10;
     border-radius: 0 0 16px 16px; /* Match dialogue panel border radius */
+    transition: height 0.5s cubic-bezier(0.23, 1, 0.32, 1); /* Smooth height transition to match dialogue growth */
 }
 
 /* Help overlay */
@@ -1492,13 +1493,11 @@ body.high-contrast .background-image.scene-active::after {
     
     /* Dynamic height sizing for mobile paragraphs */
     .dialogue-panel.dynamic-height {
-        height: auto !important; /* Allow natural growth */
-        max-height: none !important;
-        min-height: auto !important;
-        overflow: visible; /* Allow content to determine size */
+        /* Height is controlled by JavaScript for smooth animation */
+        overflow-y: auto; /* Allow scrolling when content exceeds height */
         display: flex;
         flex-direction: column;
-        transition: height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); /* Smooth resizing animation */
+        /* Transition is set by JavaScript for smooth stretching */
     }
     
     /* Content sizes naturally to its contents */
@@ -1622,7 +1621,7 @@ body.high-contrast .background-image.scene-active::after {
     
     /* Allow dynamic height resizing on tablet */
     .dialogue-panel.dynamic-height {
-        height: auto !important;
+        /* Height controlled by JavaScript for smooth animation */
         max-height: none !important;
     }
     
@@ -1839,6 +1838,28 @@ body.high-contrast .background-image.scene-active::after {
 
 .dialogue-panel.dialogue-bottom.visible {
     transform: translateY(0);
+}
+
+/* Ensure bottom positioned dialogue panels can grow with content on mobile */
+@media (max-width: 480px) {
+    .dialogue-panel.dialogue-bottom {
+        height: 150px !important; /* Start small */
+        max-height: 60vh !important;
+        min-height: 150px;
+        overflow: hidden; /* Prevent overflow during animation */
+    }
+    
+    .dialogue-panel.dialogue-bottom.dynamic-height {
+        height: auto !important; /* Allow growth when dynamic-height is added */
+        min-height: auto !important;
+        overflow-y: auto; /* Allow scrolling when needed */
+    }
+    
+    .dialogue-panel.dialogue-bottom .dialogue-scroll-area {
+        height: auto !important;
+        max-height: 50vh;
+        overflow-y: auto;
+    }
 }
 
 /* Day/Night toggle at top center */
