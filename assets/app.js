@@ -1,6 +1,31 @@
 // Main application variables
 let storyPoints = [];
 let isDragging = false;
+
+// Helper function to check if dragging should be blocked
+function isDragBlocked(actionType = 'drag') {
+  if (window.helpOverlayJustClosed) {
+    console.log(`🛑 ${actionType} blocked: help overlay just closed`);
+    return true;
+  }
+  if (window.introOverlayJustClosed) {
+    console.log(`🛑 ${actionType} blocked: intro overlay just closed`);
+    return true;
+  }
+  if (introOverlay && introOverlay.classList.contains('visible')) {
+    console.log(`🛑 ${actionType} blocked: intro overlay is visible`);
+    return true;
+  }
+  if (cachedElements.helpOverlay && !cachedElements.helpOverlay.classList.contains('hidden')) {
+    console.log(`🛑 ${actionType} blocked: help overlay is open`);
+    return true;
+  }
+  if (!imprintOverlay.classList.contains("hidden")) {
+    console.log(`🛑 ${actionType} blocked: imprint overlay is open`);
+    return true;
+  }
+  return false;
+}
 let startX = 0;
 let startY = 0;
 let currentX = 0;
@@ -1083,16 +1108,14 @@ function startDrag(e) {
     console.log('🛑 Drag blocked: point or dialogue panel');
     return;
   }
-  if (window.helpOverlayJustClosed) {
-    console.log('🛑 Drag blocked: help overlay just closed');
-    return;
+  
+  // Close imprint overlay when dragging starts (same pattern as dialogue panels)
+  if (!imprintOverlay.classList.contains("hidden")) {
+    console.log('✅ Closing imprint overlay (drag started)');
+    imprintOverlay.classList.add("hidden");
   }
-  if (window.introOverlayJustClosed) {
-    console.log('🛑 Drag blocked: intro overlay just closed');
-    return;
-  }
-  if (introOverlay && introOverlay.classList.contains('visible')) {
-    console.log('🛑 Drag blocked: intro overlay is visible');
+  
+  if (isDragBlocked('Drag')) {
     return;
   }
   
@@ -1108,16 +1131,14 @@ function startDragTouch(e) {
     console.log('🛑 Touch drag blocked: point or dialogue panel');
     return;
   }
-  if (window.helpOverlayJustClosed) {
-    console.log('🛑 Touch drag blocked: help overlay just closed');
-    return;
+  
+  // Close imprint overlay when dragging starts (same pattern as dialogue panels)
+  if (!imprintOverlay.classList.contains("hidden")) {
+    console.log('✅ Closing imprint overlay (touch drag started)');
+    imprintOverlay.classList.add("hidden");
   }
-  if (window.introOverlayJustClosed) {
-    console.log('🛑 Touch drag blocked: intro overlay just closed');
-    return;
-  }
-  if (introOverlay && introOverlay.classList.contains('visible')) {
-    console.log('🛑 Touch drag blocked: intro overlay is visible');
+  
+  if (isDragBlocked('Touch drag')) {
     return;
   }
   
@@ -1140,6 +1161,7 @@ function startDragTouch(e) {
 
 function drag(e) {
   if (!isDragging) return;
+  if (isDragBlocked()) return;
   e.preventDefault();
   currentX = e.clientX - startX;
   currentY = e.clientY - startY;
@@ -1148,6 +1170,7 @@ function drag(e) {
 
 function dragTouch(e) {
   if (!isDragging) return;
+  if (isDragBlocked()) return;
   e.preventDefault();
   const touch = e.touches[0];
   
@@ -1919,15 +1942,8 @@ function handleEdgeScrolling(e) {
     if (isHoveringCircle) return;
   }
   
-  // Disable scrolling when help overlay is open
-  if (cachedElements.helpOverlay && !cachedElements.helpOverlay.classList.contains('hidden')) {
-    console.log('🛑 Edge scrolling blocked: help overlay is open');
-    return;
-  }
-  
-  // Disable scrolling when intro overlay is open
-  if (introOverlay && introOverlay.classList.contains('visible')) {
-    console.log('🛑 Edge scrolling blocked: intro overlay is open');
+  // Disable scrolling when overlays are open
+  if (isDragBlocked('Edge scrolling')) {
     return;
   }
   

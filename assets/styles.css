@@ -2201,6 +2201,10 @@ body.high-contrast .hover-title {
     line-height: 1.4;
 }
 
+.imprint-section a {
+    text-decoration: none;
+}
+
 .imprint-close {
     align-self: center;
     margin-top: 20px;
