@@ -1328,9 +1328,8 @@ function calculateImageDragLimits() {
     // On mobile: Allow dragging exactly to image edges, no more, no less
     maxDragDistance = Math.max(0, halfImageWidth - halfViewportWidth);
   } else {
-    // Desktop: keep some extra margin for safety
-    const extraMargin = 200;
-    maxDragDistance = Math.max(0, halfImageWidth - halfViewportWidth + extraMargin);
+    // Desktop: Allow dragging exactly to image edges, same as mobile
+    maxDragDistance = Math.max(0, halfImageWidth - halfViewportWidth);
   }
   
   // Debug logging  
